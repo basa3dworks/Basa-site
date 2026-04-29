@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Basa 3D Works</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+        <button class="menu-button" id="mobileMenuButton" type="button" aria-label="Abrir menu">☰</button>
+        <a class="brand" href="/">
+          <span class="brand-mark">B3D</span>
+          <span>Basa 3D Works</span>
+        </a>
+        <label class="mobile-search" aria-label="Buscar produtos">
+          <span>Buscar</span>
+          <input id="mobileSearchInput" placeholder="Buscar na Basa 3D Works">
+        </label>
+      <nav>
+        <a href="#produtos">Produtos</a>
+        <button class="ghost-button nav-button" id="customerButton" type="button">Perfil</button>
+        <a href="/admin.html">Admin</a>
+        <button class="icon-button" id="cartButton" aria-label="Abrir carrinho">Carrinho <strong id="cartCount">0</strong></button>
+      </nav>
+    </header>
+    <div class="mobile-tabbar" aria-label="Navegação do catálogo">
+      <button class="mobile-feed-tab" type="button" data-feed="favorites">Favoritos</button>
+      <button class="mobile-feed-tab active" type="button" data-feed="for-you">Para você</button>
+      <button class="mobile-feed-tab" type="button" data-feed="trending">Tendência</button>
+      <div class="mobile-category-tabs" id="mobileCategoryTabs"></div>
+      <button class="mobile-more-button" id="mobileCategoryMore" type="button" aria-label="Abrir categorias" aria-expanded="false">⌄</button>
+    </div>
+    <div class="mobile-category-panel" id="mobileCategoryPanel" hidden></div>
+
+    <main>
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Impressão 3D, produtos prontos e sob demanda</p>
+          <h1>Basa 3D Works</h1>
+          <p id="tagline">Produtos 3D personalizados com acabamento profissional e produção sob medida.</p>
+          <div class="hero-actions">
+            <a class="primary-link" href="#produtos">Ver catálogo</a>
+            <a class="secondary-link" href="#sob-medida">Pedir sob medida</a>
+          </div>
+          <div class="hero-metrics" aria-label="Destaques da loja">
+            <span><strong>PLA e PETG</strong> Materiais selecionados</span>
+            <span><strong>Acabamento</strong> Peças revisadas antes do envio</span>
+            <span><strong>Sob demanda</strong> Modelagem e impressão personalizada</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="trust-band" aria-label="Diferenciais">
+        <div>
+          <strong>Produzido no Brasil</strong>
+          <span>Pedidos feitos com cuidado, lote por lote.</span>
+        </div>
+        <div>
+          <strong>Personalização real</strong>
+          <span>Cores, medidas e briefing para projetos especiais.</span>
+        </div>
+        <div>
+          <strong>Compra acompanhada</strong>
+          <span>Pedido registrado e administrado pelo painel interno.</span>
+        </div>
+      </section>
+
+      <section class="stories-section" aria-label="Stories da produção">
+        <div class="section-head compact">
+          <div>
+            <p class="eyebrow">Bastidores</p>
+            <h2>Dia a dia da produção</h2>
+          </div>
+        </div>
+        <div class="product-stories" id="productStories"></div>
+      </section>
+
+      <section class="catalog-shell" id="produtos">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Catálogo</p>
+            <h2>Produtos em destaque</h2>
+          </div>
+          <select id="categoryFilter" aria-label="Filtrar categoria">
+            <option value="all">Todas as categorias</option>
+          </select>
+        </div>
+        <div class="product-grid" id="productGrid"></div>
+      </section>
+
+      <section class="process-section" id="sob-medida">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Como funciona</p>
+            <h2>Da ideia ao objeto pronto</h2>
+          </div>
+        </div>
+        <div class="process-grid">
+          <article>
+            <span>01</span>
+            <h3>Escolha ou envie sua ideia</h3>
+            <p>Você compra um produto pronto ou solicita uma peça personalizada para avaliação.</p>
+          </article>
+          <article>
+            <span>02</span>
+            <h3>Produção com revisão</h3>
+            <p>O pedido entra na fila de impressão, passa por acabamento e conferência visual.</p>
+          </article>
+          <article>
+            <span>03</span>
+            <h3>Envio e acompanhamento</h3>
+            <p>Seus dados ficam registrados para pagamento, envio e futura emissão fiscal.</p>
+          </article>
+        </div>
+      </section>
+
+    </main>
+
+    <aside class="customer-panel" id="customerPanel" aria-hidden="true">
+      <div class="customer-drawer">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Conta do cliente</p>
+            <h2>Minha Basa</h2>
+          </div>
+          <button class="ghost-button" id="closeCustomerPanel">Fechar</button>
+        </div>
+        <section class="customer-menu-view" id="customerMenuView">
+          <div class="customer-menu-list">
+            <button class="customer-menu-item" type="button">
+              <span>
+                <strong>Meus dados</strong>
+                <small>Cadastro, endereço e informações para compra.</small>
+              </span>
+              <b>›</b>
+            </button>
+            <button class="customer-menu-item" type="button">
+              <span>
+                <strong>Notificações</strong>
+                <small>Avisos sobre pedidos, novidades e respostas da Basa.</small>
+              </span>
+              <b>›</b>
+            </button>
+            <button class="customer-menu-item" type="button">
+              <span>
+                <strong>Convidar amigos</strong>
+                <small>No futuro, indicações poderão gerar cupons e benefícios.</small>
+              </span>
+              <b>›</b>
+            </button>
+            <button class="customer-menu-item" type="button">
+              <span>
+                <strong>Benefícios e cupons</strong>
+                <small>Campanhas, prêmios e vantagens da conta.</small>
+              </span>
+              <b>›</b>
+            </button>
+          </div>
+        </section>
+
+      </div>
+    </aside>
+
+    <aside class="customer-panel quote-panel" id="quotePanel" aria-hidden="true">
+      <div class="customer-drawer">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Sob medida</p>
+            <h2>Imprima suas ideias</h2>
+          </div>
+          <button class="ghost-button" id="closeQuotePanel">Fechar</button>
+        </div>
+        <div class="profile-grid">
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Orçamento</p>
+                <h3>Pedir orçamento</h3>
+              </div>
+            </div>
+            <form id="customRequestForm" class="stack-form" enctype="multipart/form-data">
+              <label>Título<input name="title" required placeholder="Ex: Suporte personalizado para monitor"></label>
+              <label>Sua ideia<textarea name="idea" rows="5" required placeholder="Conte medidas, uso, cor desejada, referências e quantidade."></textarea></label>
+              <label>Imagem de referência<input name="referenceImage" type="file" accept="image/*"></label>
+              <label>Orçamento desejado<input name="budget" placeholder="Ex: até R$ 150"></label>
+              <label>Prazo desejado<input name="deadline" placeholder="Ex: preciso em 15 dias"></label>
+              <button class="primary-button" type="submit">Enviar ideia</button>
+              <p class="form-status" id="customRequestStatus"></p>
+            </form>
+          </article>
+        </div>
+        <article class="panel request-panel">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Acompanhamento</p>
+              <h3>Minhas encomendas</h3>
+            </div>
+          </div>
+          <div class="request-list" id="customerRequestList"></div>
+        </article>
+      </div>
+    </aside>
+
+    <aside class="cart-panel" id="cartPanel" aria-hidden="true">
+      <div class="cart">
+        <div class="section-head compact">
+          <h2>Carrinho</h2>
+          <button class="ghost-button" id="closeCart">Fechar</button>
+        </div>
+        <div id="cartItems" class="cart-items"></div>
+        <form id="checkoutForm" class="checkout-form">
+          <details class="checkout-details" id="checkoutDetails">
+            <summary>
+              <span>Dados do pedido e entrega</span>
+              <small>Cadastro, cupom e envio</small>
+            </summary>
+            <div class="checkout-details-body">
+          <div class="customer-login-box" id="customerLoginBox">
+            <div>
+              <h3>Entrar para comprar</h3>
+              <p id="customerLoginStatus">Preencha seus dados e salve o cadastro para finalizar o pedido.</p>
+            </div>
+            <div class="customer-login-actions">
+              <button class="primary-button" type="button" id="saveCustomerButton">Entrar/Cadastrar</button>
+              <button class="ghost-button debug-customer-button" type="button" id="debugCustomerButton">Cliente teste</button>
+              <button class="ghost-button" type="button" id="logoutCustomerButton" hidden>Alterar dados</button>
+            </div>
+          </div>
+          <h3>Dados para pedido</h3>
+          <label>Nome<input name="name" required autocomplete="name" data-customer-field></label>
+          <label>CPF ou CNPJ<input name="document" required inputmode="numeric" autocomplete="off" placeholder="Somente numeros" data-customer-field></label>
+          <label>Email<input name="email" type="email" required autocomplete="email" data-customer-field></label>
+          <label>Telefone<input name="phone" required autocomplete="tel" data-customer-field></label>
+          <div class="checkout-grid">
+            <label>CEP<input name="zipCode" required inputmode="numeric" autocomplete="postal-code" placeholder="00000-000" data-customer-field></label>
+            <label>Numero<input name="number" required autocomplete="address-line2" data-customer-field></label>
+          </div>
+          <label>Rua<input name="street" required autocomplete="address-line1" data-customer-field></label>
+          <div class="checkout-grid">
+            <label>Bairro<input name="neighborhood" required data-customer-field></label>
+            <label>Complemento<input name="complement" autocomplete="address-line3" data-customer-field></label>
+          </div>
+          <div class="checkout-grid">
+            <label>Cidade<input name="city" required autocomplete="address-level2" data-customer-field></label>
+            <label>Estado<input name="state" required maxlength="2" autocomplete="address-level1" data-customer-field></label>
+          </div>
+          <section class="shipping-choice">
+            <div class="section-head compact">
+              <h3>Entrega</h3>
+            </div>
+            <label>Cupom<input name="coupon" autocomplete="off" placeholder="Ex: FRETE3D"></label>
+            <div id="shippingOptions" class="shipping-options">
+              <p>Informe o CEP para calcular as opções de entrega.</p>
+            </div>
+          </section>
+            </div>
+          </details>
+          <div class="totals" id="cartTotals"></div>
+          <button class="primary-button" type="submit" id="checkoutSubmitButton">Finalizar pedido</button>
+          <p class="form-status" id="checkoutStatus"></p>
+        </form>
+      </div>
+    </aside>
+
+    <div class="story-viewer" id="storyViewer" hidden>
+      <button class="story-close" id="storyCloseButton" type="button" aria-label="Fechar story">Fechar</button>
+      <article class="story-card" id="storyCard"></article>
+    </div>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>

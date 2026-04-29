@@ -1,0 +1,508 @@
+﻿<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Admin | Basa 3D Works</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body class="admin-body">
+    <header class="topbar">
+      <a class="brand" href="/">
+        <span class="brand-mark">B3D</span>
+        <span>Basa Admin</span>
+      </a>
+      <nav>
+        <a href="/">Loja</a>
+        <button class="ghost-button" id="logoutButton">Sair</button>
+      </nav>
+    </header>
+
+    <main class="admin-shell">
+      <section class="login-card" id="loginCard">
+        <p class="eyebrow">Acesso restrito</p>
+        <h1>Painel admin</h1>
+        <form id="loginForm" class="stack-form">
+          <label>Email<input name="email" type="email" required value="admin@basa3dworks.com"></label>
+          <label>Senha<input name="password" type="password" required placeholder="admin"></label>
+          <button class="primary-button" type="submit">Entrar</button>
+          <p class="form-status" id="loginStatus"></p>
+        </form>
+      </section>
+
+      <section id="dashboard" hidden>
+        <div class="admin-hero">
+          <div>
+            <p class="eyebrow">Gestão de conteúdo</p>
+            <h1>Operação da loja</h1>
+            <p>Controle catálogo, acompanhe pedidos e veja a estrutura de split antes da integração real de pagamentos.</p>
+          </div>
+          <div class="admin-actions">
+            <a class="secondary-link" href="/">Ver loja</a>
+            <button class="primary-button" id="refreshButton">Atualizar</button>
+          </div>
+        </div>
+
+        <div class="stats-grid" id="statsGrid"></div>
+
+        <div class="admin-tabs" role="tablist" aria-label="Areas do painel admin">
+          <button class="admin-tab" type="button" data-admin-tab="metrics">Métricas</button>
+          <button class="admin-tab active" type="button" data-admin-tab="products">Produtos</button>
+          <button class="admin-tab" type="button" data-admin-tab="stories">Stories</button>
+          <button class="admin-tab" type="button" data-admin-tab="campaigns">Campanhas</button>
+          <button class="admin-tab" type="button" data-admin-tab="orders">Meus pedidos</button>
+          <button class="admin-tab" type="button" data-admin-tab="requests">Encomendas</button>
+          <button class="admin-tab" type="button" data-admin-tab="shipping">Envio</button>
+          <button class="admin-tab" type="button" data-admin-tab="promotions">Cupons</button>
+          <button class="admin-tab" type="button" data-admin-tab="settings">Aparencia</button>
+        </div>
+
+        <section class="panel metrics-dashboard" data-admin-panel="metrics" hidden>
+          <div class="metrics-topline">
+            <div class="metrics-tabs" aria-label="Se&ccedil;&otilde;es de m&eacute;tricas">
+              <button class="active" type="button" data-metrics-view="overview">Vis&atilde;o geral</button>
+              <button type="button" data-metrics-view="product">Produto</button>
+              <button type="button" data-metrics-view="sales">Vendas</button>
+              <button type="button" data-metrics-view="services">Servi&ccedil;os</button>
+              <button type="button" data-metrics-view="traffic">Tr&aacute;fego</button>
+              <button type="button" data-metrics-view="marketing">Marketing</button>
+              <button type="button" data-metrics-view="assistant">Assistente de vendas</button>
+            </div>
+            <div class="metrics-links">
+              <span>Saber mais</span>
+              <button type="button" data-metrics-view="monitor">Monitor de vendas ao vivo</button>
+            </div>
+          </div>
+          <section class="sales-monitor" data-metrics-section="monitor">
+            <button class="monitor-fullscreen-button" type="button" id="salesMonitorFullscreenButton">Tela cheia</button>
+            <div class="sales-monitor-hero">
+              <div>
+                <h3>Vendas Hoje</h3>
+                <span id="salesMonitorClock">--/--/---- --:--:-- (GMT-03)</span>
+              </div>
+              <strong id="salesMonitorTotal">R$ 0,00</strong>
+            </div>
+            <div class="sales-monitor-grid">
+              <section class="monitor-card">
+                <h3>M&eacute;tricas principais</h3>
+                <div class="monitor-metric-grid" id="salesMonitorMetrics"></div>
+              </section>
+              <section class="monitor-card monitor-chart-card">
+                <div class="monitor-card-head">
+                  <h3>Tend&ecirc;ncia de vendas</h3>
+                  <span><i></i>Hoje</span>
+                </div>
+                <div class="monitor-chart" id="salesMonitorChart"></div>
+              </section>
+              <section class="monitor-card">
+                <h3>Top 5 dos produtos &agrave; venda</h3>
+                <div class="monitor-top-products" id="salesMonitorTopProducts"></div>
+              </section>
+            </div>
+          </section>
+          <div class="metrics-filters">
+            <label>Per&iacute;odo dos dados
+              <select id="metricsPeriodSelect">
+                <option value="all">Todo o hist&oacute;rico</option>
+                <option value="7">&Uacute;ltimos 7 dias</option>
+                <option value="30" selected>&Uacute;ltimos 30 dias</option>
+                <option value="90">&Uacute;ltimos 90 dias</option>
+              </select>
+            </label>
+            <label>Tipo de pedido
+              <select id="metricsOrderTypeSelect">
+                <option value="all">Produto pago</option>
+                <option value="free_shipping">Com frete gr&aacute;tis</option>
+                <option value="shipping_paid">Com frete pago</option>
+              </select>
+            </label>
+            <button class="ghost-button" type="button" id="metricsExportButton">Exportar dados</button>
+          </div>
+          <div class="marketplace-metrics-grid" data-metrics-section="main realtime">
+            <section class="metrics-card metrics-main-card" data-metrics-section="main sales">
+              <div class="metrics-card-head">
+                <h3>M&eacute;tricas principais</h3>
+                <span>Vendas, pedidos, visitantes estimados e convers&atilde;o</span>
+              </div>
+              <div class="metrics-kpi-grid" id="metricsKpiGrid"></div>
+              <div class="trend-head">
+                <strong>Gr&aacute;fico de tend&ecirc;ncias de cada m&eacute;trica</strong>
+                <span><i class="dot sales"></i>Vendas <i class="dot orders"></i>Pedidos <i class="dot visitors"></i>Visitantes</span>
+              </div>
+              <div class="metrics-trend-chart" id="metricsTrendChart"></div>
+            </section>
+            <section class="metrics-card realtime-card" data-metrics-section="realtime traffic assistant">
+              <div class="metrics-card-head">
+                <h3>M&eacute;tricas em tempo real</h3>
+                <span>Atualiza&ccedil;&atilde;o em tempo real</span>
+              </div>
+              <div class="metrics-list" id="metricsRealtime"></div>
+            </section>
+          </div>
+          <section class="metrics-card traffic-card" data-metrics-section="traffic marketing">
+            <div class="metrics-card-head">
+              <h3>Fontes de tr&aacute;fego</h3>
+              <span>Contribui&ccedil;&atilde;o estimada das vendas na loja</span>
+            </div>
+            <div class="traffic-source-grid" id="metricsTrafficSources"></div>
+          </section>
+          <div class="metrics-layout">
+            <section class="metrics-card" data-metrics-section="product">
+              <div class="metrics-card-head">
+                <h3>Desempenho por produto</h3>
+                <span>Receita, unidades e avalia&ccedil;&atilde;o</span>
+              </div>
+              <div class="metrics-table-wrap">
+                <table class="metrics-table">
+                  <thead><tr><th>Produto</th><th>Unid.</th><th>Receita</th><th>Ticket</th><th>Avalia&ccedil;&atilde;o</th><th>For&ccedil;a</th></tr></thead>
+                  <tbody id="metricsProductRows"></tbody>
+                </table>
+              </div>
+            </section>
+            <section class="metrics-card" data-metrics-section="planning assistant marketing">
+              <div class="metrics-card-head">
+                <h3>Planejamento</h3>
+                <span>Leitura para as pr&oacute;ximas a&ccedil;&otilde;es</span>
+              </div>
+              <div class="metrics-insights" id="metricsInsights"></div>
+            </section>
+            <section class="metrics-card" data-metrics-section="campaigns marketing">
+              <div class="metrics-card-head">
+                <h3>Campanhas e frete</h3>
+                <span>Impacto comercial</span>
+              </div>
+              <div class="metrics-list" id="metricsCampaigns"></div>
+            </section>
+            <section class="metrics-card" data-metrics-section="funnel services assistant">
+              <div class="metrics-card-head">
+                <h3>Funil operacional</h3>
+                <span>Pedidos e encomendas</span>
+              </div>
+              <div class="metrics-list" id="metricsFunnel"></div>
+            </section>
+            <section class="metrics-card" data-metrics-section="finance sales services">
+              <div class="metrics-card-head">
+                <h3>Financeiro estimado</h3>
+              <span>Receita, entrega e frete gr&aacute;tis</span>
+              </div>
+              <div class="metrics-list" id="metricsFinance"></div>
+            </section>
+            <section class="metrics-card" data-metrics-section="categories product">
+              <div class="metrics-card-head">
+                <h3>Categorias</h3>
+                <span>Onde a loja est&aacute; performando</span>
+              </div>
+              <div class="metrics-list" id="metricsCategories"></div>
+            </section>
+          </div>
+        </section>
+
+        <div class="admin-grid" data-admin-panel="products">
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Catálogo</p>
+                <h2>Novo produto</h2>
+              </div>
+            </div>
+            <form id="productForm" class="stack-form">
+              <input name="productId" type="hidden">
+              <label>Nome<input name="name" required></label>
+              <label>Categoria<input name="category" required></label>
+              <label>Preço<input name="price" type="number" step="0.01" min="0" required></label>
+              <label>Preço antigo<input name="compareAtPrice" type="number" step="0.01" min="0" placeholder="Opcional"></label>
+              <label>Estoque<input name="stock" type="number" min="0" required></label>
+              <label>Cores disponíveis<textarea name="colors" rows="3" placeholder="Uma cor por linha. Ex: Preto, Branco, Azul"></textarea></label>
+              <label>Formato
+                <select name="bundleType">
+                  <option value="single">1 peça</option>
+                  <option value="kit">Kit</option>
+                </select>
+              </label>
+              <label>Peças no kit<input name="piecesIncluded" type="number" min="1" value="1"></label>
+              <fieldset class="repeatable-field">
+                <div class="repeatable-head">
+                  <div>
+                    <legend>Frete</legend>
+                    <span>Medidas usadas para cotar entrega no Melhor Envio.</span>
+                  </div>
+                </div>
+                <div class="shipping-dimensions-grid">
+                  <label>Peso kg<input name="weightKg" type="number" step="0.01" min="0.01" value="0.30" required></label>
+                  <label>Largura cm<input name="widthCm" type="number" step="0.1" min="1" value="12" required></label>
+                  <label>Altura cm<input name="heightCm" type="number" step="0.1" min="1" value="8" required></label>
+                  <label>Comprimento cm<input name="lengthCm" type="number" step="0.1" min="1" value="18" required></label>
+                </div>
+                <label class="checkbox-row">
+                  <input name="sellerPaysShipping" type="checkbox" value="true">
+                  <span>Assumir frete deste produto e mostrar frete grátis ao cliente</span>
+                </label>
+                <label>Frete grátis ao levar X unidades<input name="freeShippingMinQuantity" type="number" min="0" placeholder="0 para desativar"></label>
+                <p class="embedded-shipping-preview" id="embeddedShippingPreview"></p>
+              </fieldset>
+              <label>Imagem URL<input name="image" type="url" required></label>
+              <label>Descrição<textarea name="description" rows="4" required></textarea></label>
+              <label>Descrição detalhada<textarea name="longDescription" rows="5" placeholder="Texto maior para a página do produto"></textarea></label>
+              <label>Video URL<input name="videoUrl" type="url" placeholder="https://www.youtube.com/embed/..."></label>
+              <label>Galeria<textarea name="gallery" rows="3" placeholder="Uma URL de imagem por linha"></textarea></label>
+              <fieldset class="repeatable-field">
+                <div class="repeatable-head">
+                  <div>
+                    <legend>Destaques</legend>
+                    <span>Adicione benefícios curtos que aparecem na página do produto.</span>
+                  </div>
+                  <button class="ghost-button" type="button" id="addHighlightButton">Adicionar</button>
+                </div>
+                <div class="repeatable-list" id="highlightsList"></div>
+              </fieldset>
+              <fieldset class="repeatable-field">
+                <div class="repeatable-head">
+                  <div>
+                    <legend>Especificações</legend>
+                    <span>Use pares como Material + PLA, Prazo + 2 a 4 dias úteis.</span>
+                  </div>
+                  <button class="ghost-button" type="button" id="addSpecButton">Adicionar</button>
+                </div>
+                <div class="repeatable-list" id="specsList"></div>
+              </fieldset>
+              <div class="form-actions">
+                <button class="primary-button" id="productSubmitButton" type="submit">Publicar produto</button>
+                <button class="ghost-button" id="cancelProductEditButton" type="button" hidden>Cancelar edição</button>
+              </div>
+              <p class="form-status" id="productStatus"></p>
+            </form>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Financeiro</p>
+                <h2>Split de pagamentos</h2>
+              </div>
+            </div>
+            <div class="split-box" id="splitBox"></div>
+          </section>
+        </div>
+
+        <section class="panel" data-admin-panel="stories" hidden>
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Bastidores</p>
+              <h2>Stories da producao</h2>
+            </div>
+            <label class="admin-search">Pesquisar stories
+              <input id="storySearchInput" type="search" placeholder="Titulo, legenda ou produto">
+            </label>
+          </div>
+          <form id="storyForm" class="story-form">
+            <input name="storyId" type="hidden">
+            <label>Titulo<input name="title" required placeholder="Ex: Mesa de acabamento"></label>
+            <label>Legenda<textarea name="caption" rows="3" placeholder="Conte um detalhe rapido do dia a dia"></textarea></label>
+            <label>Produto relacionado
+              <input id="storyProductSearchInput" type="search" placeholder="Buscar produto para vincular">
+              <select name="productId" id="storyProductSelect">
+                <option value="">Sem produto relacionado</option>
+              </select>
+            </label>
+            <label>Foto ou video<input name="media" type="file" accept="image/*,video/*" required></label>
+            <label class="checkbox-row">
+              <input name="active" type="checkbox" value="true" checked>
+              <span>Story ativo na loja</span>
+            </label>
+            <div class="form-actions story-form-actions">
+              <button class="primary-button" id="storySubmitButton" type="submit">Publicar story</button>
+              <button class="ghost-button" id="cancelStoryEditButton" type="button" hidden>Cancelar edicao</button>
+            </div>
+          </form>
+          <p class="form-status" id="storyStatus"></p>
+          <div class="story-admin-list" id="storyAdminList"></div>
+        </section>
+
+        <section class="panel" data-admin-panel="settings" hidden>
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Aparência</p>
+              <h2>Tema da loja</h2>
+            </div>
+          </div>
+          <div class="theme-grid" id="themeGrid"></div>
+          <p class="form-status" id="themeStatus"></p>
+          <div class="panel-divider"></div>
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Página inicial</p>
+              <h2>Imagens da seção principal</h2>
+            </div>
+          </div>
+          <form id="heroSlideForm" class="hero-slide-form" enctype="multipart/form-data">
+            <label>Título interno<input name="title" placeholder="Ex: Impressora em produção"></label>
+            <label>Imagem<input name="image" type="file" accept="image/*" required></label>
+            <button class="primary-button" type="submit">Adicionar imagem</button>
+          </form>
+          <p class="form-status" id="heroSlideStatus"></p>
+          <div class="hero-slide-list" id="heroSlideList"></div>
+        </section>
+
+        <section class="panel" data-admin-panel="campaigns" hidden>
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Vendas</p>
+              <h2>Central de campanhas</h2>
+            </div>
+          </div>
+          <form id="campaignForm" class="campaign-form">
+            <label>Buscar produto
+              <input id="campaignProductSearchInput" type="search" placeholder="Nome, categoria ou status">
+            </label>
+            <label>Produto
+              <select name="productId" id="campaignProductSelect" required></select>
+            </label>
+            <label>Tipo
+              <select name="type">
+                <option value="featured">Destaque</option>
+                <option value="flash">Oferta relâmpago</option>
+                <option value="clearance">Queima de estoque</option>
+                <option value="launch">Lançamento</option>
+              </select>
+            </label>
+            <label>Chamada<input name="label" placeholder="Ex: Oferta relâmpago"></label>
+            <label>Desconto da campanha %<input name="discountPercent" type="number" min="0" max="95" step="1" value="0" placeholder="Ex: 15"></label>
+            <label>Prioridade<input name="priority" type="number" min="0" max="100" value="50"></label>
+            <label>Inicio<input name="startsAt" type="datetime-local"></label>
+            <label>Fim<input name="endsAt" type="datetime-local"></label>
+            <label class="checkbox-row">
+              <input name="active" type="checkbox" value="true" checked>
+              <span>Campanha ativa</span>
+            </label>
+            <div class="form-actions campaign-actions">
+              <button class="primary-button" type="submit">Salvar campanha</button>
+              <button class="ghost-button" id="clearCampaignButton" type="button">Remover campanha</button>
+            </div>
+          </form>
+          <div class="campaign-summary" id="campaignProductSummary"></div>
+          <p class="form-status" id="campaignStatus"></p>
+          <div class="campaign-list" id="campaignList"></div>
+        </section>
+
+        <section class="panel" data-admin-panel="shipping" hidden>
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Logistica</p>
+              <h2>Configuracoes de envio</h2>
+            </div>
+          </div>
+          <form id="shippingSettingsForm" class="shipping-settings-form">
+            <label>CEP de origem<input name="originZipCode" inputmode="numeric" placeholder="00000-000" required></label>
+            <label>Frete fixo reserva<input name="shippingFlatRate" type="number" step="0.01" min="0" required></label>
+            <label>Itens para frete gratis por combo<input name="freeShippingMinItems" type="number" min="1" required></label>
+            <label>Provedor
+              <select name="shippingProvider">
+                <option value="melhor-envio">Melhor Envio</option>
+                <option value="mock">Simulacao</option>
+              </select>
+            </label>
+            <button class="primary-button" type="submit">Salvar envio</button>
+          </form>
+          <fieldset class="repeatable-field sender-settings">
+            <div class="repeatable-head">
+              <div>
+                <legend>Remetente das etiquetas</legend>
+                <span>Esses dados vao para o Melhor Envio quando a etiqueta for criada.</span>
+              </div>
+            </div>
+            <div class="sender-settings-grid">
+              <label>Nome remetente<input form="shippingSettingsForm" name="senderName"></label>
+              <label>Email<input form="shippingSettingsForm" name="senderEmail" type="email"></label>
+              <label>Telefone<input form="shippingSettingsForm" name="senderPhone" inputmode="numeric"></label>
+              <label>CPF/CNPJ<input form="shippingSettingsForm" name="senderDocument" inputmode="numeric"></label>
+              <label>CNPJ empresa<input form="shippingSettingsForm" name="senderCompanyDocument" inputmode="numeric"></label>
+              <label>CEP remetente<input form="shippingSettingsForm" name="senderZipCode" inputmode="numeric"></label>
+              <label>Rua<input form="shippingSettingsForm" name="senderAddress"></label>
+              <label>Numero<input form="shippingSettingsForm" name="senderNumber"></label>
+              <label>Complemento<input form="shippingSettingsForm" name="senderComplement"></label>
+              <label>Bairro<input form="shippingSettingsForm" name="senderNeighborhood"></label>
+              <label>Cidade<input form="shippingSettingsForm" name="senderCity"></label>
+              <label>UF<input form="shippingSettingsForm" name="senderState" maxlength="2"></label>
+            </div>
+          </fieldset>
+          <div class="shipping-admin-note">
+            <strong>Frete gratis assumido por produto</strong>
+            <span>Quando um produto estiver marcado com frete gratis, o cliente nao escolhe Correios ou transportadora. A decisao operacional aparece dentro de Meus pedidos, junto com cliente, itens, pagamento e etiqueta.</span>
+          </div>
+          <p class="form-status" id="shippingSettingsStatus"></p>
+        </section>
+
+        <section class="panel" data-admin-panel="promotions" hidden>
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Promoções</p>
+              <h2>Gerador de cupom</h2>
+            </div>
+            <button class="ghost-button" type="button" id="generateCouponButton">Gerar codigo</button>
+          </div>
+          <form id="couponForm" class="coupon-form">
+            <label>Codigo<input name="code" required placeholder="Ex: FRETE3D"></label>
+            <label>Beneficio
+              <select name="type">
+                <option value="free_shipping">Frete grátis</option>
+                <option value="percent">Desconto percentual</option>
+                <option value="fixed">Desconto fixo</option>
+              </select>
+            </label>
+            <label>Valor<input name="value" type="number" step="0.01" min="0" value="0"></label>
+            <label>Min. itens<input name="minItems" type="number" min="1" value="1"></label>
+            <label>Min. compra<input name="minSubtotal" type="number" step="0.01" min="0" value="0"></label>
+            <label>Expira em<input name="expiresAt" type="datetime-local"></label>
+            <button class="primary-button" type="submit">Salvar cupom</button>
+          </form>
+          <p class="form-status" id="couponStatus"></p>
+          <div class="coupon-list" id="couponList"></div>
+        </section>
+
+        <section class="panel" data-admin-panel="products">
+          <div class="section-head compact">
+            <h2>Produtos</h2>
+            <label class="admin-search">Pesquisar produtos
+              <input id="productSearchInput" type="search" placeholder="Nome, categoria ou status">
+            </label>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Produto</th><th>Categoria</th><th>Preço</th><th>Preço antigo</th><th>Desconto</th><th>Estoque</th><th>Desempenho</th><th>Status</th><th>Ações</th></tr></thead>
+              <tbody id="productsTable"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel" data-admin-panel="orders" hidden>
+          <div class="section-head compact">
+            <div>
+              <p class="eyebrow">Operação</p>
+              <h2>Central de pedidos</h2>
+            </div>
+            <label class="admin-search">Pesquisar pedidos
+              <input id="orderSearchInput" type="search" placeholder="Código, cliente, item ou status">
+            </label>
+          </div>
+          <div class="order-ops-shell">
+            <aside class="orders-list" id="ordersList"></aside>
+            <section class="order-detail-panel" id="orderDetailPanel"></section>
+          </div>
+        </section>
+
+        <section class="panel" data-admin-panel="requests" hidden>
+          <div class="section-head compact">
+            <h2>Encomendas sob medida</h2>
+            <label class="admin-search">Pesquisar encomendas
+              <input id="requestSearchInput" type="search" placeholder="Cliente, ideia ou status">
+            </label>
+          </div>
+          <div class="request-list" id="adminRequestList"></div>
+        </section>
+      </section>
+    </main>
+
+    <script src="/admin.js" type="module"></script>
+  </body>
+</html>
+

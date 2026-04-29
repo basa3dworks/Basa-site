@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Pedido recebido | Basa 3D Works</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="thank-you">
+      <section class="login-card">
+        <p class="eyebrow">Pedido recebido</p>
+        <h1>Obrigado pela compra</h1>
+        <p>Recebemos o seu pedido e a equipe Basa 3D Works vai acompanhar os proximos passos.</p>
+        <p class="order-code" id="orderCode"></p>
+        <a class="primary-link" href="/">Voltar para loja</a>
+      </section>
+    </main>
+    <script>
+      const pedido = new URLSearchParams(location.search).get("pedido");
+      document.getElementById("orderCode").textContent = pedido ? `Pedido ${pedido}` : "";
+    </script>
+  </body>
+</html>

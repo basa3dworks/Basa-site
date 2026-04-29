@@ -1,0 +1,7 @@
+node_modules
+.env
+data/*.tmp
+*.log
+pdf_extract/
+*.pdf
+prepare_marcenaria_pdf.py

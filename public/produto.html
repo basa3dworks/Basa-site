@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Produto | Basa 3D Works</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="topbar-left">
+        <a class="back-icon-button" href="/#produtos" aria-label="Voltar para a loja">&#8592;</a>
+        <a class="brand" href="/">
+          <span class="brand-mark">B3D</span>
+          <span>Basa 3D Works</span>
+        </a>
+      </div>
+      <nav>
+        <a href="/#produtos">Produtos</a>
+        <a href="/admin.html">Admin</a>
+        <button class="icon-button" id="cartButton" aria-label="Abrir carrinho">Carrinho <strong id="cartCount">0</strong></button>
+      </nav>
+    </header>
+
+    <main id="productPage" class="product-page">
+      <section class="product-loading">
+        <p class="eyebrow">Carregando</p>
+        <h1>Buscando produto...</h1>
+      </section>
+    </main>
+
+    <aside class="cart-panel" id="cartPanel" aria-hidden="true">
+      <div class="cart">
+        <div class="section-head compact">
+          <h2>Carrinho</h2>
+          <button class="ghost-button" id="closeCart">Fechar</button>
+        </div>
+        <div id="cartItems" class="cart-items"></div>
+        <form id="checkoutForm" class="checkout-form">
+          <details class="checkout-details" id="checkoutDetails">
+            <summary>
+              <span>Dados do pedido e entrega</span>
+              <small>Cadastro, cupom e envio</small>
+            </summary>
+            <div class="checkout-details-body">
+          <div class="customer-login-box" id="customerLoginBox">
+            <div>
+              <h3>Entrar para comprar</h3>
+              <p id="customerLoginStatus">Preencha seus dados e salve o cadastro para finalizar o pedido.</p>
+            </div>
+            <div class="customer-login-actions">
+              <button class="primary-button" type="button" id="saveCustomerButton">Entrar/Cadastrar</button>
+              <button class="ghost-button debug-customer-button" type="button" id="debugCustomerButton">Cliente teste</button>
+              <button class="ghost-button" type="button" id="logoutCustomerButton" hidden>Alterar dados</button>
+            </div>
+          </div>
+          <h3>Dados para pedido</h3>
+          <label>Nome<input name="name" required autocomplete="name" data-customer-field></label>
+          <label>CPF ou CNPJ<input name="document" required inputmode="numeric" autocomplete="off" placeholder="Somente números" data-customer-field></label>
+          <label>Email<input name="email" type="email" required autocomplete="email" data-customer-field></label>
+          <label>Telefone<input name="phone" required autocomplete="tel" data-customer-field></label>
+          <div class="checkout-grid">
+            <label>CEP<input name="zipCode" required inputmode="numeric" autocomplete="postal-code" placeholder="00000-000" data-customer-field></label>
+            <label>Número<input name="number" required autocomplete="address-line2" data-customer-field></label>
+          </div>
+          <label>Rua<input name="street" required autocomplete="address-line1" data-customer-field></label>
+          <div class="checkout-grid">
+            <label>Bairro<input name="neighborhood" required data-customer-field></label>
+            <label>Complemento<input name="complement" autocomplete="address-line3" data-customer-field></label>
+          </div>
+          <div class="checkout-grid">
+            <label>Cidade<input name="city" required autocomplete="address-level2" data-customer-field></label>
+            <label>Estado<input name="state" required maxlength="2" autocomplete="address-level1" data-customer-field></label>
+          </div>
+          <section class="shipping-choice">
+            <div class="section-head compact">
+              <h3>Entrega</h3>
+            </div>
+            <label>Cupom<input name="coupon" autocomplete="off" placeholder="Ex: FRETE3D"></label>
+            <div id="shippingOptions" class="shipping-options">
+              <p>Informe o CEP para calcular as opções de entrega.</p>
+            </div>
+          </section>
+            </div>
+          </details>
+          <div class="totals" id="cartTotals"></div>
+          <button class="primary-button" type="submit" id="checkoutSubmitButton">Finalizar pedido</button>
+          <p class="form-status" id="checkoutStatus"></p>
+        </form>
+      </div>
+    </aside>
+
+    <script src="/produto.js" type="module"></script>
+  </body>
+</html>

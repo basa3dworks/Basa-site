@@ -1,0 +1,391 @@
+{
+  "settings": {
+    "storeName": "Basa 3D Works",
+    "tagline": "Impressão 3D sob demanda, peças decorativas e produtos personalizados.",
+    "currency": "BRL",
+    "marketplaceAccountId": "basa-3d-works",
+    "storeCommissionPercent": 12,
+    "paymentFeePercent": 4.99,
+    "paymentFeeFixed": 0.49,
+    "shippingFlatRate": 24.9,
+    "originZipCode": "01001000",
+    "shippingProvider": "melhor-envio",
+    "theme": "atelier",
+    "sender": {
+      "name": "Basa 3D Works",
+      "email": "",
+      "phone": "",
+      "document": "",
+      "companyDocument": "",
+      "zipCode": "01001000",
+      "address": "",
+      "number": "",
+      "complement": "",
+      "neighborhood": "",
+      "city": "",
+      "state": ""
+    },
+    "promotions": {
+      "freeShippingMinItems": 3,
+      "freeShippingCoupon": "FRETE3D"
+    }
+  },
+  "products": [
+    {
+      "id": "dragon-001",
+      "createdAt": "2026-04-26T10:00:00.000Z",
+      "name": "Dragão articulado 3D",
+      "slug": "dragao-articulado-3d",
+      "description": "Dragão flexível impresso em PLA, excelente para presente, decoração e colecionadores.",
+      "longDescription": "Uma peça articulada impressa em 3D com movimento fluido, textura marcante e acabamento revisado manualmente. Ideal para decorar setups, presentear quem gosta de fantasia ou compor uma coleção criativa.",
+      "highlights": [
+        "Articulação flexível sem montagem",
+        "Impressão em PLA com boa definição",
+        "Acabamento conferido antes do envio"
+      ],
+      "specs": {
+        "Material": "PLA",
+        "Tamanho": "Aproximadamente 32 cm",
+        "Prazo de produção": "2 a 4 dias úteis",
+        "Personalização": "Cores sob consulta"
+      },
+      "videoUrl": "",
+      "gallery": [
+        "https://images.unsplash.com/photo-1634222764554-8b1f4372ec57?auto=format&fit=crop&w=1200&q=80",
+        "https://images.unsplash.com/photo-1634222764554-8b1f4372ec57?auto=format&fit=crop&w=1200&q=80",
+        "https://images.unsplash.com/photo-1581093458791-9d42ccacbd64?auto=format&fit=crop&w=1200&q=80"
+      ],
+      "price": 89.9,
+      "compareAtPrice": 109.9,
+      "stock": 18,
+      "shipping": {
+        "weightKg": 0.32,
+        "widthCm": 14,
+        "heightCm": 8,
+        "lengthCm": 34,
+        "sellerPaysShipping": true
+      },
+      "status": "active",
+      "category": "Decoração",
+      "image": "https://images.unsplash.com/photo-1634222764554-8b1f4372ec57?auto=format&fit=crop&w=1200&q=80",
+      "reviews": [
+        {
+          "id": "review-debug-dragon-001",
+          "rating": 5,
+          "text": "Acabamento muito bom e articulacao bem fluida.",
+          "approved": true,
+          "createdAt": "2026-04-27T13:00:00.000Z"
+        },
+        {
+          "id": "review-debug-dragon-002",
+          "rating": 4.5,
+          "text": "Produto bonito, chegou bem embalado.",
+          "approved": true,
+          "createdAt": "2026-04-27T14:00:00.000Z"
+        }
+      ],
+      "seller": {
+        "id": "basa-studio",
+        "name": "Basa Studio",
+        "paymentAccountId": "acct_basa_studio"
+      },
+      "campaign": null
+    },
+    {
+      "id": "organizer-001",
+      "createdAt": "2026-04-20T10:00:00.000Z",
+      "name": "Organizador modular",
+      "slug": "organizador-modular",
+      "description": "Modulo de mesa para ferramentas, canetas e acessorios. Pode ser encomendado em cores diferentes.",
+      "longDescription": "Organizador modular pensado para bancadas, escritórios e áreas de trabalho criativo. O desenho facilita o acesso aos itens do dia a dia e permite combinações com outros módulos.",
+      "highlights": [
+        "Formato modular para expandir a organização",
+        "Base firme para mesa e bancada",
+        "Cores e medidas adaptáveis sob pedido"
+      ],
+      "specs": {
+        "Material": "PLA ou PETG",
+        "Tamanho": "15 x 10 x 8 cm",
+        "Prazo de produção": "2 a 5 dias úteis",
+        "Uso indicado": "Mesa, oficina e escritório"
+      },
+      "videoUrl": "",
+      "gallery": [
+        "https://images.unsplash.com/photo-1581092160562-40aa08e78837?auto=format&fit=crop&w=1200&q=80",
+        "https://images.unsplash.com/photo-1581092919535-7146ff1a590b?auto=format&fit=crop&w=1200&q=80"
+      ],
+      "price": 64.5,
+      "compareAtPrice": 79.9,
+      "stock": 26,
+      "shipping": {
+        "weightKg": 0.28,
+        "widthCm": 15,
+        "heightCm": 10,
+        "lengthCm": 18,
+        "sellerPaysShipping": false
+      },
+      "status": "active",
+      "category": "Organização",
+      "image": "https://images.unsplash.com/photo-1581092160562-40aa08e78837?auto=format&fit=crop&w=1200&q=80",
+      "reviews": [
+        {
+          "id": "review-debug-organizer-001",
+          "rating": 4.8,
+          "text": "Organizou bem a bancada e ficou firme.",
+          "approved": true,
+          "createdAt": "2026-04-26T10:00:00.000Z"
+        },
+        {
+          "id": "review-debug-organizer-002",
+          "rating": 5,
+          "text": "Gostei do encaixe e da qualidade da impressao.",
+          "approved": true,
+          "createdAt": "2026-04-27T09:00:00.000Z"
+        },
+        {
+          "id": "review-debug-organizer-003",
+          "rating": 4.7,
+          "text": "Muito util para ferramentas pequenas.",
+          "approved": true,
+          "createdAt": "2026-04-27T16:00:00.000Z"
+        }
+      ],
+      "seller": {
+        "id": "basa-studio",
+        "name": "Basa Studio",
+        "paymentAccountId": "acct_basa_studio"
+      }
+    },
+    {
+      "id": "custom-001",
+      "createdAt": "2026-04-28T09:00:00.000Z",
+      "name": "Projeto 3D personalizado",
+      "slug": "projeto-3d-personalizado",
+      "description": "Modelagem e impressão de peça personalizada. O valor final pode variar conforme briefing.",
+      "longDescription": "Serviço para transformar uma necessidade específica em uma peça física: suportes, protótipos, presentes personalizados, peças decorativas ou soluções para organização. A produção começa pelo briefing e pode incluir ajustes antes da impressão.",
+      "highlights": [
+        "Briefing para entender medidas e uso",
+        "Modelagem ou preparação de arquivo 3D",
+        "Orçamento ajustado ao tamanho e complexidade"
+      ],
+      "specs": {
+        "Material": "PLA, PETG ou outro sob consulta",
+        "Tamanho": "Sob medida",
+        "Prazo de produção": "A combinar",
+        "Arquivo": "Aceita STL, OBJ ou referencia visual"
+      },
+      "videoUrl": "",
+      "gallery": [
+        "https://images.unsplash.com/photo-1617471346061-5d329ab9c574?auto=format&fit=crop&w=1200&q=80",
+        "https://images.unsplash.com/photo-1581092162384-8987c1d64718?auto=format&fit=crop&w=1200&q=80"
+      ],
+      "price": 149.9,
+      "compareAtPrice": 189.9,
+      "stock": 10,
+      "shipping": {
+        "weightKg": 0.5,
+        "widthCm": 20,
+        "heightCm": 14,
+        "lengthCm": 24,
+        "sellerPaysShipping": false
+      },
+      "status": "active",
+      "category": "Sob demanda",
+      "image": "https://images.unsplash.com/photo-1617471346061-5d329ab9c574?auto=format&fit=crop&w=1200&q=80",
+      "reviews": [
+        {
+          "id": "review-debug-custom-001",
+          "rating": 5,
+          "text": "A ideia saiu do jeito que precisava.",
+          "approved": true,
+          "createdAt": "2026-04-28T12:00:00.000Z"
+        }
+      ],
+      "seller": {
+        "id": "basa-studio",
+        "name": "Basa Studio",
+        "paymentAccountId": "acct_basa_studio"
+      },
+      "campaign": {
+        "active": true,
+        "type": "flash",
+        "label": "Oferta relampago",
+        "priority": 98,
+        "startsAt": "2026-04-28T00:00:00.000-03:00",
+        "endsAt": "2026-04-29T23:59:00.000-03:00",
+        "updatedAt": "2026-04-29T16:59:05.153Z",
+        "discountPercent": 15
+      }
+    }
+  ],
+  "stories": [
+    {
+      "id": "story-producao-001",
+      "title": "Bancada em movimento",
+      "caption": "Separando pecas e conferindo medidas antes do acabamento.",
+      "mediaType": "image",
+      "mediaUrl": "https://images.unsplash.com/photo-1581092160562-40aa08e78837?auto=format&fit=crop&w=1200&q=80",
+      "productId": "organizer-001",
+      "active": true,
+      "createdAt": "2026-04-27T00:00:00.000Z"
+    },
+    {
+      "id": "story-producao-002",
+      "title": "Teste de encaixe",
+      "caption": "Ajuste fino das pecas antes de liberar para envio.",
+      "mediaType": "image",
+      "mediaUrl": "https://images.unsplash.com/photo-1581092919535-7146ff1a590b?auto=format&fit=crop&w=1200&q=80",
+      "productId": "organizer-001",
+      "active": true,
+      "createdAt": "2026-04-27T00:00:00.000Z"
+    },
+    {
+      "id": "story-producao-003",
+      "title": "Ideia virando peca",
+      "caption": "Do briefing para a modelagem, com ajustes sob medida.",
+      "mediaType": "image",
+      "mediaUrl": "https://images.unsplash.com/photo-1617471346061-5d329ab9c574?auto=format&fit=crop&w=1200&q=80",
+      "productId": "custom-001",
+      "active": true,
+      "createdAt": "2026-04-27T00:00:00.000Z"
+    }
+  ],
+  "orders": [
+    {
+      "id": "BASA-DEBUG-001",
+      "createdAt": "2026-04-27T11:00:00.000Z",
+      "status": "completed",
+      "customer": {
+        "name": "Cliente Debug",
+        "document": "00000000000",
+        "email": "debug@basa3dworks.local",
+        "phone": "11999999999",
+        "address": {
+          "zipCode": "01001000",
+          "street": "Rua de teste",
+          "number": "100",
+          "complement": "",
+          "neighborhood": "Centro",
+          "city": "Sao Paulo",
+          "state": "SP"
+        }
+      },
+      "items": [
+        {
+          "productId": "dragon-001",
+          "name": "Dragao articulado 3D",
+          "quantity": 3,
+          "unitPrice": 89.9,
+          "total": 269.7
+        },
+        {
+          "productId": "organizer-001",
+          "name": "Organizador modular",
+          "quantity": 2,
+          "unitPrice": 64.5,
+          "total": 129
+        }
+      ],
+      "subtotal": 398.7,
+      "shipping": 0,
+      "total": 398.7,
+      "payment": {
+        "provider": "debug",
+        "status": "approved"
+      },
+      "shippingWorkflow": {},
+      "updatedAt": "2026-04-29T21:35:22.884Z"
+    },
+    {
+      "id": "BASA-DEBUG-002",
+      "createdAt": "2026-04-28T08:30:00.000Z",
+      "status": "paid",
+      "customer": {
+        "name": "Cliente Debug 2",
+        "document": "00000000000",
+        "email": "debug2@basa3dworks.local",
+        "phone": "11999999998",
+        "address": {
+          "zipCode": "20040002",
+          "street": "Rua de teste",
+          "number": "200",
+          "complement": "",
+          "neighborhood": "Centro",
+          "city": "Rio de Janeiro",
+          "state": "RJ"
+        }
+      },
+      "items": [
+        {
+          "productId": "organizer-001",
+          "name": "Organizador modular",
+          "quantity": 4,
+          "unitPrice": 64.5,
+          "total": 258
+        },
+        {
+          "productId": "custom-001",
+          "name": "Projeto 3D personalizado",
+          "quantity": 1,
+          "unitPrice": 149.9,
+          "total": 149.9
+        }
+      ],
+      "subtotal": 407.9,
+      "shipping": 24.9,
+      "total": 432.8,
+      "payment": {
+        "provider": "debug",
+        "status": "approved"
+      }
+    },
+    {
+      "id": "BASA-DEBUG-003",
+      "createdAt": "2026-04-28T15:00:00.000Z",
+      "status": "in_production",
+      "customer": {
+        "name": "Cliente Debug 3",
+        "document": "00000000000",
+        "email": "debug3@basa3dworks.local",
+        "phone": "11999999997",
+        "address": {
+          "zipCode": "30140071",
+          "street": "Rua de teste",
+          "number": "300",
+          "complement": "",
+          "neighborhood": "Centro",
+          "city": "Belo Horizonte",
+          "state": "MG"
+        }
+      },
+      "items": [
+        {
+          "productId": "custom-001",
+          "name": "Projeto 3D personalizado",
+          "quantity": 2,
+          "unitPrice": 149.9,
+          "total": 299.8
+        }
+      ],
+      "subtotal": 299.8,
+      "shipping": 24.9,
+      "total": 324.7,
+      "payment": {
+        "provider": "debug",
+        "status": "approved"
+      }
+    }
+  ],
+  "coupons": [
+    {
+      "id": "coupon-frete3d",
+      "code": "FRETE3D",
+      "type": "free_shipping",
+      "value": 0,
+      "minItems": 1,
+      "minSubtotal": 0,
+      "active": true,
+      "createdAt": "2026-04-27T00:00:00.000Z"
+    }
+  ]
+}
