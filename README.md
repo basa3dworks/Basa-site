@@ -1,6 +1,6 @@
 # Basa 3D Works
 
-MVP de e-commerce com vitrine publica, carrinho, checkout, painel admin, gestao de produtos/pedidos e camada de split de pagamentos.
+Sistema de e-commerce para vitrine publica, carrinho, checkout, painel admin, pedidos, frete, campanhas, metricas e integracoes operacionais.
 
 ## Como rodar
 
@@ -13,12 +13,7 @@ Por padrao o site abre em:
 - Loja: `http://localhost:3000`
 - Admin: `http://localhost:3000/admin.html`
 
-Credenciais de desenvolvimento:
-
-- Email: `admin@basa3dworks.com`
-- Senha: `admin`
-
-Em producao, configure as variaveis de ambiente usando `.env.example` como referencia.
+Configure as credenciais locais no arquivo `.env`. Em producao, cadastre as variaveis de ambiente na plataforma de hospedagem usando `.env.example` como referencia.
 
 ## O que ja esta implementado
 
@@ -27,27 +22,21 @@ Em producao, configure as variaveis de ambiente usando `.env.example` como refer
 - Checkout com criacao de pedido.
 - Painel admin protegido por sessao.
 - Cadastro de produtos pelo admin.
-- Lista de pedidos com detalhes do split.
+- Central operacional de pedidos.
 - Banco JSON local em `data/db.json`.
-- Modulo de split em `src/payment/split.mjs`.
-- Cotacao de frete preparada em `src/shipping.mjs`.
+- Integracao preparada com Mercado Pago.
+- Integracao preparada com Melhor Envio.
+- Cupons, campanhas e metricas comerciais.
 
-## Split de pagamentos
+## Pagamentos
 
-O projeto vem com `PAYMENT_PROVIDER=mock`, que aprova pedidos localmente e calcula:
+O projeto vem com `PAYMENT_PROVIDER=mock` para desenvolvimento local. Para producao, configure `PAYMENT_PROVIDER=mercado-pago` e use as credenciais no ambiente seguro da hospedagem.
 
-- comissao da Basa;
-- taxa estimada do gateway;
-- valor liquido do vendedor;
-- alocacoes entre marketplace e vendedor.
-
-Para producao, substitua o provider por `mercado-pago` ou `stripe` e implemente a chamada real no arquivo `src/payment/split.mjs` usando as credenciais:
+Variaveis relacionadas:
 
 - `MERCADO_PAGO_ACCESS_TOKEN`
 - `MERCADO_PAGO_PUBLIC_KEY`
-- `STRIPE_SECRET_KEY`
-
-O modelo atual ja guarda `seller.paymentAccountId` nos produtos, que e o identificador usado para transferir a parte do vendedor.
+- `PUBLIC_BASE_URL`
 
 ## Mercado Pago Checkout Pro
 
@@ -60,11 +49,11 @@ MERCADO_PAGO_PUBLIC_KEY=cole_sua_public_key
 PUBLIC_BASE_URL=http://localhost:3000
 ```
 
-Enquanto o site estiver em `localhost`, o checkout redireciona para o Mercado Pago, mas webhooks automaticos ficam para quando houver dominio publico com HTTPS.
+Enquanto o site estiver em `localhost`, o checkout pode redirecionar para o Mercado Pago, mas webhooks automaticos dependem de dominio publico com HTTPS.
 
 ## Frete
 
-O projeto vem com `SHIPPING_PROVIDER=mock`, que simula opcoes de PAC/SEDEX enquanto a conta do Melhor Envio nao estiver conectada.
+O projeto vem com `SHIPPING_PROVIDER=mock` para desenvolvimento local.
 
 Para conectar o Melhor Envio, configure:
 
@@ -80,7 +69,7 @@ Cada produto ja possui dados de frete:
 - altura em cm;
 - comprimento em cm.
 
-O checkout chama `/api/shipping/quote`, mostra as opcoes de entrega e grava a opcao escolhida no pedido.
+O checkout chama `/api/shipping/quote`, mostra as opcoes de entrega e grava a opcao escolhida no pedido. A central operacional do admin acompanha etiqueta, envio e rastreio.
 
 ## Proximos passos recomendados
 
