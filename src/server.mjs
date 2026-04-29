@@ -229,7 +229,18 @@ function getSession(req) {
 async function readJson(req) {
   const chunks = [];
   for await (const chunk of req) chunks.push(chunk);
-  return JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}");
+  const raw = Buffer.concat(chunks).toString("utf8");
+  if (!raw) return {};
+  const contentType = req.headers["content-type"] || "";
+  if (contentType.includes("application/x-www-form-urlencoded")) {
+    return Object.fromEntries(new URLSearchParams(raw));
+  }
+  return JSON.parse(raw);
+}
+
+function idFromResource(value) {
+  const match = String(value || "").match(/\/(\d+)(?:\?.*)?$/);
+  return match?.[1] || "";
 }
 
 async function readMultipart(req) {
@@ -527,7 +538,15 @@ async function router(req, res) {
     if (url.pathname === "/api/webhooks/mercado-pago" && req.method === "POST") {
       const db = await readDb();
       const body = await readJson(req);
-      const paymentId = String(body.data?.id || body.id || url.searchParams.get("id") || "").trim();
+      const paymentId = String(
+        body.data?.id ||
+        body["data.id"] ||
+        body.id ||
+        url.searchParams.get("data.id") ||
+        url.searchParams.get("id") ||
+        idFromResource(body.resource || url.searchParams.get("resource")) ||
+        ""
+      ).trim();
       const paymentData = await getMercadoPagoPayment(paymentId);
       const orderId = String(
         paymentData?.external_reference ||
