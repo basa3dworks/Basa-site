@@ -395,7 +395,7 @@ async function router(req, res) {
         minSubtotal: coupon.minSubtotal,
         expiresAt: coupon.expiresAt || ""
       }));
-      return send(res, 200, { settings: { ...db.settings, coupons: publicCoupons }, products, stories });
+      return send(res, 200, { settings: { ...db.settings, publicBaseUrl, coupons: publicCoupons }, products, stories });
     }
 
     if (url.pathname.match(/^\/api\/cep\/\d{8}$/) && req.method === "GET") {

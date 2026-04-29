@@ -91,23 +91,46 @@ function detailFlashOffer(product) {
 }
 
 function productShareUrl(product) {
-  return `${location.origin}/produto.html?slug=${encodeURIComponent(product.slug)}`;
+  const baseUrl = String(state.settings?.publicBaseUrl || location.origin).replace(/\/$/, "");
+  return `${baseUrl}/produto.html?slug=${encodeURIComponent(product.slug)}`;
+}
+
+function productShareText(product) {
+  return `Olha esse produto da Basa 3D Works: ${product.name} por ${money(product.price)} - ${productShareUrl(product)}`;
 }
 
 function whatsappShareUrl(product) {
-  const text = `Olha esse produto da Basa 3D Works: ${product.name} por ${money(product.price)} - ${productShareUrl(product)}`;
-  return `https://wa.me/?text=${encodeURIComponent(text)}`;
+  return `https://api.whatsapp.com/send?text=${encodeURIComponent(productShareText(product))}`;
 }
 
 function whatsappShareButton(product) {
   return `
-    <a class="whatsapp-share-float" href="${whatsappShareUrl(product)}" target="_blank" rel="noopener" aria-label="Compartilhar ${product.name} no WhatsApp">
+    <a class="whatsapp-share-float" href="${whatsappShareUrl(product)}" target="_blank" rel="noopener" data-whatsapp-share="${product.id}" aria-label="Compartilhar ${product.name} no WhatsApp">
       <span class="share-arrow">&#8599;</span>
       <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
         <path d="M16.04 4.8c-6.18 0-11.2 4.94-11.2 11.03 0 2.08.6 4.04 1.63 5.7L4.8 27.2l5.86-1.53a11.3 11.3 0 0 0 5.38 1.38c6.18 0 11.2-4.94 11.2-11.03S22.22 4.8 16.04 4.8Zm0 20.36c-1.78 0-3.43-.5-4.84-1.37l-.35-.21-3.47.9.93-3.28-.23-.36a9.05 9.05 0 0 1-1.36-4.74c0-5.05 4.18-9.15 9.32-9.15 5.15 0 9.33 4.1 9.33 9.15 0 5.06-4.18 9.16-9.33 9.16Zm5.1-6.86c-.28-.14-1.66-.8-1.92-.9-.25-.1-.44-.14-.62.13-.18.27-.71.9-.87 1.08-.16.18-.32.2-.6.07-.28-.14-1.18-.43-2.25-1.36-.83-.73-1.39-1.63-1.55-1.9-.16-.28-.02-.43.12-.57.12-.12.28-.32.42-.48.14-.16.18-.27.28-.45.09-.18.05-.34-.03-.48-.07-.14-.62-1.47-.85-2.02-.22-.53-.45-.46-.62-.47h-.53c-.18 0-.48.07-.73.34-.25.27-.96.92-.96 2.25s.99 2.61 1.13 2.8c.14.18 1.95 2.93 4.72 4.1.66.28 1.17.44 1.57.57.66.2 1.27.17 1.75.1.53-.08 1.66-.67 1.9-1.31.23-.65.23-1.2.16-1.32-.07-.12-.25-.18-.53-.32Z"></path>
       </svg>
     </a>
   `;
+}
+
+function setupWhatsAppShare(product) {
+  document.addEventListener("click", async (event) => {
+    const link = event.target.closest("[data-whatsapp-share]");
+    if (!link) return;
+    link.href = whatsappShareUrl(product);
+    if (!navigator.share) return;
+    event.preventDefault();
+    try {
+      await navigator.share({
+        title: product.name,
+        text: `Olha esse produto da Basa 3D Works: ${product.name} por ${money(product.price)}`,
+        url: productShareUrl(product)
+      });
+    } catch {
+      window.open(link.href, "_blank", "noopener");
+    }
+  });
 }
 
 function videoKind(url) {
@@ -670,6 +693,7 @@ async function init() {
     return;
   }
 
+  setupWhatsAppShare(state.product);
   renderProduct();
   applyCustomerSession($("#checkoutForm"));
   renderCart();
