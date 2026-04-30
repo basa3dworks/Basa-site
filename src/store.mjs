@@ -2,17 +2,46 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 
 const dbPath = path.resolve("data", "db.json");
+let writeQueue = Promise.resolve();
+
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 export async function readDb() {
-  const raw = await fs.readFile(dbPath, "utf8");
-  return JSON.parse(raw.replace(/^\uFEFF/, ""));
+  let lastError;
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    try {
+      const raw = await fs.readFile(dbPath, "utf8");
+      return JSON.parse(raw.replace(/^\uFEFF/, ""));
+    } catch (error) {
+      lastError = error;
+      if (!["EBUSY", "EPERM"].includes(error.code) && !(error instanceof SyntaxError)) throw error;
+      await wait(60 * (attempt + 1));
+    }
+  }
+  throw lastError;
 }
 
 export async function writeDb(db) {
-  const tmp = `${dbPath}.${Date.now()}.${Math.random().toString(16).slice(2)}.tmp`;
-  await fs.writeFile(tmp, JSON.stringify(db, null, 2));
-  await fs.copyFile(tmp, dbPath);
-  await fs.unlink(tmp).catch(() => {});
+  writeQueue = writeQueue.then(async () => {
+    const tmp = `${dbPath}.${Date.now()}.${Math.random().toString(16).slice(2)}.tmp`;
+    await fs.writeFile(tmp, JSON.stringify(db, null, 2));
+    let lastError;
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      try {
+        await fs.copyFile(tmp, dbPath);
+        await fs.unlink(tmp).catch(() => {});
+        return;
+      } catch (error) {
+        lastError = error;
+        if (!["EBUSY", "EPERM"].includes(error.code)) throw error;
+        await wait(80 * (attempt + 1));
+      }
+    }
+    throw lastError;
+  });
+  return writeQueue;
 }
 
 function paidOrderStatuses() {
