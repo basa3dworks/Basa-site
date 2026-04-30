@@ -16,6 +16,7 @@ const adminPassword = process.env.ADMIN_PASSWORD || "admin";
 const sessionSecret = process.env.SESSION_SECRET || "dev-secret";
 const paymentProvider = process.env.PAYMENT_PROVIDER || "mock";
 const publicBaseUrl = process.env.PUBLIC_BASE_URL || `http://localhost:${port}`;
+const mercadoPagoWebhookSecret = process.env.MERCADO_PAGO_WEBHOOK_SECRET || "";
 const shippingProvider = process.env.SHIPPING_PROVIDER || "mock";
 const melhorEnvioToken = process.env.MELHOR_ENVIO_TOKEN || "";
 const melhorEnvioApiBase = process.env.MELHOR_ENVIO_API_BASE || "https://sandbox.melhorenvio.com.br";
@@ -241,6 +242,32 @@ async function readJson(req) {
 function idFromResource(value) {
   const match = String(value || "").match(/\/(\d+)(?:\?.*)?$/);
   return match?.[1] || "";
+}
+
+function mercadoPagoSignatureParts(header = "") {
+  return Object.fromEntries(String(header).split(",").map((part) => {
+    const [key, ...value] = part.split("=");
+    return [String(key || "").trim(), value.join("=").trim()];
+  }).filter(([key, value]) => key && value));
+}
+
+function timingSafeEqualHex(left = "", right = "") {
+  if (!left || !right || left.length !== right.length) return false;
+  try {
+    return crypto.timingSafeEqual(Buffer.from(left, "hex"), Buffer.from(right, "hex"));
+  } catch {
+    return false;
+  }
+}
+
+function verifyMercadoPagoWebhook({ req, dataId }) {
+  if (!mercadoPagoWebhookSecret) return true;
+  const signature = mercadoPagoSignatureParts(req.headers["x-signature"]);
+  const requestId = req.headers["x-request-id"];
+  if (!signature.ts || !signature.v1 || !requestId || !dataId) return false;
+  const manifest = `id:${dataId};request-id:${requestId};ts:${signature.ts};`;
+  const expected = crypto.createHmac("sha256", mercadoPagoWebhookSecret).update(manifest).digest("hex");
+  return timingSafeEqualHex(expected, signature.v1);
 }
 
 async function readMultipart(req) {
@@ -547,6 +574,9 @@ async function router(req, res) {
         idFromResource(body.resource || url.searchParams.get("resource")) ||
         ""
       ).trim();
+      if (!verifyMercadoPagoWebhook({ req, dataId: paymentId })) {
+        return send(res, 401, { received: false, error: "Assinatura Mercado Pago invalida." });
+      }
       const paymentData = await getMercadoPagoPayment(paymentId);
       const orderId = String(
         paymentData?.external_reference ||
