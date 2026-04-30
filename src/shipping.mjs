@@ -132,7 +132,7 @@ function declarationProducts(order) {
 
 function isJtExpressQuote(quote) {
   const carrier = String(quote.carrier || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-  return carrier.includes("j&t") || carrier.includes("j t") || carrier.includes("jt express");
+  return carrier.includes("j&t") || carrier.includes("j t") || carrier.includes("jt express") || carrier === "jet" || carrier.includes("jet ");
 }
 
 function mockQuotes({ db, items, zipCode }) {
