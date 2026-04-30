@@ -422,7 +422,9 @@ async function quoteShipping() {
 
 function renderShippingOptions() {
   if (!state.shippingQuotes.length) {
-    $("#shippingOptions").innerHTML = "<p>Nenhuma op\u00e7\u00e3o de entrega encontrada.</p>";
+    state.selectedShipping = null;
+    $("#shippingOptions").innerHTML = "<p>Nenhuma op\u00e7\u00e3o de entrega encontrada para este CEP. Confira peso, medidas e CEP de origem.</p>";
+    renderCart();
     return;
   }
 

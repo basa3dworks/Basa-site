@@ -209,7 +209,11 @@ export async function quoteShipping({ db, items, zipCode, provider = "mock", tok
     provider: "melhor-envio",
     originZipCode: db.settings.originZipCode,
     destinationZipCode: destinationZip,
-    quotes: normalizeBetterEnvioResponse(data).filter(isJtExpressQuote)
+    quotes: (() => {
+      const quotes = normalizeBetterEnvioResponse(data);
+      const jtQuotes = quotes.filter(isJtExpressQuote);
+      return jtQuotes.length ? jtQuotes : quotes;
+    })()
   };
 }
 

@@ -549,6 +549,9 @@ async function router(req, res) {
       const body = await readJson(req);
       if (!body.customerLoggedIn) return send(res, 401, { error: "Cliente precisa estar logado para finalizar a compra." });
       const order = orderFromCart({ db, customer: body.customer, items: body.items || [], shippingOption: body.shippingOption, coupon: body.coupon });
+      if (order.shipping > 0 && !order.shippingOption) {
+        return send(res, 400, { error: "Calcule e selecione uma opção de entrega antes de finalizar o pedido." });
+      }
       if (paymentProvider === "mercado-pago" && order.total < mercadoPagoMinOrderTotal) {
         return send(res, 400, {
           error: `Para testar pagamento real no Mercado Pago, use um pedido de pelo menos R$ ${mercadoPagoMinOrderTotal.toFixed(2).replace(".", ",")}. Para valores simbolicos, use PAYMENT_PROVIDER=mock.`
