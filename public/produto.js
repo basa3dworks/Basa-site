@@ -328,6 +328,20 @@ function allCartItemsHaveSellerPaidShipping() {
   return cartQuantity() > 0 && state.cart.every((item) => state.products.find((product) => product.id === item.productId)?.shipping?.sellerPaysShipping);
 }
 
+function cartShippingState(form) {
+  const promo = freeShippingPromo(form);
+  const isFree = promo.eligible || allCartItemsHaveSellerPaidShipping();
+  const needsSelection = cartQuantity() > 0 && !isFree;
+  const selectedCost = state.selectedShipping ? Number(state.selectedShipping.price || 0) : null;
+  return {
+    promo,
+    isFree,
+    needsSelection,
+    shipping: needsSelection ? selectedCost : 0,
+    hasSelectedQuote: !needsSelection || selectedCost !== null
+  };
+}
+
 function cartSubtotal() {
   const products = new Map(state.products.map((product) => [product.id, product]));
   return state.cart.reduce((sum, item) => {
@@ -572,8 +586,11 @@ function renderCart() {
   const products = new Map(state.products.map((product) => [product.id, product]));
   const lines = state.cart.map((item) => ({ ...item, product: products.get(item.productId) })).filter((item) => item.product);
   const subtotal = lines.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-  const promo = freeShippingPromo($("#checkoutForm"));
-  const shipping = lines.length ? (promo.eligible ? 0 : Number(state.selectedShipping?.price ?? state.settings.shippingFlatRate)) : 0;
+  const shippingState = cartShippingState($("#checkoutForm"));
+  const promo = shippingState.promo;
+  const shipping = lines.length ? shippingState.shipping : 0;
+  const deliveryLabel = !lines.length ? money(0) : shippingState.isFree ? "Gr\u00e1tis" : shipping === null ? "A calcular" : money(shipping);
+  const totalLabel = shipping === null ? "A calcular" : money(subtotal + shipping);
 
   $("#cartCount").textContent = lines.reduce((sum, item) => sum + item.quantity, 0);
   $("#cartItems").innerHTML = lines.length ? lines.map((item) => `
@@ -594,8 +611,8 @@ function renderCart() {
   $("#cartTotals").innerHTML = `
     <span class="combo-progress">${promo.eligible ? `Frete gr\u00e1tis liberado por ${promo.reason}` : comboProgressMessage()}</span>
     <span>Subtotal <strong>${money(subtotal)}</strong></span>
-    <span>Entrega <strong>${shipping === 0 && lines.length ? "Gr\u00e1tis" : money(shipping)}</strong></span>
-    <span>Total <strong>${money(subtotal + shipping)}</strong></span>
+    <span>Entrega <strong>${deliveryLabel}</strong></span>
+    <span>Total <strong>${totalLabel}</strong></span>
   `;
 
   document.querySelectorAll("[data-remove]").forEach((button) => {
@@ -633,8 +650,8 @@ async function checkout(event) {
     $("#customerLoginBox").scrollIntoView({ behavior: "smooth", block: "nearest" });
     return;
   }
-  const promo = freeShippingPromo(event.currentTarget);
-  if (!state.selectedShipping && !promo.eligible) {
+  const shippingState = cartShippingState(event.currentTarget);
+  if (!shippingState.hasSelectedQuote) {
     openCheckoutDetails();
     $("#checkoutStatus").textContent = "Calcule e selecione uma op\u00e7\u00e3o de entrega.";
     return;
