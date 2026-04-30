@@ -26,6 +26,7 @@ const debugCustomer = {
 
 const $ = (selector) => document.querySelector(selector);
 const money = (value) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: state.settings?.currency || "BRL" }).format(value);
+const shippingQuoteId = (quote) => String(quote?.id ?? `${quote?.carrier || ""}-${quote?.service || ""}`);
 const moneyParts = (value) => {
   const [main, cents = "00"] = money(value).split(",");
   return { main, cents };
@@ -436,6 +437,14 @@ function clearDeliverySelectionWarning() {
   if (status?.textContent.includes("Calcule e selecione")) status.textContent = "";
 }
 
+function autoQuoteShippingIfPossible() {
+  const form = $("#checkoutForm");
+  const cep = form?.elements.zipCode?.value.replace(/\D/g, "") || "";
+  if (state.cart.length && cep.length === 8 && !state.selectedShipping && !state.shippingQuotes.length) {
+    quoteShipping();
+  }
+}
+
 function setupCheckoutDetails(form) {
   const details = $("#checkoutDetails");
   if (!details) return;
@@ -500,7 +509,7 @@ function renderShippingOptions() {
     <p class="${promo.eligible ? "promo-note" : "combo-note"}">${promo.eligible ? `Frete gr\u00e1tis liberado por ${promo.reason}.` : comboProgressMessage()}</p>
     ${state.shippingQuotes.map((quote) => `
     <label class="shipping-option">
-      <input type="radio" name="shippingOption" value="${quote.id}" ${state.selectedShipping?.id === quote.id ? "checked" : ""}>
+      <input type="radio" name="shippingOption" value="${shippingQuoteId(quote)}" ${shippingQuoteId(state.selectedShipping) === shippingQuoteId(quote) ? "checked" : ""}>
       <span>
         <strong>${quote.carrier} - ${quote.service}</strong>
         <small>${quote.deliveryDays ? `${quote.deliveryDays} dias \u00fateis` : "Prazo a confirmar"}${quote.note ? ` - ${quote.note}` : ""}</small>
@@ -512,7 +521,7 @@ function renderShippingOptions() {
 
   document.querySelectorAll('[name="shippingOption"]').forEach((input) => {
     input.addEventListener("change", () => {
-      state.selectedShipping = state.shippingQuotes.find((quote) => quote.id === input.value);
+      state.selectedShipping = state.shippingQuotes.find((quote) => shippingQuoteId(quote) === input.value) || null;
       clearDeliverySelectionWarning();
       renderCart();
     });
@@ -737,7 +746,10 @@ async function init() {
   applyTheme(data.settings.theme);
   state.product = state.products.find((product) => product.slug === slug || product.id === slug);
 
-  $("#cartButton").addEventListener("click", () => $("#cartPanel").classList.add("open"));
+  $("#cartButton").addEventListener("click", () => {
+    $("#cartPanel").classList.add("open");
+    autoQuoteShippingIfPossible();
+  });
   $("#closeCart").addEventListener("click", () => $("#cartPanel").classList.remove("open"));
   $("#checkoutForm").addEventListener("submit", checkout);
   setupCheckoutDetails($("#checkoutForm"));
@@ -766,6 +778,7 @@ async function init() {
   renderProduct();
   applyCustomerSession($("#checkoutForm"));
   renderCart();
+  autoQuoteShippingIfPossible();
 }
 
 init();
