@@ -321,8 +321,12 @@ function useDebugCustomer(form) {
   Object.entries(debugCustomer).forEach(([key, value]) => {
     if (form.elements[key]) form.elements[key].value = value;
   });
-  if (form.elements.customerPassword) form.elements.customerPassword.value = "";
+  if (form.elements.customerPassword) form.elements.customerPassword.value = location.hostname === "localhost" ? "teste123" : "";
   form.dataset.ibge = debugCustomer.ibge;
+  if (location.hostname === "localhost") {
+    saveCustomerSession(form);
+    return;
+  }
   $("#checkoutStatus").textContent = "Dados de teste preenchidos. Defina uma senha e clique em Entrar/Cadastrar.";
   quoteShipping();
 }
