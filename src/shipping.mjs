@@ -167,6 +167,16 @@ function normalizeBetterEnvioResponse(data) {
   }));
 }
 
+function filterQuotesByJtCeiling(quotes) {
+  if (!quotes.length) return [];
+  const jtPrices = quotes.filter(isJtExpressQuote).map((quote) => Number(quote.price || 0)).filter((price) => price > 0);
+  if (!jtPrices.length) return quotes;
+  const jtCeiling = Math.min(...jtPrices);
+  return quotes
+    .filter((quote) => Number(quote.price || 0) <= jtCeiling)
+    .sort((left, right) => Number(left.price || 0) - Number(right.price || 0));
+}
+
 export async function quoteShipping({ db, items, zipCode, provider = "mock", token = "", apiBase = "https://sandbox.melhorenvio.com.br", userAgent = "" }) {
   const destinationZip = onlyDigits(zipCode);
   if (destinationZip.length !== 8) {
@@ -209,11 +219,7 @@ export async function quoteShipping({ db, items, zipCode, provider = "mock", tok
     provider: "melhor-envio",
     originZipCode: db.settings.originZipCode,
     destinationZipCode: destinationZip,
-    quotes: (() => {
-      const quotes = normalizeBetterEnvioResponse(data);
-      const jtQuotes = quotes.filter(isJtExpressQuote);
-      return jtQuotes.length ? jtQuotes : quotes;
-    })()
+    quotes: filterQuotesByJtCeiling(normalizeBetterEnvioResponse(data))
   };
 }
 
