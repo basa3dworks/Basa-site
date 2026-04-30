@@ -314,7 +314,7 @@ async function saveCustomerSession(form) {
   state.customerSession = { loggedIn: true, username: data.account.username, customer, updatedAt: new Date().toISOString() };
   localStorage.setItem("basa_customer_session", JSON.stringify(state.customerSession));
   applyCustomerSession(form);
-  $("#checkoutStatus").textContent = data.created ? "Cadastro criado. Agora voce pode finalizar o pedido." : "Login confirmado. Agora voce pode finalizar o pedido.";
+  $("#checkoutStatus").textContent = data.created ? "Cadastro criado. Agora você pode finalizar o pedido." : "Login confirmado. Agora você pode finalizar o pedido.";
 }
 
 function useDebugCustomer(form) {
@@ -641,13 +641,13 @@ function renderCart() {
         <span>${item.quantity} x ${money(item.product.price)}${item.color ? ` | Cor: ${item.color}` : ""}</span>
       </div>
       <div class="quantity-stepper" aria-label="Quantidade">
-        <button type="button" data-qty-minus="${item.productId}" data-qty-color="${item.color || ""}">âˆ’</button>
+        <button type="button" data-qty-minus="${item.productId}" data-qty-color="${item.color || ""}">-</button>
         <input value="${item.quantity}" inputmode="numeric" data-qty-input="${item.productId}" data-qty-color="${item.color || ""}">
         <button type="button" data-qty-plus="${item.productId}" data-qty-color="${item.color || ""}">+</button>
       </div>
       <button class="ghost-button" data-remove="${item.productId}" data-remove-color="${item.color || ""}">Remover</button>
     </div>
-  `).join("") : "<p>Seu carrinho esta vazio.</p>";
+  `).join("") : "<p>Seu carrinho está vazio.</p>";
 
   $("#cartTotals").innerHTML = `
     <span class="combo-progress">${promo.eligible ? `Frete gr\u00e1tis liberado por ${promo.reason}` : comboProgressMessage()}</span>

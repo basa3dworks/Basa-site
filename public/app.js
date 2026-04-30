@@ -330,7 +330,7 @@ async function saveCustomerSession(form) {
   localStorage.setItem("basa_customer_session", JSON.stringify(state.customerSession));
   applyCustomerSession(form);
   loadCustomerRequests();
-  $("#checkoutStatus").textContent = data.created ? "Cadastro criado. Agora voce pode finalizar o pedido." : "Login confirmado. Agora voce pode finalizar o pedido.";
+  $("#checkoutStatus").textContent = data.created ? "Cadastro criado. Agora você pode finalizar o pedido." : "Login confirmado. Agora você pode finalizar o pedido.";
 }
 
 function useDebugCustomer(form) {
@@ -485,7 +485,7 @@ async function quoteShipping() {
     return;
   }
   if (cep.length !== 8) {
-    $("#shippingOptions").innerHTML = "<p>Informe um CEP vÃ¡lido para calcular a entrega.</p>";
+    $("#shippingOptions").innerHTML = "<p>Informe um CEP válido para calcular a entrega.</p>";
     return;
   }
 
@@ -653,12 +653,12 @@ function renderStories() {
 function requestStatusLabel(status) {
   return {
     new: "Nova",
-    in_review: "Em anÃ¡lise",
-    quoted: "OrÃ§amento enviado",
+    in_review: "Em análise",
+    quoted: "Orçamento enviado",
     approved: "Aprovada",
-    in_production: "Em produÃ§Ã£o",
+    in_production: "Em produção",
     shipped: "Enviada",
-    completed: "ConcluÃ­da",
+    completed: "Concluída",
     canceled: "Cancelada"
   }[status] || status;
 }
@@ -691,7 +691,7 @@ function renderCustomerRequests() {
       <p>${request.idea}</p>
       ${request.attachment?.url ? `<a class="request-attachment" href="${request.attachment.url}" target="_blank" rel="noreferrer">Ver imagem enviada</a>` : ""}
       <div class="request-messages">
-        ${(request.messages || []).slice(-4).map((message) => `<span class="${message.author === "admin" ? "admin-message" : ""}"><b>${message.author === "admin" ? "Basa" : "VocÃª"}:</b> ${message.text}</span>`).join("")}
+        ${(request.messages || []).slice(-4).map((message) => `<span class="${message.author === "admin" ? "admin-message" : ""}"><b>${message.author === "admin" ? "Basa" : "Você"}:</b> ${message.text}</span>`).join("")}
       </div>
       <form class="request-message-form" data-request-message="${request.id}">
         <input name="text" placeholder="Responder sobre esta encomenda">
@@ -809,13 +809,13 @@ function renderCart() {
         <span>${item.quantity} x ${money(item.product.price)}${item.color ? ` | Cor: ${item.color}` : ""}</span>
       </div>
       <div class="quantity-stepper" aria-label="Quantidade">
-        <button type="button" data-qty-minus="${item.productId}" data-qty-color="${item.color || ""}">âˆ’</button>
+        <button type="button" data-qty-minus="${item.productId}" data-qty-color="${item.color || ""}">-</button>
         <input value="${item.quantity}" inputmode="numeric" data-qty-input="${item.productId}" data-qty-color="${item.color || ""}">
         <button type="button" data-qty-plus="${item.productId}" data-qty-color="${item.color || ""}">+</button>
       </div>
       <button class="ghost-button" data-remove="${item.productId}" data-remove-color="${item.color || ""}">Remover</button>
     </div>
-  `).join("") : "<p>Seu carrinho esta vazio.</p>";
+  `).join("") : "<p>Seu carrinho está vazio.</p>";
 
   $("#cartTotals").innerHTML = `
     <span class="combo-progress">${promo.eligible ? `Frete gr\u00e1tis liberado por ${promo.reason}` : comboProgressMessage()}</span>
@@ -935,12 +935,12 @@ async function init() {
     <div class="mobile-interest-card">
       <div class="mobile-interest-head">
         <strong>Meus interesses <span>Toque para entrar</span></strong>
-        <button class="mobile-panel-close" type="button" aria-label="Fechar categorias">âŒƒ</button>
+        <button class="mobile-panel-close" type="button" aria-label="Fechar categorias">^</button>
       </div>
       <div class="mobile-interest-chips">
         <button type="button" data-feed="favorites">Favoritos</button>
-        <button type="button" data-feed="for-you">Para vocÃª</button>
-        <button type="button" data-feed="trending">TendÃªncia</button>
+        <button type="button" data-feed="for-you">Para você</button>
+        <button type="button" data-feed="trending">Tendência</button>
         ${categories.map((category) => `<button type="button" data-mobile-category="${category}">${category}</button>`).join("")}
       </div>
       <button class="mobile-explore-title" id="mobileExploreMore" type="button" hidden>Explore mais</button>

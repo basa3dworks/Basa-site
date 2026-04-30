@@ -4073,18 +4073,23 @@ pre {
 
   .cart-line {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 10px;
+    grid-template-columns: 1fr;
+    align-items: start;
+    gap: 9px;
+    padding: 14px 0;
   }
 
   .cart-line > .ghost-button {
-    grid-column: 1 / -1;
     justify-self: start;
   }
 
   .cart-line .quantity-stepper {
     margin-left: 0;
+    justify-self: start;
+  }
+
+  .cart-line span {
+    overflow-wrap: anywhere;
   }
 
   .hero-metrics,
