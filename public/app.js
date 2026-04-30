@@ -305,7 +305,7 @@ function applyCustomerSession(form) {
   $("#saveCustomerButton").hidden = loggedIn;
   $("#debugCustomerButton").hidden = loggedIn;
   $("#logoutCustomerButton").hidden = !loggedIn;
-  $("#checkoutSubmitButton").disabled = !loggedIn;
+  $("#checkoutSubmitButton").disabled = false;
   $("#customerLoginBox").classList.toggle("logged", loggedIn);
   $("#customerLoginStatus").textContent = loggedIn
     ? `Cliente identificado: ${session.customer.name || session.customer.email}.`
