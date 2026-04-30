@@ -431,6 +431,11 @@ function openCheckoutDetails() {
   if (details) details.open = true;
 }
 
+function clearDeliverySelectionWarning() {
+  const status = $("#checkoutStatus");
+  if (status?.textContent.includes("Calcule e selecione")) status.textContent = "";
+}
+
 function setupCheckoutDetails(form) {
   const details = $("#checkoutDetails");
   if (!details) return;
@@ -453,6 +458,7 @@ async function quoteShipping() {
     state.shippingQuotes = [];
     state.selectedShipping = null;
     $("#shippingOptions").innerHTML = `<p class="promo-note">Frete gr\u00e1tis neste pedido. A forma de envio ser\u00e1 definida pela Basa 3D Works.</p>`;
+    clearDeliverySelectionWarning();
     renderCart();
     return;
   }
@@ -471,6 +477,7 @@ async function quoteShipping() {
 
   state.shippingQuotes = data.quotes || [];
   state.selectedShipping = state.shippingQuotes[0] || null;
+  if (state.selectedShipping) clearDeliverySelectionWarning();
   renderShippingOptions();
   renderCart();
 }
@@ -486,6 +493,7 @@ function renderShippingOptions() {
   const promo = freeShippingPromo($("#checkoutForm"));
   if (promo.reason === "produto") {
     $("#shippingOptions").innerHTML = `<p class="promo-note">Frete gr\u00e1tis neste pedido. A forma de envio ser\u00e1 definida pela Basa 3D Works.</p>`;
+    clearDeliverySelectionWarning();
     return;
   }
   $("#shippingOptions").innerHTML = `
@@ -505,6 +513,7 @@ function renderShippingOptions() {
   document.querySelectorAll('[name="shippingOption"]').forEach((input) => {
     input.addEventListener("change", () => {
       state.selectedShipping = state.shippingQuotes.find((quote) => quote.id === input.value);
+      clearDeliverySelectionWarning();
       renderCart();
     });
   });
