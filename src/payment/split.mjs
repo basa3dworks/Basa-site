@@ -28,6 +28,13 @@ export function calculateSplit({ subtotal, sellerAccountId, marketplaceAccountId
   };
 }
 
+function shouldUseMercadoPagoSandbox(accessToken) {
+  const explicit = String(process.env.MERCADO_PAGO_USE_SANDBOX || "").toLowerCase();
+  if (["1", "true", "yes", "sim"].includes(explicit)) return true;
+  if (["0", "false", "no", "nao", "não"].includes(explicit)) return false;
+  return String(accessToken || "").startsWith("TEST-");
+}
+
 export async function createPaymentIntent({ provider, order, settings, baseUrl }) {
   const split = calculateSplit({
     subtotal: order.subtotal,
@@ -45,13 +52,15 @@ export async function createPaymentIntent({ provider, order, settings, baseUrl }
     }
 
     const preference = await createMercadoPagoPreference({ accessToken, order, settings, baseUrl });
+    const useSandbox = shouldUseMercadoPagoSandbox(accessToken);
     return {
       provider,
       status: "pending_payment",
       paymentId: preference.id,
-      checkoutUrl: preference.sandbox_init_point || preference.init_point,
+      checkoutUrl: useSandbox ? preference.sandbox_init_point || preference.init_point : preference.init_point || preference.sandbox_init_point,
       initPoint: preference.init_point,
       sandboxInitPoint: preference.sandbox_init_point,
+      environment: useSandbox ? "sandbox" : "production",
       split,
       note: "Checkout Pro criado no Mercado Pago. O pedido aguardara confirmacao de pagamento ate configurarmos webhooks."
     };
