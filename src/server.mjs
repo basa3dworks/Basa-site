@@ -17,6 +17,7 @@ const sessionSecret = process.env.SESSION_SECRET || "dev-secret";
 const paymentProvider = process.env.PAYMENT_PROVIDER || "mock";
 const publicBaseUrl = process.env.PUBLIC_BASE_URL || `http://localhost:${port}`;
 const mercadoPagoWebhookSecret = process.env.MERCADO_PAGO_WEBHOOK_SECRET || "";
+const mercadoPagoMinOrderTotal = Math.max(0, Number(process.env.MERCADO_PAGO_MIN_ORDER_TOTAL || 5));
 const shippingProvider = process.env.SHIPPING_PROVIDER || "mock";
 const melhorEnvioToken = process.env.MELHOR_ENVIO_TOKEN || "";
 const melhorEnvioApiBase = process.env.MELHOR_ENVIO_API_BASE || "https://sandbox.melhorenvio.com.br";
@@ -548,6 +549,11 @@ async function router(req, res) {
       const body = await readJson(req);
       if (!body.customerLoggedIn) return send(res, 401, { error: "Cliente precisa estar logado para finalizar a compra." });
       const order = orderFromCart({ db, customer: body.customer, items: body.items || [], shippingOption: body.shippingOption, coupon: body.coupon });
+      if (paymentProvider === "mercado-pago" && order.total < mercadoPagoMinOrderTotal) {
+        return send(res, 400, {
+          error: `Para testar pagamento real no Mercado Pago, use um pedido de pelo menos R$ ${mercadoPagoMinOrderTotal.toFixed(2).replace(".", ",")}. Para valores simbolicos, use PAYMENT_PROVIDER=mock.`
+        });
+      }
       const payment = await createPaymentIntent({ provider: paymentProvider, order, settings: db.settings, baseUrl: publicBaseUrl });
       order.payment = payment;
       order.status = payment.status === "approved" ? "paid" : "awaiting_payment";
