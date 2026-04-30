@@ -5,6 +5,7 @@ Sistema de e-commerce para vitrine publica, carrinho, checkout, painel admin, pe
 ## Como rodar
 
 ```bash
+npm install
 node src/server.mjs
 ```
 
@@ -23,7 +24,8 @@ Configure as credenciais locais no arquivo `.env`. Em producao, cadastre as vari
 - Painel admin protegido por sessao.
 - Cadastro de produtos pelo admin.
 - Central operacional de pedidos.
-- Banco JSON local em `data/db.json`.
+- Banco JSON local em `data/db.json`, com suporte a PostgreSQL via `DATABASE_URL`.
+- Cadastro/login de cliente com senha criptografada.
 - Integracao preparada com Mercado Pago.
 - Integracao preparada com Melhor Envio.
 - Cupons, campanhas e metricas comerciais.
@@ -51,6 +53,12 @@ PUBLIC_BASE_URL=http://localhost:3000
 
 Enquanto o site estiver em `localhost`, o checkout pode redirecionar para o Mercado Pago, mas webhooks automaticos dependem de dominio publico com HTTPS.
 
+## Banco de dados
+
+Sem `DATABASE_URL`, o sistema usa `data/db.json` para desenvolvimento local.
+
+Em producao, cadastre `DATABASE_URL` na hospedagem para usar PostgreSQL. Na primeira inicializacao, o sistema cria a tabela `basa_store` e importa o conteudo atual do `data/db.json` como dados iniciais.
+
 ## Frete
 
 O projeto vem com `SHIPPING_PROVIDER=mock` para desenvolvimento local.
@@ -73,8 +81,8 @@ O checkout chama `/api/shipping/quote`, mostra as opcoes de entrega e grava a op
 
 ## Proximos passos recomendados
 
-- Trocar o banco JSON por PostgreSQL ou MySQL.
-- Usar hash de senha e gerenciamento de usuarios admin.
+- Separar o banco em tabelas relacionais durante a migracao para Django.
+- Criar gerenciamento completo de usuarios admin.
 - Integrar gateway real de pagamento com webhooks.
 - Criar area do cliente e rastreio de pedidos.
 - Adicionar upload de imagens para produtos.

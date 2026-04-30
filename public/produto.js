@@ -9,6 +9,7 @@
 };
 
 const debugCustomer = {
+  customerUsername: "cliente_teste",
   name: "Cliente Teste Basa",
   document: "12345678909",
   email: "cliente.teste@basa3dworks.local",
@@ -239,9 +240,28 @@ function setCartQuantity(productId, color, quantity) {
 }
 
 function readCustomer(form) {
-  const customer = Object.fromEntries(new FormData(form).entries());
-  customer.ibge = form.dataset.ibge || "";
-  return customer;
+  return {
+    name: form.elements.name?.value || "",
+    document: form.elements.document?.value || "",
+    email: form.elements.email?.value || "",
+    phone: form.elements.phone?.value || "",
+    zipCode: form.elements.zipCode?.value || "",
+    number: form.elements.number?.value || "",
+    street: form.elements.street?.value || "",
+    neighborhood: form.elements.neighborhood?.value || "",
+    complement: form.elements.complement?.value || "",
+    city: form.elements.city?.value || "",
+    state: form.elements.state?.value || "",
+    ibge: form.dataset.ibge || ""
+  };
+}
+
+function readCustomerAccess(form) {
+  return {
+    ...readCustomer(form),
+    customerUsername: form.elements.customerUsername?.value || "",
+    customerPassword: form.elements.customerPassword?.value || ""
+  };
 }
 
 function isCustomerLoggedIn() {
@@ -258,11 +278,13 @@ function applyCustomerSession(form) {
     Object.entries(session.customer).forEach(([key, value]) => {
       if (form.elements[key]) form.elements[key].value = value || "";
     });
+    if (form.elements.customerUsername) form.elements.customerUsername.value = session.username || "";
+    if (form.elements.customerPassword) form.elements.customerPassword.value = "******";
     form.dataset.ibge = session.customer.ibge || "";
   }
 
   const loggedIn = isCustomerLoggedIn();
-  customerFields(form).forEach((input) => {
+  [...customerFields(form), ...form.querySelectorAll("[data-auth-field]")].forEach((input) => {
     input.readOnly = loggedIn;
   });
   $("#saveCustomerButton").hidden = loggedIn;
@@ -275,22 +297,33 @@ function applyCustomerSession(form) {
     : "Preencha seus dados e salve o cadastro para finalizar o pedido.";
 }
 
-function saveCustomerSession(form) {
+async function saveCustomerSession(form) {
   if (!form.reportValidity()) return;
-  const customer = readCustomer(form);
-  state.customerSession = { loggedIn: true, customer, updatedAt: new Date().toISOString() };
+  $("#checkoutStatus").textContent = "Validando cadastro...";
+  const response = await fetch("/api/customer/access", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(readCustomerAccess(form))
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    $("#checkoutStatus").textContent = data.error || "Nao foi possivel entrar/cadastrar.";
+    return;
+  }
+  const customer = data.account.customer;
+  state.customerSession = { loggedIn: true, username: data.account.username, customer, updatedAt: new Date().toISOString() };
   localStorage.setItem("basa_customer_session", JSON.stringify(state.customerSession));
   applyCustomerSession(form);
-  $("#checkoutStatus").textContent = "Cadastro salvo. Agora voce pode finalizar o pedido.";
+  $("#checkoutStatus").textContent = data.created ? "Cadastro criado. Agora voce pode finalizar o pedido." : "Login confirmado. Agora voce pode finalizar o pedido.";
 }
 
 function useDebugCustomer(form) {
   Object.entries(debugCustomer).forEach(([key, value]) => {
     if (form.elements[key]) form.elements[key].value = value;
   });
+  if (form.elements.customerPassword) form.elements.customerPassword.value = "";
   form.dataset.ibge = debugCustomer.ibge;
-  saveCustomerSession(form);
-  $("#checkoutStatus").textContent = "Cliente teste conectado. Use apenas para debug.";
+  $("#checkoutStatus").textContent = "Dados de teste preenchidos. Defina uma senha e clique em Entrar/Cadastrar.";
   quoteShipping();
 }
 
@@ -299,6 +332,10 @@ function logoutCustomer(form) {
   localStorage.removeItem("basa_customer_session");
   customerFields(form).forEach((input) => {
     input.readOnly = false;
+  });
+  form.querySelectorAll("[data-auth-field]").forEach((input) => {
+    input.readOnly = false;
+    input.value = "";
   });
   applyCustomerSession(form);
   $("#checkoutStatus").textContent = "Dados liberados para alteracao. Salve novamente antes de comprar.";

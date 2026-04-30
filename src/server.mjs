@@ -210,6 +210,62 @@ function publicCustomRequest(request) {
   };
 }
 
+function onlyDigits(value) {
+  return String(value || "").replace(/\D/g, "");
+}
+
+function normalizeCustomerAccount(body = {}) {
+  const email = String(body.email || "").trim().toLowerCase();
+  const username = String(body.customerUsername || body.username || email.split("@")[0] || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9._-]/g, "")
+    .slice(0, 32);
+  const customer = {
+    name: body.name || "",
+    document: onlyDigits(body.document),
+    email,
+    phone: onlyDigits(body.phone),
+    zipCode: onlyDigits(body.zipCode),
+    street: body.street || "",
+    number: body.number || "",
+    complement: body.complement || "",
+    neighborhood: body.neighborhood || "",
+    city: body.city || "",
+    state: String(body.state || "").toUpperCase().slice(0, 2),
+    ibge: body.ibge || ""
+  };
+
+  if (!email) throw Object.assign(new Error("Informe um email valido."), { status: 400 });
+  if (!username || username.length < 3) throw Object.assign(new Error("Informe um nome de usuario com pelo menos 3 caracteres."), { status: 400 });
+  return { customer, username };
+}
+
+function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString("hex");
+  const hash = crypto.pbkdf2Sync(String(password), salt, 120000, 32, "sha256").toString("hex");
+  return `pbkdf2$120000$${salt}$${hash}`;
+}
+
+function verifyPassword(password, stored = "") {
+  const [method, iterations, salt, hash] = String(stored).split("$");
+  if (method !== "pbkdf2" || !iterations || !salt || !hash) return false;
+  const candidate = crypto.pbkdf2Sync(String(password), salt, Number(iterations), 32, "sha256").toString("hex");
+  return crypto.timingSafeEqual(Buffer.from(candidate, "hex"), Buffer.from(hash, "hex"));
+}
+
+function publicCustomerAccount(account = {}) {
+  return {
+    id: account.id,
+    username: account.username,
+    customer: account.customer,
+    createdAt: account.createdAt,
+    updatedAt: account.updatedAt
+  };
+}
+
 function requestStatus(value) {
   return ["new", "in_review", "quoted", "approved", "in_production", "shipped", "completed", "canceled"].includes(value) ? value : "new";
 }
@@ -417,6 +473,45 @@ async function router(req, res) {
 
     if (url.pathname === "/api/logout" && req.method === "POST") {
       return send(res, 200, { ok: true }, { "set-cookie": "basa_admin=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0" });
+    }
+
+    if (url.pathname === "/api/customer/access" && req.method === "POST") {
+      const db = await readDb();
+      const body = await readJson(req);
+      const password = String(body.customerPassword || body.password || "");
+      if (password.length < 6) return send(res, 400, { error: "A senha precisa ter pelo menos 6 caracteres." });
+
+      const { customer, username } = normalizeCustomerAccount(body);
+      db.customers ||= [];
+      const email = customer.email.toLowerCase();
+      const existing = db.customers.find((account) => (
+        String(account.customer?.email || "").toLowerCase() === email ||
+        String(account.username || "").toLowerCase() === username
+      ));
+
+      if (existing) {
+        const sameEmail = String(existing.customer?.email || "").toLowerCase() === email;
+        if (!sameEmail) return send(res, 409, { error: "Este nome de usuario ja esta em uso." });
+        if (!verifyPassword(password, existing.passwordHash)) return send(res, 401, { error: "Senha incorreta para este email." });
+        existing.username = username || existing.username;
+        existing.customer = { ...(existing.customer || {}), ...customer };
+        existing.updatedAt = new Date().toISOString();
+        await writeDb(db);
+        return send(res, 200, { account: publicCustomerAccount(existing), created: false });
+      }
+
+      const account = {
+        id: crypto.randomUUID(),
+        username,
+        customer,
+        passwordHash: hashPassword(password),
+        favorites: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      db.customers.unshift(account);
+      await writeDb(db);
+      return send(res, 201, { account: publicCustomerAccount(account), created: true });
     }
 
     if (url.pathname === "/api/products" && req.method === "GET") {

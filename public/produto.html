@@ -55,6 +55,8 @@
             </div>
           </div>
           <h3>Dados para pedido</h3>
+          <label>Nome de usuário<input name="customerUsername" required autocomplete="username" placeholder="Ex: basa_cliente" data-auth-field></label>
+          <label>Senha<input name="customerPassword" type="password" required minlength="6" autocomplete="current-password" placeholder="Mínimo 6 caracteres" data-auth-field></label>
           <label>Nome<input name="name" required autocomplete="name" data-customer-field></label>
           <label>CPF ou CNPJ<input name="document" required inputmode="numeric" autocomplete="off" placeholder="Somente números" data-customer-field></label>
           <label>Email<input name="email" type="email" required autocomplete="email" data-customer-field></label>

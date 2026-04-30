@@ -3,12 +3,29 @@ import path from "node:path";
 
 const dbPath = path.resolve("data", "db.json");
 let writeQueue = Promise.resolve();
+let pgPoolPromise = null;
+let pgReadyPromise = null;
 
 function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export async function readDb() {
+function usePostgres() {
+  return Boolean(process.env.DATABASE_URL || process.env.POSTGRES_URL);
+}
+
+function postgresConfig() {
+  const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+  const sslMode = String(process.env.PGSSLMODE || "").toLowerCase();
+  const needsSsl = sslMode === "require" || /sslmode=require/i.test(connectionString || "");
+  return {
+    connectionString,
+    max: Number(process.env.PGPOOL_MAX || 5),
+    ssl: needsSsl ? { rejectUnauthorized: false } : undefined
+  };
+}
+
+async function readFileDb() {
   let lastError;
   for (let attempt = 0; attempt < 8; attempt += 1) {
     try {
@@ -23,7 +40,7 @@ export async function readDb() {
   throw lastError;
 }
 
-export async function writeDb(db) {
+async function writeFileDb(db) {
   writeQueue = writeQueue.then(async () => {
     const tmp = `${dbPath}.${Date.now()}.${Math.random().toString(16).slice(2)}.tmp`;
     await fs.writeFile(tmp, JSON.stringify(db, null, 2));
@@ -42,6 +59,65 @@ export async function writeDb(db) {
     throw lastError;
   });
   return writeQueue;
+}
+
+async function pgPool() {
+  if (!pgPoolPromise) {
+    pgPoolPromise = import("pg").then(({ Pool }) => new Pool(postgresConfig()));
+  }
+  return pgPoolPromise;
+}
+
+async function ensurePostgresStore() {
+  if (!pgReadyPromise) {
+    pgReadyPromise = (async () => {
+      const pool = await pgPool();
+      await pool.query(`
+        create table if not exists basa_store (
+          key text primary key,
+          value jsonb not null,
+          updated_at timestamptz not null default now()
+        )
+      `);
+      const existing = await pool.query("select 1 from basa_store where key = $1", ["db"]);
+      if (!existing.rowCount) {
+        const seed = await readFileDb();
+        await pool.query(
+          "insert into basa_store (key, value, updated_at) values ($1, $2::jsonb, now())",
+          ["db", JSON.stringify(seed)]
+        );
+      }
+    })();
+  }
+  return pgReadyPromise;
+}
+
+async function readPostgresDb() {
+  await ensurePostgresStore();
+  const pool = await pgPool();
+  const result = await pool.query("select value from basa_store where key = $1", ["db"]);
+  return result.rows[0]?.value || {};
+}
+
+async function writePostgresDb(db) {
+  await ensurePostgresStore();
+  const pool = await pgPool();
+  await pool.query(
+    `insert into basa_store (key, value, updated_at)
+     values ($1, $2::jsonb, now())
+     on conflict (key) do update set value = excluded.value, updated_at = now()`,
+    ["db", JSON.stringify(db)]
+  );
+}
+
+export async function readDb() {
+  if (usePostgres()) return readPostgresDb();
+  return readFileDb();
+}
+
+export async function writeDb(db) {
+  if (usePostgres()) return writePostgresDb(db);
+  return writeFileDb(db);
 }
 
 function paidOrderStatuses() {
