@@ -734,7 +734,6 @@ textarea {
 }
 
 .product-body .eyebrow {
-  margin-right: 48px;
   margin-bottom: 2px;
 }
 
@@ -811,17 +810,18 @@ textarea {
 .favorite-button {
   position: absolute;
   top: 10px;
-  right: 14px;
+  left: 14px;
   z-index: 2;
   width: 38px;
   height: 38px;
   border: 1px solid var(--line);
   border-radius: 999px;
   color: var(--brand);
-  background: #fff;
+  background: rgba(255, 255, 255, 0.92);
   cursor: pointer;
   font-size: 1.15rem;
   font-weight: 900;
+  backdrop-filter: blur(6px);
 }
 
 .favorite-button small {
@@ -842,8 +842,8 @@ textarea {
 }
 
 .favorite-button.active {
-  color: #fff;
-  background: var(--brand);
+  color: var(--brand);
+  background: rgba(255, 255, 255, 0.96);
 }
 
 .favorite-button.active small {
@@ -3958,7 +3958,7 @@ pre {
 
   .favorite-button {
     top: 8px;
-    right: 8px;
+    left: 8px;
     width: 34px;
     height: 34px;
     background: rgba(255, 255, 255, 0.96);

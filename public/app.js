@@ -589,12 +589,12 @@ function renderProducts() {
         <img src="${product.image}" alt="${product.name}">
         <span class="product-badge ${campaignBadgeClass(product)}">${campaignLabel(product)}</span>
       </a>
+      <button class="favorite-button ${isFavorite(product.id) ? "active" : ""}" type="button" data-favorite="${product.id}" aria-label="Favoritar ${product.name}">
+        <span aria-hidden="true">${isFavorite(product.id) ? "&#9829;" : "&#9825;"}</span>
+        ${favoriteCount(product) ? `<small>${favoriteCount(product)}</small>` : ""}
+      </button>
       <div class="product-body">
         <p class="eyebrow">${product.category}</p>
-        <button class="favorite-button ${isFavorite(product.id) ? "active" : ""}" type="button" data-favorite="${product.id}" aria-label="Favoritar ${product.name}">
-          <span aria-hidden="true">&#9825;</span>
-          ${favoriteCount(product) ? `<small>${favoriteCount(product)}</small>` : ""}
-        </button>
         <div class="product-social-proof">${productMeta(product)}</div>
         <h3><a class="product-title-link" href="/produto.html?slug=${product.slug}">${product.name}</a></h3>
         ${ratingMarkup(product)}
