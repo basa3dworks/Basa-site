@@ -132,7 +132,7 @@ function soldLabel(count) {
 }
 
 function productMeta(product) {
-  return [product.isNew ? "Novo" : "", soldLabel(product.soldCount)].filter(Boolean).join(" | ");
+  return state.settings?.displaySalesCount ? soldLabel(product.soldCount) : "";
 }
 
 function shippingCardLabel(product) {

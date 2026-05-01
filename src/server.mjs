@@ -773,6 +773,7 @@ async function router(req, res) {
           originZipCode: body.originZipCode !== undefined ? String(body.originZipCode || "").replace(/\D/g, "") : db.settings.originZipCode,
           shippingFlatRate: body.shippingFlatRate !== undefined ? Math.max(0, Number(body.shippingFlatRate || 0)) : db.settings.shippingFlatRate,
           shippingProvider: body.shippingProvider || db.settings.shippingProvider || "melhor-envio",
+          displaySalesCount: body.displaySalesCount !== undefined ? Boolean(body.displaySalesCount) : Boolean(db.settings.displaySalesCount),
           promotions,
           sender: {
             ...(db.settings.sender || {}),

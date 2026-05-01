@@ -368,6 +368,12 @@ function fillShippingSettings(settings) {
   form.elements.senderState.value = sender.state || "";
 }
 
+function fillDisplaySettings(settings) {
+  const form = $("#displaySettingsForm");
+  if (!form) return;
+  form.elements.displaySalesCount.checked = Boolean(settings.displaySalesCount);
+}
+
 function renderStoryProductOptions({ keepSelected = false } = {}) {
   const select = $("#storyProductSelect");
   const selectedProductId = select.value;
@@ -1300,6 +1306,7 @@ async function loadDashboard() {
   `;
 
   renderThemeGrid(data.settings.theme || "atelier");
+  fillDisplaySettings(data.settings);
   renderHeroSlideList();
   renderCouponList(data.coupons || []);
   renderStoryProductOptions({ keepSelected: true });
@@ -1615,6 +1622,21 @@ $("#storyForm").addEventListener("submit", async (event) => {
 $("#cancelStoryEditButton").addEventListener("click", () => {
   resetStoryForm();
   $("#storyStatus").textContent = "";
+});
+$("#displaySettingsForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  $("#displaySettingsStatus").textContent = "Salvando exibição...";
+  try {
+    const result = await api("/api/admin/settings", {
+      method: "PATCH",
+      body: JSON.stringify({ displaySalesCount: event.currentTarget.elements.displaySalesCount.checked })
+    });
+    currentSettings = result.settings;
+    fillDisplaySettings(result.settings);
+    $("#displaySettingsStatus").textContent = "Exibição da vitrine salva.";
+  } catch (error) {
+    $("#displaySettingsStatus").textContent = error.message;
+  }
 });
 $("#shippingSettingsForm").addEventListener("submit", async (event) => {
   event.preventDefault();
