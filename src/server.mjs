@@ -774,6 +774,7 @@ async function router(req, res) {
           shippingFlatRate: body.shippingFlatRate !== undefined ? Math.max(0, Number(body.shippingFlatRate || 0)) : db.settings.shippingFlatRate,
           shippingProvider: body.shippingProvider || db.settings.shippingProvider || "melhor-envio",
           displaySalesCount: body.displaySalesCount !== undefined ? Boolean(body.displaySalesCount) : Boolean(db.settings.displaySalesCount),
+          displayFavoriteCount: body.displayFavoriteCount !== undefined ? Boolean(body.displayFavoriteCount) : Boolean(db.settings.displayFavoriteCount),
           promotions,
           sender: {
             ...(db.settings.sender || {}),

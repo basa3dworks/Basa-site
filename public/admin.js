@@ -372,6 +372,7 @@ function fillDisplaySettings(settings) {
   const form = $("#displaySettingsForm");
   if (!form) return;
   form.elements.displaySalesCount.checked = Boolean(settings.displaySalesCount);
+  form.elements.displayFavoriteCount.checked = Boolean(settings.displayFavoriteCount);
 }
 
 function renderStoryProductOptions({ keepSelected = false } = {}) {
@@ -1629,7 +1630,10 @@ $("#displaySettingsForm").addEventListener("submit", async (event) => {
   try {
     const result = await api("/api/admin/settings", {
       method: "PATCH",
-      body: JSON.stringify({ displaySalesCount: event.currentTarget.elements.displaySalesCount.checked })
+      body: JSON.stringify({
+        displaySalesCount: event.currentTarget.elements.displaySalesCount.checked,
+        displayFavoriteCount: event.currentTarget.elements.displayFavoriteCount.checked
+      })
     });
     currentSettings = result.settings;
     fillDisplaySettings(result.settings);
