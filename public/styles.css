@@ -3110,6 +3110,153 @@ label {
   color: var(--muted);
 }
 
+.account-page {
+  padding-top: 96px;
+}
+
+.account-hero {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 34px 24px 18px;
+}
+
+.account-hero h1 {
+  margin: 0;
+  font-size: clamp(3rem, 9vw, 6rem);
+  letter-spacing: 0;
+}
+
+.account-hero p:not(.eyebrow) {
+  max-width: 620px;
+  color: var(--muted);
+  font-size: 1.05rem;
+}
+
+.account-shell {
+  max-width: 1180px;
+  margin: 0 auto 48px;
+  padding: 0 24px;
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 18px;
+}
+
+.account-sidebar,
+.account-content,
+.account-view {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.account-sidebar {
+  align-self: start;
+  padding: 10px;
+  display: grid;
+  gap: 6px;
+  position: sticky;
+  top: 96px;
+}
+
+.account-sidebar button {
+  border: 0;
+  border-radius: 6px;
+  padding: 12px 14px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+}
+
+.account-sidebar button.active {
+  background: var(--brand);
+  color: #fff;
+}
+
+.account-content {
+  padding: 0;
+  overflow: hidden;
+}
+
+.account-view {
+  border: 0;
+  border-radius: 0;
+  padding: 24px;
+  background: transparent;
+}
+
+.account-form {
+  max-width: 680px;
+}
+
+.account-list,
+.account-summary,
+.account-product-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.account-card,
+.account-product-card {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.account-card {
+  display: grid;
+  gap: 8px;
+}
+
+.account-card strong,
+.account-card span,
+.account-card small,
+.account-card b {
+  display: block;
+}
+
+.account-card span,
+.account-card small,
+.account-card p {
+  color: var(--muted);
+}
+
+.account-product-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.account-product-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.account-product-card a {
+  display: grid;
+  gap: 8px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.account-product-card img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
+.account-product-card strong,
+.account-product-card span {
+  padding: 0 12px;
+}
+
+.account-product-card span {
+  padding-bottom: 12px;
+  color: var(--brand);
+  font-weight: 900;
+}
+
 .shipping-admin-note {
   display: grid;
   gap: 4px;
@@ -4284,8 +4431,32 @@ pre {
   .hero-slide-card,
   .sender-settings-grid,
   .people-grid,
-  .people-lists {
+  .people-lists,
+  .account-shell,
+  .account-product-grid {
     grid-template-columns: 1fr;
+  }
+
+  .account-page {
+    padding-top: 76px;
+  }
+
+  .account-hero {
+    padding: 24px 16px 12px;
+  }
+
+  .account-shell {
+    padding: 0 16px 28px;
+  }
+
+  .account-sidebar {
+    position: static;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .account-sidebar button {
+    text-align: center;
+    padding: 10px;
   }
 
   .story-form label:nth-child(2) {

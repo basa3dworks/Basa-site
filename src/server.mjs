@@ -542,9 +542,9 @@ async function router(req, res) {
       return send(res, 200, { ok: true }, { "set-cookie": "basa_admin=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0" });
     }
 
-      if (url.pathname === "/api/customer/access" && req.method === "POST") {
-        const db = await readDb();
-        const body = await readJson(req);
+    if (url.pathname === "/api/customer/access" && req.method === "POST") {
+      const db = await readDb();
+      const body = await readJson(req);
         const password = String(body.customerPassword || body.password || "");
         if (password.length < 6) return send(res, 400, { error: "A senha precisa ter pelo menos 6 caracteres." });
 
@@ -569,6 +569,10 @@ async function router(req, res) {
         return send(res, 200, { account: publicCustomerAccount(existing), created: false });
       }
 
+      if (body.loginOnly) {
+        return send(res, 404, { error: "Conta não encontrada. Crie sua conta primeiro." });
+      }
+
       const account = {
         id: crypto.randomUUID(),
         username,
@@ -581,6 +585,27 @@ async function router(req, res) {
       db.customers.unshift(account);
       await writeDb(db);
       return send(res, 201, { account: publicCustomerAccount(account), created: true });
+    }
+
+    if (url.pathname === "/api/customer/orders" && req.method === "GET") {
+      const db = await readDb();
+      const email = String(url.searchParams.get("email") || "").trim().toLowerCase();
+      if (!email) return send(res, 400, { error: "Informe o email do cliente." });
+      const orders = (db.orders || [])
+        .filter((order) => String(order.customer?.email || "").toLowerCase() === email)
+        .map((order) => ({
+          id: order.id,
+          createdAt: order.createdAt,
+          status: order.status,
+          items: order.items || [],
+          subtotal: order.subtotal,
+          shipping: order.shipping,
+          total: order.total,
+          payment: order.payment || null,
+          shippingOption: order.shippingOption || null,
+          promotion: order.promotion || null
+        }));
+      return send(res, 200, { orders });
     }
 
     if (url.pathname === "/api/products" && req.method === "GET") {

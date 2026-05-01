@@ -1077,9 +1077,9 @@ async function init() {
     autoQuoteShippingIfPossible();
   });
   $("#closeCart").addEventListener("click", () => $("#cartPanel").classList.remove("open"));
-  $("#customerButton").addEventListener("click", () => openCustomerPanel());
-  $("#mobileCustomerButton")?.addEventListener("click", () => openCustomerPanel());
-  $("#mobileMenuButton")?.addEventListener("click", () => openCustomerPanel());
+  $("#customerButton")?.addEventListener("click", () => openCustomerPanel());
+  $("#mobileCustomerButton")?.addEventListener("click", () => { window.location.href = "/conta.html"; });
+  $("#mobileMenuButton")?.addEventListener("click", () => { window.location.href = "/conta.html"; });
   $("#closeCustomerPanel").addEventListener("click", closeCustomerPanel);
   $("#closeQuotePanel").addEventListener("click", closeQuotePanel);
   $("#customerPanel").addEventListener("click", (event) => {
