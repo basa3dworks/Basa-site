@@ -178,6 +178,7 @@ function campaignPrice(product, now = Date.now()) {
 export function publicProduct(product, db = {}) {
   const soldCount = Number(product.soldCount || 0) || dynamicSoldCount(product, db.orders || []);
   const rating = product.rating?.count ? product.rating : dynamicRating(product);
+  const favoriteCount = Number(product.favoriteCount || 0) + (db.customers || []).filter((customer) => (customer.favorites || []).includes(product.id)).length;
   const pricing = campaignPrice(product);
   return {
     id: product.id,
@@ -197,6 +198,7 @@ export function publicProduct(product, db = {}) {
     campaignDiscountPercent: pricing.campaignDiscountPercent || 0,
     isNew: isRecentlyPosted(product),
     soldCount,
+    favoriteCount,
     rating,
     campaign: product.campaign || null,
     shipping: product.shipping || {},

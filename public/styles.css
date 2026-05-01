@@ -824,9 +824,31 @@ textarea {
   font-weight: 900;
 }
 
+.favorite-button small {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  min-width: 18px;
+  height: 18px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0 5px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  background: #f7faf7;
+  font-size: 0.66rem;
+  line-height: 1;
+}
+
 .favorite-button.active {
   color: #fff;
   background: var(--brand);
+}
+
+.favorite-button.active small {
+  color: var(--brand);
+  background: #fff;
 }
 
 .quantity-stepper {

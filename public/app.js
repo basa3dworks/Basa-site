@@ -376,6 +376,10 @@ function isFavorite(productId) {
   return favoriteIds().includes(productId);
 }
 
+function favoriteCount(product) {
+  return Number(product.favoriteCount || 0) + (isFavorite(product.id) ? 1 : 0);
+}
+
 function toggleFavorite(productId) {
   const ids = favoriteIds();
   saveFavoriteIds(ids.includes(productId) ? ids.filter((id) => id !== productId) : [...ids, productId]);
@@ -587,7 +591,10 @@ function renderProducts() {
       </a>
       <div class="product-body">
         <p class="eyebrow">${product.category}</p>
-        <button class="favorite-button ${isFavorite(product.id) ? "active" : ""}" type="button" data-favorite="${product.id}" aria-label="Favoritar ${product.name}">&#9825;</button>
+        <button class="favorite-button ${isFavorite(product.id) ? "active" : ""}" type="button" data-favorite="${product.id}" aria-label="Favoritar ${product.name}">
+          <span aria-hidden="true">&#9825;</span>
+          ${favoriteCount(product) ? `<small>${favoriteCount(product)}</small>` : ""}
+        </button>
         <div class="product-social-proof">${productMeta(product)}</div>
         <h3><a class="product-title-link" href="/produto.html?slug=${product.slug}">${product.name}</a></h3>
         ${ratingMarkup(product)}
