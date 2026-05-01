@@ -142,6 +142,7 @@ function shippingCardLabel(product) {
 }
 
 function ratingMarkup(product) {
+  if (!state.settings?.displayRating) return "";
   const average = Number(product.rating?.average || 0);
   const count = Number(product.rating?.count || 0);
   if (!average || !count) return "";

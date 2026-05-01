@@ -373,6 +373,7 @@ function fillDisplaySettings(settings) {
   if (!form) return;
   form.elements.displaySalesCount.checked = Boolean(settings.displaySalesCount);
   form.elements.displayFavoriteCount.checked = Boolean(settings.displayFavoriteCount);
+  form.elements.displayRating.checked = Boolean(settings.displayRating);
 }
 
 function renderStoryProductOptions({ keepSelected = false } = {}) {
@@ -1632,7 +1633,8 @@ $("#displaySettingsForm").addEventListener("submit", async (event) => {
       method: "PATCH",
       body: JSON.stringify({
         displaySalesCount: event.currentTarget.elements.displaySalesCount.checked,
-        displayFavoriteCount: event.currentTarget.elements.displayFavoriteCount.checked
+        displayFavoriteCount: event.currentTarget.elements.displayFavoriteCount.checked,
+        displayRating: event.currentTarget.elements.displayRating.checked
       })
     });
     currentSettings = result.settings;
