@@ -1021,6 +1021,16 @@ async function router(req, res) {
         return send(res, 200, { product: db.products[index] });
       }
 
+      if (url.pathname.match(/^\/api\/admin\/products\/[^/]+$/) && req.method === "DELETE") {
+        const id = decodeURIComponent(url.pathname.split("/").pop());
+        const index = db.products.findIndex((product) => product.id === id);
+        if (index === -1) return send(res, 404, { error: "Produto nao encontrado." });
+        const [product] = db.products.splice(index, 1);
+        db.stories = (db.stories || []).map((story) => story.productId === id ? { ...story, productId: "" } : story);
+        await writeDb(db);
+        return send(res, 200, { product, products: db.products, stories: db.stories || [] });
+      }
+
       if (url.pathname.match(/^\/api\/admin\/products\/[^/]+\/campaign$/) && req.method === "PATCH") {
         const id = decodeURIComponent(url.pathname.split("/").at(-2));
         const body = await readJson(req);

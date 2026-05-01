@@ -615,6 +615,11 @@ body.story-open {
   background: #eef3ef;
 }
 
+.danger-button {
+  color: #9f241e;
+  background: #fff0ee;
+}
+
 select,
 input,
 textarea {

@@ -889,6 +889,7 @@ function resetProductForm() {
   addSpec();
   $("#productSubmitButton").textContent = "Publicar produto";
   $("#cancelProductEditButton").hidden = true;
+  $("#deleteProductButton").hidden = true;
   updateEmbeddedShippingPreview();
 }
 
@@ -974,9 +975,34 @@ function editProduct(productId) {
 
   $("#productSubmitButton").textContent = "Salvar alterações";
   $("#cancelProductEditButton").hidden = false;
+  $("#deleteProductButton").hidden = false;
   $("#productStatus").textContent = `Editando ${product.name}`;
   updateEmbeddedShippingPreview();
   form.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+async function deleteProduct(productId) {
+  const product = currentProducts.find((item) => item.id === productId);
+  if (!product || !confirm(`Excluir o produto "${product.name}"? Ele sairá da loja e das campanhas.`)) return;
+  $("#productStatus").textContent = "Excluindo produto...";
+  try {
+    const result = await api(`/api/admin/products/${encodeURIComponent(productId)}`, {
+      method: "DELETE",
+      body: "{}"
+    });
+    currentProducts = result.products || currentProducts.filter((item) => item.id !== productId);
+    currentStories = result.stories || currentStories.map((story) => story.productId === productId ? { ...story, productId: "" } : story);
+    if ($("#productForm").elements.productId.value === productId) resetProductForm();
+    renderProductsTable();
+    renderStoryProductOptions({ keepSelected: true });
+    renderStoryAdminList();
+    renderCampaignProductOptions({ keepSelected: true });
+    renderCampaignList();
+    renderMetrics();
+    $("#productStatus").textContent = "Produto excluído.";
+  } catch (error) {
+    $("#productStatus").textContent = error.message;
+  }
 }
 
 function renderProductsTable() {
@@ -1004,12 +1030,18 @@ function renderProductsTable() {
       <td>${product.stock}</td>
       <td>${isRecentlyPosted(product) ? "Novo" : "-"}${dynamicSoldCount(product) ? ` / ${dynamicSoldCount(product)} vendidos` : ""}<small class="table-note">${ratingSummary(product)}</small></td>
       <td>${product.status}${product.shipping?.sellerPaysShipping ? " / frete grátis" : ""}${product.shipping?.freeShippingMinQuantity ? ` / frete ${product.shipping.freeShippingMinQuantity}+ un.` : ""}</td>
-      <td><button class="ghost-button table-action" type="button" data-edit-product="${product.id}">Editar</button></td>
+      <td>
+        <button class="ghost-button table-action" type="button" data-edit-product="${product.id}">Editar</button>
+        <button class="ghost-button table-action danger-button" type="button" data-delete-product="${product.id}">Excluir</button>
+      </td>
     </tr>
   `).join("") : `<tr><td colspan="9">${currentProducts.length ? "Nenhum produto encontrado." : "Nenhum produto cadastrado ainda."}</td></tr>`;
 
   document.querySelectorAll("[data-edit-product]").forEach((button) => {
     button.addEventListener("click", () => editProduct(button.dataset.editProduct));
+  });
+  document.querySelectorAll("[data-delete-product]").forEach((button) => {
+    button.addEventListener("click", () => deleteProduct(button.dataset.deleteProduct));
   });
 }
 
@@ -1494,6 +1526,10 @@ $("#addSpecButton").addEventListener("click", () => addSpec());
 $("#cancelProductEditButton").addEventListener("click", () => {
   resetProductForm();
   $("#productStatus").textContent = "";
+});
+$("#deleteProductButton").addEventListener("click", () => {
+  const productId = $("#productForm").elements.productId.value;
+  if (productId) deleteProduct(productId);
 });
 $("#generateCouponButton").addEventListener("click", () => {
   $("#couponForm").elements.code.value = randomCouponCode();
