@@ -351,20 +351,57 @@ function cartQuantity() {
   return state.cart.reduce((sum, item) => sum + item.quantity, 0);
 }
 
+function cartAverageUnitPrice() {
+  const quantity = cartQuantity();
+  return quantity ? cartSubtotal() / quantity : 0;
+}
+
+function estimatedShippingCost() {
+  const selected = Number(state.selectedShipping?.price || 0);
+  if (selected > 0) return selected;
+  const cheapestQuote = state.shippingQuotes.reduce((lowest, quote) => {
+    const price = Number(quote.price || 0);
+    return price > 0 && price < lowest ? price : lowest;
+  }, Infinity);
+  return Number.isFinite(cheapestQuote) ? cheapestQuote : 0;
+}
+
+function dynamicComboRequirement() {
+  const quantity = cartQuantity();
+  const averageUnitPrice = cartAverageUnitPrice();
+  const shippingCost = estimatedShippingCost();
+  if (!quantity || !averageUnitPrice || !shippingCost) return { ready: false, remaining: 0, required: 0 };
+  const required = Math.max(2, Math.ceil(shippingCost / averageUnitPrice) + 1);
+  return {
+    ready: quantity >= required,
+    remaining: Math.max(0, required - quantity),
+    required
+  };
+}
+
+function hasActiveCartFreeShippingBenefit() {
+  const allItemsSellerPaid = cartQuantity() > 0 && state.cart.every((item) => state.products.find((entry) => entry.id === item.productId)?.shipping?.sellerPaysShipping);
+  const quantityBenefit = state.cart.some((item) => {
+    const product = state.products.find((entry) => entry.id === item.productId);
+    const minQuantity = Number(product?.shipping?.freeShippingMinQuantity || 0);
+    return minQuantity > 0 && item.quantity >= minQuantity;
+  });
+  return allItemsSellerPaid || quantityBenefit;
+}
+
 function freeShippingPromo(form) {
-  const promotions = state.settings?.promotions || {};
   const coupon = String(form.elements.coupon?.value || "").trim().toUpperCase();
   const registeredCoupon = (state.settings?.coupons || []).find((item) => String(item.code || "").toUpperCase() === coupon);
   const couponIsExpired = registeredCoupon?.expiresAt && new Date(registeredCoupon.expiresAt).getTime() <= Date.now();
   const subtotal = cartSubtotal();
   const byCoupon = Boolean(registeredCoupon && !couponIsExpired && registeredCoupon.type === "free_shipping" && cartQuantity() >= Number(registeredCoupon.minItems || 1) && subtotal >= Number(registeredCoupon.minSubtotal || 0));
-  const byCombo = cartQuantity() >= Number(promotions.freeShippingMinItems || Infinity);
+  const byCombo = dynamicComboRequirement().ready;
   const byProduct = cartQuantity() > 0 && state.cart.every((item) => state.products.find((product) => product.id === item.productId)?.shipping?.sellerPaysShipping);
   const byProductQuantity = state.cart.some((item) => {
     const minQuantity = Number(state.products.find((product) => product.id === item.productId)?.shipping?.freeShippingMinQuantity || 0);
     return minQuantity > 0 && item.quantity >= minQuantity;
   });
-  return { eligible: byCoupon || byCombo || byProduct || byProductQuantity, coupon, reason: byCoupon ? "cupom" : byCombo ? "combo" : byProduct ? "produto" : byProductQuantity ? "quantidade do produto" : "" };
+  return { eligible: byCoupon || byCombo || byProduct || byProductQuantity, coupon, reason: byCoupon ? "cupom" : byCombo ? "kit" : byProduct ? "produto" : byProductQuantity ? "quantidade do produto" : "" };
 }
 
 function allCartItemsHaveSellerPaidShipping() {
@@ -394,12 +431,12 @@ function cartSubtotal() {
 }
 
 function comboProgressMessage() {
-  const minItems = Number(state.settings?.promotions?.freeShippingMinItems || 3);
-  const quantity = cartQuantity();
-  const remaining = Math.max(0, minItems - quantity);
-  if (!quantity) return "Adicione produtos ao carrinho para ver benef\u00edcios de frete.";
-  if (!remaining) return "Frete gr\u00e1tis liberado por combo.";
-  return `Adicione mais ${remaining} ${remaining === 1 ? "item" : "itens"} para liberar frete gr\u00e1tis por combo.`;
+  if (!cartQuantity()) return "Adicione produtos ao carrinho para ver benef\u00edcios de frete.";
+  if (hasActiveCartFreeShippingBenefit()) return "Frete Gr\u00e1tis ativo neste pedido.";
+  const requirement = dynamicComboRequirement();
+  if (!requirement.required) return "Calcule a entrega para ver o kit de Frete Gr\u00e1tis.";
+  if (!requirement.remaining) return "Frete Gr\u00e1tis liberado por kit.";
+  return `Leve mais ${requirement.remaining} ${requirement.remaining === 1 ? "item" : "itens"} para conseguir Frete Gr\u00e1tis.`;
 }
 
 function setupCepLookup(form) {
@@ -570,7 +607,7 @@ function renderProduct() {
           </div>
         </div>
         ${productShippingLabel(product) ? `<p class="free-shipping-callout">${productShippingLabel(product)}</p>` : ""}
-        ${product.shipping?.freeShippingMinQuantity ? `<p class="free-shipping-callout">Leve ${product.shipping.freeShippingMinQuantity} unidades deste produto e ganhe frete gr\u00e1tis.</p>` : ""}
+        ${product.shipping?.freeShippingMinQuantity ? `<p class="free-shipping-callout">Kit libera Frete Gr\u00e1tis.</p>` : ""}
         <div class="product-options">
           <span>${productPiecesLabel(product)}</span>
           ${product.variants?.colors?.length ? `

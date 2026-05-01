@@ -270,6 +270,14 @@ export function couponEligibility({ coupon, itemCount, subtotal }) {
   return { eligible: true, reason: "coupon" };
 }
 
+function dynamicComboFreeShipping({ subtotal, itemCount, shipping }) {
+  if (!subtotal || !itemCount || !shipping) return false;
+  const averageUnitPrice = subtotal / itemCount;
+  if (!averageUnitPrice) return false;
+  const required = Math.max(2, Math.ceil(shipping / averageUnitPrice) + 1);
+  return itemCount >= required;
+}
+
 export function orderFromCart({ db, customer, items, shippingOption, coupon }) {
   const productsById = new Map(db.products.map((product) => [product.id, product]));
   const lines = items.map((item) => {
@@ -305,13 +313,12 @@ export function orderFromCart({ db, customer, items, shippingOption, coupon }) {
     const minQuantity = Number(productsById.get(line.productId)?.shipping?.freeShippingMinQuantity || 0);
     return minQuantity > 0 && line.quantity >= minQuantity;
   });
-  const promotions = db.settings.promotions || {};
   const normalizedCoupon = String(coupon || "").trim().toUpperCase();
   const couponRecord = findCoupon(db, normalizedCoupon);
   const couponStatus = couponEligibility({ coupon: couponRecord, itemCount, subtotal });
   const freeShippingByCoupon = couponStatus.eligible && couponRecord?.type === "free_shipping";
-  const freeShippingByCombo = itemCount >= Number(promotions.freeShippingMinItems || Infinity);
   const baseShipping = shippingOption ? Math.max(0, Number(shippingOption.price || 0)) : db.settings.shippingFlatRate;
+  const freeShippingByCombo = dynamicComboFreeShipping({ subtotal, itemCount, shipping: baseShipping });
   const shipping = freeShippingByCoupon || freeShippingByCombo || allItemsFreeShipping || productQuantityFreeShipping ? 0 : baseShipping;
   const total = Math.round((subtotal + shipping) * 100) / 100;
   const seller = db.products.find((product) => product.id === lines[0].productId).seller;

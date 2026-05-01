@@ -352,7 +352,6 @@ function fillShippingSettings(settings) {
   const sender = settings.sender || {};
   form.elements.originZipCode.value = settings.originZipCode || "";
   form.elements.shippingFlatRate.value = Number(settings.shippingFlatRate || 0).toFixed(2);
-  form.elements.freeShippingMinItems.value = Number(settings.promotions?.freeShippingMinItems || 3);
   form.elements.shippingProvider.value = settings.shippingProvider || "melhor-envio";
   form.elements.senderName.value = sender.name || settings.storeName || "";
   form.elements.senderEmail.value = sender.email || "";
