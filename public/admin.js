@@ -1272,12 +1272,17 @@ async function updateCustomRequest(event) {
 }
 
 async function api(path, options = {}) {
-  const response = await fetch(path, {
-    headers: { "content-type": "application/json", ...(options.headers || {}) },
-    ...options
-  });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || "Erro na requisicao.");
+  let response;
+  try {
+    response = await fetch(path, {
+      headers: { "content-type": "application/json", ...(options.headers || {}) },
+      ...options
+    });
+  } catch {
+    throw new Error("Não foi possível conectar ao servidor. Atualize a página e tente novamente.");
+  }
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || "Erro na requisição.");
   return data;
 }
 

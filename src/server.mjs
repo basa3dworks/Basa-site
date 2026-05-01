@@ -448,7 +448,12 @@ async function serveStatic(req, res) {
 
   try {
     const data = await fs.readFile(resolved);
-    res.writeHead(200, { "content-type": mime[path.extname(resolved)] || "application/octet-stream" });
+    const ext = path.extname(resolved);
+    const dynamicAsset = [".html", ".js", ".css"].includes(ext);
+    res.writeHead(200, {
+      "content-type": mime[ext] || "application/octet-stream",
+      ...(dynamicAsset ? { "cache-control": "no-store, max-age=0" } : {})
+    });
     res.end(data);
   } catch {
     send(res, 404, "Pagina nao encontrada");
