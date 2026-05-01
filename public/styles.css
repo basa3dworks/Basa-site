@@ -3062,6 +3062,54 @@ label {
   gap: 10px;
 }
 
+.people-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.people-form {
+  align-content: start;
+}
+
+.people-form h3,
+.people-lists h3 {
+  margin: 0;
+}
+
+.people-lists {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.people-list {
+  display: grid;
+  gap: 10px;
+}
+
+.people-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.people-card strong,
+.people-card span,
+.people-card small {
+  display: block;
+}
+
+.people-card span,
+.people-card small {
+  color: var(--muted);
+}
+
 .shipping-admin-note {
   display: grid;
   gap: 4px;
@@ -4234,7 +4282,9 @@ pre {
   .story-admin-card,
   .hero-slide-form,
   .hero-slide-card,
-  .sender-settings-grid {
+  .sender-settings-grid,
+  .people-grid,
+  .people-lists {
     grid-template-columns: 1fr;
   }
 

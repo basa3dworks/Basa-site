@@ -50,6 +50,7 @@
           <button class="admin-tab active" type="button" data-admin-tab="products">Produtos</button>
           <button class="admin-tab" type="button" data-admin-tab="stories">Stories</button>
           <button class="admin-tab" type="button" data-admin-tab="campaigns">Campanhas</button>
+          <button class="admin-tab" type="button" data-admin-tab="people">Pessoas</button>
           <button class="admin-tab" type="button" data-admin-tab="orders">Meus pedidos</button>
           <button class="admin-tab" type="button" data-admin-tab="requests">Encomendas</button>
           <button class="admin-tab" type="button" data-admin-tab="shipping">Envio</button>
@@ -521,6 +522,113 @@
             </label>
           </div>
           <div class="request-list" id="adminRequestList"></div>
+        </section>
+
+        <section class="panel" data-admin-panel="people" hidden>
+          <div class="section-head compact">
+            <div>
+              <p class="eyebrow">Relacionamento</p>
+              <h2>Clientes, afiliados e vendedores</h2>
+            </div>
+            <label class="admin-search">Pesquisar pessoas
+              <input id="peopleSearchInput" type="search" placeholder="Nome, email, usuario ou status">
+            </label>
+          </div>
+          <div class="people-grid">
+            <form id="customerAdminForm" class="stack-form people-form">
+              <input name="id" type="hidden">
+              <h3>Cliente</h3>
+              <label>Nome<input name="name" required></label>
+              <label>Usuário<input name="username" placeholder="nome_de_usuario" required></label>
+              <label>Email<input name="email" type="email" required></label>
+              <label>Senha inicial<input name="password" type="password" placeholder="Opcional"></label>
+              <label>Telefone<input name="phone" inputmode="numeric"></label>
+              <label>CPF/CNPJ<input name="document" inputmode="numeric"></label>
+              <label>CEP<input name="zipCode" inputmode="numeric"></label>
+              <label>Rua<input name="street"></label>
+              <label>Número<input name="number"></label>
+              <label>Bairro<input name="neighborhood"></label>
+              <label>Cidade<input name="city"></label>
+              <label>UF<input name="state" maxlength="2"></label>
+              <label>Status
+                <select name="status">
+                  <option value="active">Ativo</option>
+                  <option value="lead">Lead</option>
+                  <option value="blocked">Bloqueado</option>
+                </select>
+              </label>
+              <label>Observações<textarea name="notes" rows="3"></textarea></label>
+              <div class="form-actions">
+                <button class="primary-button" type="submit">Salvar cliente</button>
+                <button class="ghost-button" id="cancelCustomerEditButton" type="button" hidden>Cancelar</button>
+              </div>
+              <p class="form-status" id="customerAdminStatus"></p>
+            </form>
+
+            <form id="affiliateForm" class="stack-form people-form">
+              <input name="id" type="hidden">
+              <h3>Afiliado</h3>
+              <label>Nome<input name="name" required></label>
+              <label>Código<input name="code" placeholder="ex: influencer-joao"></label>
+              <label>Email<input name="email" type="email" required></label>
+              <label>Telefone<input name="phone" inputmode="numeric"></label>
+              <label>CPF/CNPJ<input name="document" inputmode="numeric"></label>
+              <label>Comissão %<input name="commissionPercent" type="number" min="0" max="100" step="0.1" value="0"></label>
+              <label>Status
+                <select name="status">
+                  <option value="lead">Lead</option>
+                  <option value="active">Ativo</option>
+                  <option value="paused">Pausado</option>
+                </select>
+              </label>
+              <label>Observações<textarea name="notes" rows="3"></textarea></label>
+              <div class="form-actions">
+                <button class="primary-button" type="submit">Salvar afiliado</button>
+                <button class="ghost-button" id="cancelAffiliateEditButton" type="button" hidden>Cancelar</button>
+              </div>
+              <p class="form-status" id="affiliateStatus"></p>
+            </form>
+
+            <form id="sellerForm" class="stack-form people-form">
+              <input name="id" type="hidden">
+              <h3>Vendedor futuro</h3>
+              <label>Responsável<input name="name" required></label>
+              <label>Marca/Loja<input name="brandName"></label>
+              <label>Código<input name="code" placeholder="ex: parceiro-01"></label>
+              <label>Email<input name="email" type="email" required></label>
+              <label>Telefone<input name="phone" inputmode="numeric"></label>
+              <label>CPF/CNPJ<input name="document" inputmode="numeric"></label>
+              <label>Conta de pagamento<input name="paymentAccountId" placeholder="ID Mercado Pago/Stripe futuramente"></label>
+              <label>Comissão Basa %<input name="commissionPercent" type="number" min="0" max="100" step="0.1" value="0"></label>
+              <label>Status
+                <select name="status">
+                  <option value="lead">Lead</option>
+                  <option value="active">Ativo</option>
+                  <option value="paused">Pausado</option>
+                </select>
+              </label>
+              <label>Observações<textarea name="notes" rows="3"></textarea></label>
+              <div class="form-actions">
+                <button class="primary-button" type="submit">Salvar vendedor</button>
+                <button class="ghost-button" id="cancelSellerEditButton" type="button" hidden>Cancelar</button>
+              </div>
+              <p class="form-status" id="sellerStatus"></p>
+            </form>
+          </div>
+          <div class="people-lists">
+            <section>
+              <h3>Clientes</h3>
+              <div class="people-list" id="customersList"></div>
+            </section>
+            <section>
+              <h3>Afiliados</h3>
+              <div class="people-list" id="affiliatesList"></div>
+            </section>
+            <section>
+              <h3>Vendedores futuros</h3>
+              <div class="people-list" id="sellersList"></div>
+            </section>
+          </div>
         </section>
       </section>
     </main>

@@ -261,8 +261,70 @@ function publicCustomerAccount(account = {}) {
     id: account.id,
     username: account.username,
     customer: account.customer,
+    status: account.status || "active",
+    notes: account.notes || "",
     createdAt: account.createdAt,
     updatedAt: account.updatedAt
+  };
+}
+
+function customerAccountPayload(body = {}, existing = {}) {
+  const source = {
+    ...(existing.customer || {}),
+    ...body
+  };
+  const { customer, username } = normalizeCustomerAccount(source);
+  const account = {
+    ...existing,
+    id: existing.id || crypto.randomUUID(),
+    username,
+    customer,
+    status: body.status || existing.status || "active",
+    notes: body.notes ?? existing.notes ?? "",
+    favorites: existing.favorites || [],
+    createdAt: existing.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  const password = String(body.customerPassword || body.password || "");
+  if (password) {
+    if (password.length < 6) throw Object.assign(new Error("A senha precisa ter pelo menos 6 caracteres."), { status: 400 });
+    account.passwordHash = hashPassword(password);
+  } else if (existing.passwordHash) {
+    account.passwordHash = existing.passwordHash;
+  }
+  return account;
+}
+
+function normalizePartnerPayload(body = {}, existing = {}, type = "affiliate") {
+  const name = String(body.name ?? existing.name ?? "").trim();
+  const email = String(body.email ?? existing.email ?? "").trim().toLowerCase();
+  if (!name) throw Object.assign(new Error("Informe o nome."), { status: 400 });
+  if (!email) throw Object.assign(new Error("Informe o email."), { status: 400 });
+  const codeBase = type === "seller" ? body.brandName || name : body.code || name;
+  const code = String(body.code || existing.code || codeBase)
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9._-]+/g, "-")
+    .replace(/(^-|-$)/g, "")
+    .slice(0, 40);
+  return {
+    ...existing,
+    id: existing.id || crypto.randomUUID(),
+    type,
+    code,
+    name,
+    brandName: body.brandName ?? existing.brandName ?? "",
+    email,
+    phone: onlyDigits(body.phone ?? existing.phone),
+    document: onlyDigits(body.document ?? existing.document),
+    status: body.status || existing.status || "lead",
+    commissionPercent: Math.max(0, Number(body.commissionPercent ?? existing.commissionPercent ?? 0)),
+    paymentAccountId: body.paymentAccountId ?? existing.paymentAccountId ?? "",
+    notes: body.notes ?? existing.notes ?? "",
+    createdAt: existing.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   };
 }
 
@@ -480,11 +542,11 @@ async function router(req, res) {
       return send(res, 200, { ok: true }, { "set-cookie": "basa_admin=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0" });
     }
 
-    if (url.pathname === "/api/customer/access" && req.method === "POST") {
-      const db = await readDb();
-      const body = await readJson(req);
-      const password = String(body.customerPassword || body.password || "");
-      if (password.length < 6) return send(res, 400, { error: "A senha precisa ter pelo menos 6 caracteres." });
+      if (url.pathname === "/api/customer/access" && req.method === "POST") {
+        const db = await readDb();
+        const body = await readJson(req);
+        const password = String(body.customerPassword || body.password || "");
+        if (password.length < 6) return send(res, 400, { error: "A senha precisa ter pelo menos 6 caracteres." });
 
       const { customer, username } = normalizeCustomerAccount(body);
       db.customers ||= [];
@@ -497,9 +559,11 @@ async function router(req, res) {
       if (existing) {
         const sameEmail = String(existing.customer?.email || "").toLowerCase() === email;
         if (!sameEmail) return send(res, 409, { error: "Este nome de usuario ja esta em uso." });
-        if (!verifyPassword(password, existing.passwordHash)) return send(res, 401, { error: "Senha incorreta para este email." });
+        if (existing.passwordHash && !verifyPassword(password, existing.passwordHash)) return send(res, 401, { error: "Senha incorreta para este email." });
+        if (!existing.passwordHash) existing.passwordHash = hashPassword(password);
         existing.username = username || existing.username;
         existing.customer = { ...(existing.customer || {}), ...customer };
+        existing.status ||= "active";
         existing.updatedAt = new Date().toISOString();
         await writeDb(db);
         return send(res, 200, { account: publicCustomerAccount(existing), created: false });
@@ -760,7 +824,10 @@ async function router(req, res) {
           stories: db.stories || [],
           orders: db.orders,
           coupons: db.coupons || [],
-          customRequests: db.customRequests || []
+          customRequests: db.customRequests || [],
+          customers: (db.customers || []).map(publicCustomerAccount),
+          affiliates: db.affiliates || [],
+          sellers: db.sellers || []
         });
       }
 
@@ -1009,6 +1076,107 @@ async function router(req, res) {
         await removeStoryUpload(story.mediaUrl);
         await writeDb(db);
         return send(res, 200, { story, stories: db.stories });
+      }
+
+      if (url.pathname === "/api/admin/customers" && req.method === "POST") {
+        const body = await readJson(req);
+        db.customers ||= [];
+        const account = customerAccountPayload(body);
+        const duplicate = db.customers.find((item) => (
+          String(item.customer?.email || "").toLowerCase() === account.customer.email ||
+          String(item.username || "").toLowerCase() === account.username
+        ));
+        if (duplicate) return send(res, 409, { error: "Cliente ou nome de usuario ja cadastrado." });
+        db.customers.unshift(account);
+        await writeDb(db);
+        return send(res, 201, { customer: publicCustomerAccount(account), customers: db.customers.map(publicCustomerAccount) });
+      }
+
+      if (url.pathname.match(/^\/api\/admin\/customers\/[^/]+$/) && req.method === "PUT") {
+        const id = decodeURIComponent(url.pathname.split("/").pop());
+        const body = await readJson(req);
+        db.customers ||= [];
+        const index = db.customers.findIndex((item) => item.id === id);
+        if (index === -1) return send(res, 404, { error: "Cliente nao encontrado." });
+        const updated = customerAccountPayload(body, db.customers[index]);
+        const duplicate = db.customers.find((item) => item.id !== id && (
+          String(item.customer?.email || "").toLowerCase() === updated.customer.email ||
+          String(item.username || "").toLowerCase() === updated.username
+        ));
+        if (duplicate) return send(res, 409, { error: "Cliente ou nome de usuario ja cadastrado." });
+        db.customers[index] = updated;
+        await writeDb(db);
+        return send(res, 200, { customer: publicCustomerAccount(updated), customers: db.customers.map(publicCustomerAccount) });
+      }
+
+      if (url.pathname.match(/^\/api\/admin\/customers\/[^/]+$/) && req.method === "DELETE") {
+        const id = decodeURIComponent(url.pathname.split("/").pop());
+        db.customers ||= [];
+        const index = db.customers.findIndex((item) => item.id === id);
+        if (index === -1) return send(res, 404, { error: "Cliente nao encontrado." });
+        const [account] = db.customers.splice(index, 1);
+        await writeDb(db);
+        return send(res, 200, { customer: publicCustomerAccount(account), customers: db.customers.map(publicCustomerAccount) });
+      }
+
+      if (url.pathname === "/api/admin/affiliates" && req.method === "POST") {
+        const body = await readJson(req);
+        db.affiliates ||= [];
+        const affiliate = normalizePartnerPayload(body, {}, "affiliate");
+        db.affiliates.unshift(affiliate);
+        await writeDb(db);
+        return send(res, 201, { affiliate, affiliates: db.affiliates });
+      }
+
+      if (url.pathname.match(/^\/api\/admin\/affiliates\/[^/]+$/) && req.method === "PUT") {
+        const id = decodeURIComponent(url.pathname.split("/").pop());
+        const body = await readJson(req);
+        db.affiliates ||= [];
+        const index = db.affiliates.findIndex((item) => item.id === id);
+        if (index === -1) return send(res, 404, { error: "Afiliado nao encontrado." });
+        db.affiliates[index] = normalizePartnerPayload(body, db.affiliates[index], "affiliate");
+        await writeDb(db);
+        return send(res, 200, { affiliate: db.affiliates[index], affiliates: db.affiliates });
+      }
+
+      if (url.pathname.match(/^\/api\/admin\/affiliates\/[^/]+$/) && req.method === "DELETE") {
+        const id = decodeURIComponent(url.pathname.split("/").pop());
+        db.affiliates ||= [];
+        const index = db.affiliates.findIndex((item) => item.id === id);
+        if (index === -1) return send(res, 404, { error: "Afiliado nao encontrado." });
+        const [affiliate] = db.affiliates.splice(index, 1);
+        await writeDb(db);
+        return send(res, 200, { affiliate, affiliates: db.affiliates });
+      }
+
+      if (url.pathname === "/api/admin/sellers" && req.method === "POST") {
+        const body = await readJson(req);
+        db.sellers ||= [];
+        const seller = normalizePartnerPayload(body, {}, "seller");
+        db.sellers.unshift(seller);
+        await writeDb(db);
+        return send(res, 201, { seller, sellers: db.sellers });
+      }
+
+      if (url.pathname.match(/^\/api\/admin\/sellers\/[^/]+$/) && req.method === "PUT") {
+        const id = decodeURIComponent(url.pathname.split("/").pop());
+        const body = await readJson(req);
+        db.sellers ||= [];
+        const index = db.sellers.findIndex((item) => item.id === id);
+        if (index === -1) return send(res, 404, { error: "Vendedor nao encontrado." });
+        db.sellers[index] = normalizePartnerPayload(body, db.sellers[index], "seller");
+        await writeDb(db);
+        return send(res, 200, { seller: db.sellers[index], sellers: db.sellers });
+      }
+
+      if (url.pathname.match(/^\/api\/admin\/sellers\/[^/]+$/) && req.method === "DELETE") {
+        const id = decodeURIComponent(url.pathname.split("/").pop());
+        db.sellers ||= [];
+        const index = db.sellers.findIndex((item) => item.id === id);
+        if (index === -1) return send(res, 404, { error: "Vendedor nao encontrado." });
+        const [seller] = db.sellers.splice(index, 1);
+        await writeDb(db);
+        return send(res, 200, { seller, sellers: db.sellers });
       }
 
       if (url.pathname === "/api/admin/products" && req.method === "POST") {

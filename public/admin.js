@@ -12,6 +12,9 @@ let currentStories = [];
 let currentOrders = [];
 let currentRequests = [];
 let currentCoupons = [];
+let currentCustomers = [];
+let currentAffiliates = [];
+let currentSellers = [];
 let selectedOrderId = "";
 let currentMetricsView = "overview";
 
@@ -665,6 +668,102 @@ function formatAddress(customer) {
   ].filter(Boolean).join(" - ");
 }
 
+function personStatusLabel(status) {
+  return {
+    active: "Ativo",
+    lead: "Lead",
+    paused: "Pausado",
+    blocked: "Bloqueado"
+  }[status] || status || "Lead";
+}
+
+function customerSearchText(account) {
+  const customer = account.customer || {};
+  return [
+    account.username,
+    account.status,
+    account.notes,
+    customer.name,
+    customer.email,
+    customer.phone,
+    customer.document,
+    customer.city,
+    customer.state
+  ].join(" ");
+}
+
+function partnerSearchText(item) {
+  return [
+    item.code,
+    item.name,
+    item.brandName,
+    item.email,
+    item.phone,
+    item.document,
+    item.status,
+    item.notes
+  ].join(" ");
+}
+
+function renderPeopleLists() {
+  const query = $("#peopleSearchInput")?.value || "";
+  const customers = currentCustomers.filter((account) => matchesSearch(customerSearchText(account), query));
+  const affiliates = currentAffiliates.filter((item) => matchesSearch(partnerSearchText(item), query));
+  const sellers = currentSellers.filter((item) => matchesSearch(partnerSearchText(item), query));
+
+  $("#customersList").innerHTML = customers.length ? customers.map((account) => {
+    const customer = account.customer || {};
+    return `
+      <article class="people-card">
+        <div>
+          <strong>${customer.name || account.username}</strong>
+          <span>${customer.email || "Email não informado"}${customer.phone ? ` | ${customer.phone}` : ""}</span>
+          <small>@${account.username} | ${personStatusLabel(account.status)}${customer.city ? ` | ${customer.city}/${customer.state}` : ""}</small>
+        </div>
+        <div class="story-admin-actions">
+          <button class="ghost-button table-action" type="button" data-edit-customer="${account.id}">Editar</button>
+          <button class="ghost-button table-action" type="button" data-delete-customer="${account.id}">Excluir</button>
+        </div>
+      </article>
+    `;
+  }).join("") : "<p>Nenhum cliente encontrado.</p>";
+
+  $("#affiliatesList").innerHTML = affiliates.length ? affiliates.map((affiliate) => `
+    <article class="people-card">
+      <div>
+        <strong>${affiliate.name}</strong>
+        <span>${affiliate.email}${affiliate.phone ? ` | ${affiliate.phone}` : ""}</span>
+        <small>${affiliate.code ? `Código: ${affiliate.code} | ` : ""}${personStatusLabel(affiliate.status)} | Comissão ${Number(affiliate.commissionPercent || 0)}%</small>
+      </div>
+      <div class="story-admin-actions">
+        <button class="ghost-button table-action" type="button" data-edit-affiliate="${affiliate.id}">Editar</button>
+        <button class="ghost-button table-action" type="button" data-delete-affiliate="${affiliate.id}">Excluir</button>
+      </div>
+    </article>
+  `).join("") : "<p>Nenhum afiliado cadastrado.</p>";
+
+  $("#sellersList").innerHTML = sellers.length ? sellers.map((seller) => `
+    <article class="people-card">
+      <div>
+        <strong>${seller.brandName || seller.name}</strong>
+        <span>${seller.name} | ${seller.email}</span>
+        <small>${seller.code ? `Código: ${seller.code} | ` : ""}${personStatusLabel(seller.status)}${seller.paymentAccountId ? " | conta de pagamento cadastrada" : ""}</small>
+      </div>
+      <div class="story-admin-actions">
+        <button class="ghost-button table-action" type="button" data-edit-seller="${seller.id}">Editar</button>
+        <button class="ghost-button table-action" type="button" data-delete-seller="${seller.id}">Excluir</button>
+      </div>
+    </article>
+  `).join("") : "<p>Nenhum vendedor futuro cadastrado.</p>";
+
+  document.querySelectorAll("[data-edit-customer]").forEach((button) => button.addEventListener("click", () => editCustomer(button.dataset.editCustomer)));
+  document.querySelectorAll("[data-delete-customer]").forEach((button) => button.addEventListener("click", () => deleteCustomer(button.dataset.deleteCustomer)));
+  document.querySelectorAll("[data-edit-affiliate]").forEach((button) => button.addEventListener("click", () => editAffiliate(button.dataset.editAffiliate)));
+  document.querySelectorAll("[data-delete-affiliate]").forEach((button) => button.addEventListener("click", () => deleteAffiliate(button.dataset.deleteAffiliate)));
+  document.querySelectorAll("[data-edit-seller]").forEach((button) => button.addEventListener("click", () => editSeller(button.dataset.editSeller)));
+  document.querySelectorAll("[data-delete-seller]").forEach((button) => button.addEventListener("click", () => deleteSeller(button.dataset.deleteSeller)));
+}
+
 function formatShipping(order) {
   if (!order.shippingOption) {
     if (order.promotion?.reason === "seller_pays_shipping") return "Frete gratis assumido pela loja. Envio definido internamente.";
@@ -912,6 +1011,35 @@ function resetStoryForm() {
   $("#cancelStoryEditButton").hidden = true;
 }
 
+function resetCustomerAdminForm() {
+  const form = $("#customerAdminForm");
+  form.reset();
+  form.elements.id.value = "";
+  form.elements.status.value = "active";
+  $("#cancelCustomerEditButton").hidden = true;
+  $("#customerAdminStatus").textContent = "";
+}
+
+function resetAffiliateForm() {
+  const form = $("#affiliateForm");
+  form.reset();
+  form.elements.id.value = "";
+  form.elements.status.value = "lead";
+  form.elements.commissionPercent.value = "0";
+  $("#cancelAffiliateEditButton").hidden = true;
+  $("#affiliateStatus").textContent = "";
+}
+
+function resetSellerForm() {
+  const form = $("#sellerForm");
+  form.reset();
+  form.elements.id.value = "";
+  form.elements.status.value = "lead";
+  form.elements.commissionPercent.value = "0";
+  $("#cancelSellerEditButton").hidden = true;
+  $("#sellerStatus").textContent = "";
+}
+
 function editStory(storyId) {
   const story = currentStories.find((item) => item.id === storyId);
   if (!story) return;
@@ -1009,6 +1137,170 @@ async function deleteProduct(productId) {
     $("#productStatus").textContent = "Produto excluído.";
   } catch (error) {
     $("#productStatus").textContent = error.message;
+  }
+}
+
+function editCustomer(id) {
+  const account = currentCustomers.find((item) => item.id === id);
+  if (!account) return;
+  const form = $("#customerAdminForm");
+  const customer = account.customer || {};
+  form.elements.id.value = account.id;
+  form.elements.name.value = customer.name || "";
+  form.elements.username.value = account.username || "";
+  form.elements.email.value = customer.email || "";
+  form.elements.password.value = "";
+  form.elements.phone.value = customer.phone || "";
+  form.elements.document.value = customer.document || "";
+  form.elements.zipCode.value = customer.zipCode || "";
+  form.elements.street.value = customer.street || "";
+  form.elements.number.value = customer.number || "";
+  form.elements.neighborhood.value = customer.neighborhood || "";
+  form.elements.city.value = customer.city || "";
+  form.elements.state.value = customer.state || "";
+  form.elements.status.value = account.status || "active";
+  form.elements.notes.value = account.notes || "";
+  $("#cancelCustomerEditButton").hidden = false;
+  $("#customerAdminStatus").textContent = `Editando ${customer.name || account.username}`;
+  form.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function fillPartnerForm(form, item) {
+  form.elements.id.value = item.id;
+  form.elements.name.value = item.name || "";
+  if (form.elements.brandName) form.elements.brandName.value = item.brandName || "";
+  form.elements.code.value = item.code || "";
+  form.elements.email.value = item.email || "";
+  form.elements.phone.value = item.phone || "";
+  form.elements.document.value = item.document || "";
+  if (form.elements.paymentAccountId) form.elements.paymentAccountId.value = item.paymentAccountId || "";
+  form.elements.commissionPercent.value = Number(item.commissionPercent || 0);
+  form.elements.status.value = item.status || "lead";
+  form.elements.notes.value = item.notes || "";
+}
+
+function editAffiliate(id) {
+  const affiliate = currentAffiliates.find((item) => item.id === id);
+  if (!affiliate) return;
+  fillPartnerForm($("#affiliateForm"), affiliate);
+  $("#cancelAffiliateEditButton").hidden = false;
+  $("#affiliateStatus").textContent = `Editando ${affiliate.name}`;
+  $("#affiliateForm").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function editSeller(id) {
+  const seller = currentSellers.find((item) => item.id === id);
+  if (!seller) return;
+  fillPartnerForm($("#sellerForm"), seller);
+  $("#cancelSellerEditButton").hidden = false;
+  $("#sellerStatus").textContent = `Editando ${seller.brandName || seller.name}`;
+  $("#sellerForm").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+async function saveCustomerAdmin(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const body = Object.fromEntries(new FormData(form).entries());
+  const id = body.id;
+  delete body.id;
+  if (!body.password) delete body.password;
+  $("#customerAdminStatus").textContent = "Salvando cliente...";
+  try {
+    const result = await api(id ? `/api/admin/customers/${encodeURIComponent(id)}` : "/api/admin/customers", {
+      method: id ? "PUT" : "POST",
+      body: JSON.stringify(body)
+    });
+    currentCustomers = result.customers || [];
+    resetCustomerAdminForm();
+    renderPeopleLists();
+    $("#customerAdminStatus").textContent = "Cliente salvo.";
+  } catch (error) {
+    $("#customerAdminStatus").textContent = error.message;
+  }
+}
+
+async function saveAffiliate(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const body = Object.fromEntries(new FormData(form).entries());
+  const id = body.id;
+  delete body.id;
+  $("#affiliateStatus").textContent = "Salvando afiliado...";
+  try {
+    const result = await api(id ? `/api/admin/affiliates/${encodeURIComponent(id)}` : "/api/admin/affiliates", {
+      method: id ? "PUT" : "POST",
+      body: JSON.stringify(body)
+    });
+    currentAffiliates = result.affiliates || [];
+    resetAffiliateForm();
+    renderPeopleLists();
+    $("#affiliateStatus").textContent = "Afiliado salvo.";
+  } catch (error) {
+    $("#affiliateStatus").textContent = error.message;
+  }
+}
+
+async function saveSeller(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const body = Object.fromEntries(new FormData(form).entries());
+  const id = body.id;
+  delete body.id;
+  $("#sellerStatus").textContent = "Salvando vendedor...";
+  try {
+    const result = await api(id ? `/api/admin/sellers/${encodeURIComponent(id)}` : "/api/admin/sellers", {
+      method: id ? "PUT" : "POST",
+      body: JSON.stringify(body)
+    });
+    currentSellers = result.sellers || [];
+    resetSellerForm();
+    renderPeopleLists();
+    $("#sellerStatus").textContent = "Vendedor salvo.";
+  } catch (error) {
+    $("#sellerStatus").textContent = error.message;
+  }
+}
+
+async function deleteCustomer(id) {
+  const account = currentCustomers.find((item) => item.id === id);
+  const name = account?.customer?.name || account?.username;
+  if (!account || !confirm(`Excluir o cliente "${name}"?`)) return;
+  $("#customerAdminStatus").textContent = "Excluindo cliente...";
+  try {
+    const result = await api(`/api/admin/customers/${encodeURIComponent(id)}`, { method: "DELETE" });
+    currentCustomers = result.customers || [];
+    renderPeopleLists();
+    $("#customerAdminStatus").textContent = "Cliente excluido.";
+  } catch (error) {
+    $("#customerAdminStatus").textContent = error.message;
+  }
+}
+
+async function deleteAffiliate(id) {
+  const affiliate = currentAffiliates.find((item) => item.id === id);
+  if (!affiliate || !confirm(`Excluir o afiliado "${affiliate.name}"?`)) return;
+  $("#affiliateStatus").textContent = "Excluindo afiliado...";
+  try {
+    const result = await api(`/api/admin/affiliates/${encodeURIComponent(id)}`, { method: "DELETE" });
+    currentAffiliates = result.affiliates || [];
+    renderPeopleLists();
+    $("#affiliateStatus").textContent = "Afiliado excluido.";
+  } catch (error) {
+    $("#affiliateStatus").textContent = error.message;
+  }
+}
+
+async function deleteSeller(id) {
+  const seller = currentSellers.find((item) => item.id === id);
+  if (!seller || !confirm(`Excluir o vendedor "${seller.brandName || seller.name}"?`)) return;
+  $("#sellerStatus").textContent = "Excluindo vendedor...";
+  try {
+    const result = await api(`/api/admin/sellers/${encodeURIComponent(id)}`, { method: "DELETE" });
+    currentSellers = result.sellers || [];
+    renderPeopleLists();
+    $("#sellerStatus").textContent = "Vendedor excluido.";
+  } catch (error) {
+    $("#sellerStatus").textContent = error.message;
   }
 }
 
@@ -1293,6 +1585,9 @@ async function loadDashboard() {
   currentOrders = data.orders || [];
   currentRequests = data.customRequests || [];
   currentCoupons = data.coupons || [];
+  currentCustomers = data.customers || [];
+  currentAffiliates = data.affiliates || [];
+  currentSellers = data.sellers || [];
   currentSettings = data.settings;
   $("#loginCard").hidden = true;
   $("#dashboard").hidden = false;
@@ -1324,6 +1619,7 @@ async function loadDashboard() {
   renderMetrics();
   renderProductsTable();
   renderOrdersList();
+  renderPeopleLists();
   renderAdminRequests();
 }
 
@@ -1499,6 +1795,13 @@ $("#campaignForm").addEventListener("input", (event) => {
 });
 $("#orderSearchInput").addEventListener("input", renderOrdersList);
 $("#requestSearchInput").addEventListener("input", renderAdminRequests);
+$("#peopleSearchInput").addEventListener("input", renderPeopleLists);
+$("#customerAdminForm").addEventListener("submit", saveCustomerAdmin);
+$("#affiliateForm").addEventListener("submit", saveAffiliate);
+$("#sellerForm").addEventListener("submit", saveSeller);
+$("#cancelCustomerEditButton").addEventListener("click", resetCustomerAdminForm);
+$("#cancelAffiliateEditButton").addEventListener("click", resetAffiliateForm);
+$("#cancelSellerEditButton").addEventListener("click", resetSellerForm);
 $("#metricsPeriodSelect").addEventListener("change", renderMetrics);
 $("#metricsOrderTypeSelect").addEventListener("change", renderMetrics);
 $("#salesMonitorFullscreenButton")?.addEventListener("click", toggleSalesMonitorFullscreen);
