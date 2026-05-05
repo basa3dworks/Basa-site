@@ -3205,6 +3205,25 @@ label {
   cursor: pointer;
 }
 
+.account-menu-link {
+  display: block;
+  border-radius: 6px;
+  padding: 12px 14px;
+  color: var(--ink);
+  background: rgba(238, 245, 241, 0.9);
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.account-menu-link:hover {
+  color: var(--brand);
+}
+
+.account-logout-button {
+  color: #9e2f27 !important;
+  background: #fff1ef !important;
+}
+
 .account-sidebar button.active {
   background: var(--brand);
   color: #fff;
@@ -3216,7 +3235,7 @@ label {
   justify-content: space-between;
 }
 
-.account-logged .account-sidebar button::after {
+.account-logged .account-sidebar button:not(.account-logout-button)::after {
   content: ">";
   color: var(--muted);
   font-weight: 900;
@@ -4510,6 +4529,11 @@ pre {
 
   .account-menu-group span {
     grid-column: 1 / -1;
+  }
+
+  .account-menu-link,
+  .account-logout-button {
+    text-align: center;
   }
 
   .account-sidebar button {

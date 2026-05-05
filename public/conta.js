@@ -300,6 +300,7 @@ async function init() {
   $("#registerForm").addEventListener("submit", register);
   $("#accountQuoteForm").addEventListener("submit", sendQuote);
   $("#logoutAccountButton").addEventListener("click", logout);
+  $("#logoutSidebarButton")?.addEventListener("click", logout);
   await loadProducts();
   await refreshPrivateData();
   showView(isLoggedIn() ? "profile" : "login");
