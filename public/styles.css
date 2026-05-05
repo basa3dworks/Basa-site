@@ -3135,6 +3135,28 @@ label {
   max-width: 1180px;
   margin: 0 auto;
   padding: 34px 24px 18px;
+  position: relative;
+}
+
+.account-back-link {
+  display: inline-grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  margin-bottom: 16px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--brand);
+  background: #fff;
+  font-size: 1.35rem;
+  font-weight: 900;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.account-back-link:hover {
+  color: #fff;
+  background: var(--brand);
 }
 
 .account-hero h1 {
@@ -3203,20 +3225,6 @@ label {
   font-weight: 800;
   text-align: left;
   cursor: pointer;
-}
-
-.account-menu-link {
-  display: block;
-  border-radius: 6px;
-  padding: 12px 14px;
-  color: var(--ink);
-  background: rgba(238, 245, 241, 0.9);
-  font-weight: 900;
-  text-decoration: none;
-}
-
-.account-menu-link:hover {
-  color: var(--brand);
 }
 
 .account-logout-button {
@@ -4531,7 +4539,6 @@ pre {
     grid-column: 1 / -1;
   }
 
-  .account-menu-link,
   .account-logout-button {
     text-align: center;
   }
