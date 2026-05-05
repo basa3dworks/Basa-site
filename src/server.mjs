@@ -11,7 +11,7 @@ loadEnv();
 
 const port = Number(process.env.PORT || 3000);
 const publicDir = path.resolve("public");
-const adminUser = process.env.ADMIN_USER || "admin@basa3dworks.com";
+const adminUser = process.env.ADMIN_USER || "admin@basa3d.com";
 const adminPassword = process.env.ADMIN_PASSWORD || "admin";
 const sessionSecret = process.env.SESSION_SECRET || "dev-secret";
 const paymentProvider = process.env.PAYMENT_PROVIDER || "mock";
@@ -21,7 +21,7 @@ const mercadoPagoMinOrderTotal = Math.max(0, Number(process.env.MERCADO_PAGO_MIN
 const shippingProvider = process.env.SHIPPING_PROVIDER || "mock";
 const melhorEnvioToken = process.env.MELHOR_ENVIO_TOKEN || "";
 const melhorEnvioApiBase = process.env.MELHOR_ENVIO_API_BASE || "https://sandbox.melhorenvio.com.br";
-const melhorEnvioUserAgent = process.env.MELHOR_ENVIO_USER_AGENT || "Basa 3D Works (contato@basa3dworks.com)";
+const melhorEnvioUserAgent = process.env.MELHOR_ENVIO_USER_AGENT || "Basa 3D Works (contato@basa3d.com)";
 
 const mime = {
   ".html": "text/html; charset=utf-8",

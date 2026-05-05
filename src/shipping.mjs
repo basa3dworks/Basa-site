@@ -41,7 +41,7 @@ function authHeaders({ token, userAgent }) {
     "Accept": "application/json",
     "Authorization": `Bearer ${token}`,
     "Content-Type": "application/json",
-    "User-Agent": userAgent || "Basa 3D Works (contato@basa3dworks.com)"
+    "User-Agent": userAgent || "Basa 3D Works (contato@basa3d.com)"
   };
 }
 

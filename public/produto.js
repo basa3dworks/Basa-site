@@ -12,7 +12,7 @@ const debugCustomer = {
   customerUsername: "cliente_teste",
   name: "Cliente Teste Basa",
   document: "12345678909",
-  email: "cliente.teste@basa3dworks.local",
+  email: "cliente.teste@basa3d.local",
   phone: "11999999999",
   zipCode: "01001000",
   number: "100",

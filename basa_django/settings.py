@@ -68,4 +68,4 @@ EMAIL_HOST_USER = os.environ.get("SMTP_USER", "")
 EMAIL_HOST_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
 EMAIL_USE_TLS = os.environ.get("SMTP_USE_TLS", "true").lower() in {"1", "true", "yes"}
 EMAIL_USE_SSL = os.environ.get("SMTP_USE_SSL", "").lower() in {"1", "true", "yes"}
-DEFAULT_FROM_EMAIL = os.environ.get("SMTP_FROM", "Basa 3D Works <no-reply@basa3dworks.com>")
+DEFAULT_FROM_EMAIL = os.environ.get("SMTP_FROM", "Basa 3D Works <no-reply@basa3d.com>")

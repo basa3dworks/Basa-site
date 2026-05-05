@@ -19,7 +19,7 @@ from django.views.decorators.csrf import csrf_exempt
 from .store import BASE_DIR, read_db, write_db
 
 PUBLIC_DIR = BASE_DIR / "public"
-ADMIN_USER = os.environ.get("ADMIN_USER", "admin@basa3dworks.com")
+ADMIN_USER = os.environ.get("ADMIN_USER", "admin@basa3d.com")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin")
 SESSION_SECRET = os.environ.get("SESSION_SECRET") or os.environ.get("DJANGO_SECRET_KEY") or "dev-secret"
 signer = TimestampSigner(key=SESSION_SECRET, salt="basa-admin")
