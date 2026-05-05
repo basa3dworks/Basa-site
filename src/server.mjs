@@ -520,10 +520,10 @@ async function saveReviewUpload(upload) {
   return `/uploads/reviews/${filename}`;
 }
 
-async function saveProductUpload(upload) {
+async function saveProductUpload(upload, { video = false } = {}) {
   if (!upload?.buffer?.length) return "";
-  if (!upload.type.startsWith("image/")) {
-    throw Object.assign(new Error("Use uma imagem em jpg, png, webp ou gif."), { status: 400 });
+  if (video ? !upload.type.startsWith("video/") : !upload.type.startsWith("image/")) {
+    throw Object.assign(new Error(video ? "Use um video em mp4, webm ou mov." : "Use uma imagem em jpg, png, webp ou gif."), { status: 400 });
   }
   const filename = safeUploadName(upload.filename);
   const uploadDir = path.join(publicDir, "uploads", "products");
@@ -537,11 +537,14 @@ async function productPayloadFromRequest(req, existing = {}, settings = {}) {
   if (!isMultipart) return productPayload(await readJson(req), existing, settings);
   const { fields, files } = await readMultipart(req);
   const imageUrl = await saveProductUpload(Array.isArray(files.imageFile) ? files.imageFile[0] : files.imageFile);
+  const videoUrl = await saveProductUpload(Array.isArray(files.videoFile) ? files.videoFile[0] : files.videoFile, { video: true });
   const galleryFiles = Array.isArray(files.galleryFiles) ? files.galleryFiles : files.galleryFiles ? [files.galleryFiles] : [];
   const galleryUploads = (await Promise.all(galleryFiles.map((file) => saveProductUpload(file)))).filter(Boolean);
   const body = { ...fields };
   if (imageUrl) body.image = imageUrl;
   else if (existing.image) body.image = existing.image;
+  if (videoUrl) body.videoUrl = videoUrl;
+  else if (existing.videoUrl) body.videoUrl = existing.videoUrl;
   body.gallery = galleryUploads.length ? [body.image || existing.image, ...galleryUploads].filter(Boolean) : existing.gallery || [body.image || existing.image].filter(Boolean);
   return productPayload(body, existing, settings);
 }

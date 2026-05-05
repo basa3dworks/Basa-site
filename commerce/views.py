@@ -399,6 +399,7 @@ def _product_post_payload(request, existing=None):
     body = request.POST.dict() if request.content_type and "multipart/form-data" in request.content_type else _json_body(request)
     existing = existing or {}
     image_url = _save_upload(request.FILES.get("imageFile"), "products") if hasattr(request, "FILES") else ""
+    video_url = _save_upload(request.FILES.get("videoFile"), "products") if hasattr(request, "FILES") else ""
     gallery_uploads = []
     if hasattr(request, "FILES"):
         gallery_uploads = [_save_upload(file_obj, "products") for file_obj in request.FILES.getlist("galleryFiles")]
@@ -406,6 +407,10 @@ def _product_post_payload(request, existing=None):
         body["image"] = image_url
     elif existing.get("image"):
         body["image"] = existing.get("image")
+    if video_url:
+        body["videoUrl"] = video_url
+    elif existing.get("videoUrl"):
+        body["videoUrl"] = existing.get("videoUrl")
     gallery = [body.get("image") or existing.get("image", "")]
     gallery.extend([url for url in gallery_uploads if url])
     if not gallery_uploads:

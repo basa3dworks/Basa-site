@@ -1405,9 +1405,11 @@ function editProduct(productId) {
   form.elements.imageFile.required = false;
   form.elements.description.value = product.description || "";
   form.elements.longDescription.value = product.longDescription || "";
-  form.elements.videoUrl.value = product.videoUrl || "";
+  form.elements.videoFile.value = "";
   form.elements.galleryFiles.value = "";
-  $("#productMediaStatus").textContent = product.image ? `Imagem atual preservada. Envie nova foto somente se quiser trocar.` : "";
+  $("#productMediaStatus").textContent = product.image || product.videoUrl
+    ? `Mídias atuais preservadas. Envie novos arquivos somente se quiser trocar.`
+    : "";
 
   $("#highlightsList").innerHTML = "";
   (product.highlights?.length ? product.highlights : [""]).forEach((item) => addHighlight(item));
