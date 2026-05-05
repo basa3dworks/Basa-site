@@ -48,6 +48,7 @@ function setSession(account) {
     loggedIn: true,
     username: normalized.username,
     customer: normalized.customer,
+    emailVerified: Boolean(normalized.emailVerified),
     updatedAt: new Date().toISOString()
   };
   localStorage.setItem("basa_customer_session", JSON.stringify(state.session));
@@ -68,11 +69,11 @@ function updateAccountMenu() {
 
 function showView(view) {
   updateAccountMenu();
-  if (!isLoggedIn() && !["login", "register"].includes(view)) {
+  if (!isLoggedIn() && !["login", "register", "reset"].includes(view)) {
     $("#loginStatus").textContent = "Entre ou crie uma conta para acessar esta área.";
     view = "login";
   }
-  if (isLoggedIn() && ["login", "register"].includes(view)) {
+  if (isLoggedIn() && ["login", "register", "reset"].includes(view)) {
     view = "profile";
   }
   document.querySelectorAll("[data-account-panel]").forEach((panel) => {
@@ -113,6 +114,13 @@ function requestStatusLabel(status) {
 function renderAccount() {
   const customer = state.session?.customer || {};
   $("#accountSummary").innerHTML = isLoggedIn() ? `
+    ${state.session.emailVerified === false ? `
+      <article class="account-card account-warning-card">
+        <strong>E-mail pendente de confirmação</strong>
+        <span>Confirme seu e-mail para ativar recuperação de senha e aumentar a segurança da conta.</span>
+        <button class="ghost-button" type="button" id="resendVerificationButton">Reenviar confirmação</button>
+      </article>
+    ` : ""}
     <article class="account-card">
       <strong>${customer.name || state.session.username}</strong>
       <span>${customer.email}</span>
@@ -127,6 +135,7 @@ function renderAccount() {
   renderOrders();
   renderFavorites();
   renderRequests();
+  $("#resendVerificationButton")?.addEventListener("click", resendVerification);
 }
 
 function renderOrders() {
@@ -226,6 +235,8 @@ async function login(event) {
     return;
   }
   setSession(data.account || data.customer);
+  state.session.emailVerified = Boolean((data.account || data.customer)?.emailVerified);
+  localStorage.setItem("basa_customer_session", JSON.stringify(state.session));
   await refreshPrivateData();
   $("#loginStatus").textContent = "Login confirmado.";
   showView("profile");
@@ -246,9 +257,49 @@ async function register(event) {
     return;
   }
   setSession(data.account || data.customer);
+  state.session.emailVerified = Boolean((data.account || data.customer)?.emailVerified);
+  localStorage.setItem("basa_customer_session", JSON.stringify(state.session));
   await refreshPrivateData();
-  $("#registerStatus").textContent = data.created ? "Conta criada." : "Login confirmado.";
+  $("#registerStatus").textContent = data.emailVerificationRequired ? "Conta criada. Enviamos um link de confirmação para seu e-mail." : data.created ? "Conta criada." : "Login confirmado.";
+  if (data.verificationPreviewUrl) {
+    $("#registerStatus").innerHTML = `Conta criada. Link de confirmação para teste: <a href="${data.verificationPreviewUrl}">confirmar e-mail</a>`;
+  }
   showView("profile");
+}
+
+async function requestPasswordReset(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  $("#resetRequestStatus").textContent = "Enviando link...";
+  const response = await fetch("/api/customer/password-reset/request", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email: form.elements.email.value })
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    $("#resetRequestStatus").textContent = data.error || "Não foi possível enviar.";
+    return;
+  }
+  $("#resetRequestStatus").textContent = data.message || "Se este e-mail estiver cadastrado, enviaremos um link.";
+  if (data.resetPreviewUrl) {
+    $("#resetRequestStatus").innerHTML = `Link de recuperação para teste: <a href="${data.resetPreviewUrl}">redefinir senha</a>`;
+  }
+}
+
+async function resendVerification() {
+  if (!isLoggedIn()) return;
+  const response = await fetch("/api/customer/resend-verification", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email: state.session.customer.email })
+  });
+  const data = await response.json();
+  if (data.verificationPreviewUrl) {
+    alert(`Link de confirmação para teste: ${data.verificationPreviewUrl}`);
+    return;
+  }
+  alert("Se o e-mail ainda não estiver confirmado, enviaremos uma nova confirmação.");
 }
 
 async function sendQuote(event) {
@@ -298,6 +349,7 @@ async function init() {
   });
   $("#loginForm").addEventListener("submit", login);
   $("#registerForm").addEventListener("submit", register);
+  $("#resetRequestForm").addEventListener("submit", requestPasswordReset);
   $("#accountQuoteForm").addEventListener("submit", sendQuote);
   $("#logoutAccountButton").addEventListener("click", logout);
   $("#logoutSidebarButton")?.addEventListener("click", logout);

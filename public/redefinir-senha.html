@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Redefinir senha | Basa 3D Works</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="account-page">
+      <section class="account-hero account-simple-hero">
+        <a class="account-back-link" href="/conta.html" aria-label="Voltar">&larr;</a>
+        <p class="eyebrow">Segurança</p>
+        <h1>Redefinir senha</h1>
+      </section>
+      <section class="account-shell account-single-shell">
+        <div class="account-content">
+          <section class="account-view active">
+            <form id="passwordResetForm" class="stack-form account-form">
+              <label>Nova senha<input name="password" type="password" required minlength="6" autocomplete="new-password"></label>
+              <label>Confirmar senha<input name="confirmPassword" type="password" required minlength="6" autocomplete="new-password"></label>
+              <button class="primary-button" type="submit">Salvar nova senha</button>
+              <p class="form-status" id="passwordResetStatus"></p>
+            </form>
+          </section>
+        </div>
+      </section>
+    </main>
+    <script src="/redefinir-senha.js" type="module"></script>
+  </body>
+</html>

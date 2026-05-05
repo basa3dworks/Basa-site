@@ -7,10 +7,12 @@ import re
 import secrets
 import unicodedata
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from django.conf import settings
 from django.core.signing import BadSignature, TimestampSigner
+from django.core.mail import send_mail
 from django.http import FileResponse, Http404, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
@@ -63,6 +65,67 @@ def _hash_password(password):
     return f"pbkdf2$120000${salt}${digest}"
 
 
+def _token_hash(token):
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def _public_base_url(request):
+    return os.environ.get("PUBLIC_BASE_URL") or f"{request.scheme}://{request.get_host()}"
+
+
+def _parse_dt(value):
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def _send_email(subject, message, recipient):
+    if not recipient:
+        return False
+    send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [recipient], fail_silently=False)
+    return True
+
+
+def _issue_email_verification(account, request):
+    token = secrets.token_urlsafe(32)
+    account["emailVerified"] = bool(account.get("emailVerified", False))
+    account["emailVerification"] = {
+        "tokenHash": _token_hash(token),
+        "sentAt": _now(),
+        "expiresAt": (datetime.now(timezone.utc) + timedelta(hours=24)).isoformat(),
+    }
+    link = f"{_public_base_url(request)}/verificar-email.html?token={token}"
+    email = _customer_email(account)
+    name = account.get("customer", {}).get("name") or account.get("username") or "cliente"
+    _send_email(
+        "Confirme seu cadastro na Basa 3D Works",
+        f"Olá, {name}.\n\nConfirme seu e-mail para ativar sua conta na Basa 3D Works:\n{link}\n\nEsse link vence em 24 horas.",
+        email,
+    )
+    return link
+
+
+def _issue_password_reset(account, request):
+    token = secrets.token_urlsafe(32)
+    account["passwordReset"] = {
+        "tokenHash": _token_hash(token),
+        "sentAt": _now(),
+        "expiresAt": (datetime.now(timezone.utc) + timedelta(hours=2)).isoformat(),
+    }
+    link = f"{_public_base_url(request)}/redefinir-senha.html?token={token}"
+    email = _customer_email(account)
+    name = account.get("customer", {}).get("name") or account.get("username") or "cliente"
+    _send_email(
+        "Redefina sua senha da Basa 3D Works",
+        f"Olá, {name}.\n\nUse o link abaixo para redefinir sua senha:\n{link}\n\nEsse link vence em 2 horas.",
+        email,
+    )
+    return link
+
+
 def _verify_password(password, stored):
     if not stored:
         return False
@@ -107,6 +170,7 @@ def _safe_customer_account(account):
             "username": account.get("username"),
             "customer": account.get("customer", {}),
             "status": account.get("status", "active"),
+            "emailVerified": bool(account.get("emailVerified", False)),
             "notes": account.get("notes", ""),
             "createdAt": account.get("createdAt"),
             "updatedAt": account.get("updatedAt"),
@@ -122,6 +186,7 @@ def _safe_customer_account(account):
             **account.get("address", {}),
         },
         "status": account.get("status", "active"),
+        "emailVerified": bool(account.get("emailVerified", False)),
         "notes": account.get("notes", ""),
         "createdAt": account.get("createdAt"),
         "updatedAt": account.get("updatedAt"),
@@ -161,6 +226,7 @@ def _customer_payload(body, existing=None):
         "username": username,
         "customer": customer,
         "status": body.get("status") or existing.get("status") or "active",
+        "emailVerified": bool(existing.get("emailVerified", False)),
         "notes": body.get("notes", existing.get("notes", "")),
         "favorites": existing.get("favorites", []),
         "createdAt": existing.get("createdAt") or _now(),
@@ -500,20 +566,110 @@ def api_customer_access(request):
     db = read_db()
     customers = db.setdefault("customers", [])
     customer = next((item for item in customers if _customer_email(item) == email), None)
+    created = False
     if body.get("loginOnly"):
         if not customer or (customer.get("passwordHash") and not _verify_password(password, customer.get("passwordHash"))):
             return JsonResponse({"error": "Conta nao encontrada ou senha invalida."}, status=404)
     if not customer:
         customer = _customer_payload({**body, "email": email, "username": body.get("username") or email.split("@")[0]})
         customers.append(customer)
+        created = True
     if password:
         if len(password) < 6:
             return JsonResponse({"error": "A senha precisa ter pelo menos 6 caracteres."}, status=400)
         customer["passwordHash"] = _hash_password(password)
+    verification_link = ""
+    if created and not customer.get("emailVerified"):
+        verification_link = _issue_email_verification(customer, request)
     customer["updatedAt"] = _now()
     write_db(db)
     account = _safe_customer_account(customer)
-    return JsonResponse({"account": account, "customer": account})
+    return JsonResponse({
+        "account": account,
+        "customer": account,
+        "created": created,
+        "emailVerificationRequired": not account.get("emailVerified"),
+        "verificationPreviewUrl": verification_link if settings.EMAIL_BACKEND.endswith("console.EmailBackend") else "",
+    }, status=201 if created else 200)
+
+
+@csrf_exempt
+def api_customer_resend_verification(request):
+    body = _json_body(request)
+    email = str(body.get("email", "")).strip().lower()
+    db = read_db()
+    account = next((item for item in db.get("customers", []) if _customer_email(item) == email), None)
+    if not account:
+        return JsonResponse({"ok": True})
+    if account.get("emailVerified"):
+        return JsonResponse({"ok": True, "alreadyVerified": True})
+    verification_link = _issue_email_verification(account, request)
+    account["updatedAt"] = _now()
+    write_db(db)
+    return JsonResponse({
+        "ok": True,
+        "verificationPreviewUrl": verification_link if settings.EMAIL_BACKEND.endswith("console.EmailBackend") else "",
+    })
+
+
+def api_customer_verify_email(request):
+    token = str(request.GET.get("token", "")).strip()
+    if not token:
+        return JsonResponse({"verified": False, "error": "Token ausente."}, status=400)
+    token_hash = _token_hash(token)
+    db = read_db()
+    account = next((item for item in db.get("customers", []) if item.get("emailVerification", {}).get("tokenHash") == token_hash), None)
+    if not account:
+        return JsonResponse({"verified": False, "error": "Link invalido ou ja usado."}, status=404)
+    expires_at = _parse_dt(account.get("emailVerification", {}).get("expiresAt"))
+    if expires_at and expires_at < datetime.now(timezone.utc):
+        return JsonResponse({"verified": False, "error": "Link expirado. Solicite um novo e-mail."}, status=400)
+    account["emailVerified"] = True
+    account["emailVerifiedAt"] = _now()
+    account.pop("emailVerification", None)
+    account["updatedAt"] = _now()
+    write_db(db)
+    return JsonResponse({"verified": True, "account": _safe_customer_account(account)})
+
+
+@csrf_exempt
+def api_customer_password_reset_request(request):
+    body = _json_body(request)
+    email = str(body.get("email", "")).strip().lower()
+    db = read_db()
+    account = next((item for item in db.get("customers", []) if _customer_email(item) == email), None)
+    preview_link = ""
+    if account:
+        preview_link = _issue_password_reset(account, request)
+        account["updatedAt"] = _now()
+        write_db(db)
+    return JsonResponse({
+        "ok": True,
+        "message": "Se este e-mail estiver cadastrado, enviaremos um link de recuperacao.",
+        "resetPreviewUrl": preview_link if preview_link and settings.EMAIL_BACKEND.endswith("console.EmailBackend") else "",
+    })
+
+
+@csrf_exempt
+def api_customer_password_reset_confirm(request):
+    body = _json_body(request)
+    token = str(body.get("token", "")).strip()
+    password = str(body.get("password", "")).strip()
+    if len(password) < 6:
+        return JsonResponse({"error": "A senha precisa ter pelo menos 6 caracteres."}, status=400)
+    token_hash = _token_hash(token)
+    db = read_db()
+    account = next((item for item in db.get("customers", []) if item.get("passwordReset", {}).get("tokenHash") == token_hash), None)
+    if not account:
+        return JsonResponse({"error": "Link invalido ou ja usado."}, status=404)
+    expires_at = _parse_dt(account.get("passwordReset", {}).get("expiresAt"))
+    if expires_at and expires_at < datetime.now(timezone.utc):
+        return JsonResponse({"error": "Link expirado. Solicite uma nova recuperacao."}, status=400)
+    account["passwordHash"] = _hash_password(password)
+    account.pop("passwordReset", None)
+    account["updatedAt"] = _now()
+    write_db(db)
+    return JsonResponse({"ok": True})
 
 
 def api_customer_orders(request):

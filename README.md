@@ -112,6 +112,22 @@ Cada produto ja possui dados de frete:
 
 O checkout chama `/api/shipping/quote`, mostra as opcoes de entrega e grava a opcao escolhida no pedido. A central operacional do admin acompanha etiqueta, envio e rastreio.
 
+## E-mail transacional
+
+O cadastro de cliente ja gera confirmacao de e-mail e a pagina Minha Basa ja permite solicitar recuperacao de senha.
+
+Em desenvolvimento, sem `SMTP_HOST`, o Django usa backend de console e mostra o link no retorno para teste. Em producao, cadastre na Railway:
+
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_USER`
+- `SMTP_PASSWORD`
+- `SMTP_FROM`
+- `SMTP_USE_TLS`
+- `SMTP_USE_SSL`
+
+Tambem mantenha `PUBLIC_BASE_URL` apontando para o dominio publico, pois ele e usado nos links de confirmacao e recuperacao.
+
 ## Proximos passos recomendados
 
 - Completar a paridade dos endpoints Node no Django antes de trocar o start da Railway.

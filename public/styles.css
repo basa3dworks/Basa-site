@@ -3180,6 +3180,14 @@ label {
   gap: 18px;
 }
 
+.account-single-shell {
+  grid-template-columns: minmax(0, 680px);
+}
+
+.account-simple-hero h1 {
+  font-size: clamp(2.4rem, 8vw, 5rem);
+}
+
 .account-sidebar,
 .account-content,
 .account-view {
@@ -3300,6 +3308,15 @@ label {
 .account-card small,
 .account-card p {
   color: var(--muted);
+}
+
+.account-warning-card {
+  border-color: #f1d1a8;
+  background: #fff8ed;
+}
+
+.account-warning-card .ghost-button {
+  width: fit-content;
 }
 
 .account-product-grid {

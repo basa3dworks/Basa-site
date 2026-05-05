@@ -21,7 +21,7 @@
 
     <main class="account-page">
       <section class="account-hero">
-        <a class="account-back-link" href="/#produtos" aria-label="Voltar para loja">←</a>
+        <a class="account-back-link" href="/#produtos" aria-label="Voltar para loja">&larr;</a>
         <p class="eyebrow">Conta do cliente</p>
         <h1>Minha Basa</h1>
         <p>Acompanhe seus dados, pedidos, favoritos e orçamentos quando estiver logado.</p>
@@ -56,7 +56,23 @@
               <label>Email<input name="email" type="email" required autocomplete="email"></label>
               <label>Senha<input name="customerPassword" type="password" required minlength="6" autocomplete="current-password"></label>
               <button class="primary-button" type="submit">Entrar</button>
+              <button class="ghost-button" type="button" data-account-view="reset">Esqueci minha senha</button>
               <p class="form-status" id="loginStatus"></p>
+            </form>
+          </section>
+
+          <section class="account-view" data-account-panel="reset" hidden>
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Recuperação</p>
+                <h2>Redefinir senha</h2>
+              </div>
+            </div>
+            <form id="resetRequestForm" class="stack-form account-form">
+              <label>Email<input name="email" type="email" required autocomplete="email"></label>
+              <button class="primary-button" type="submit">Enviar link</button>
+              <button class="ghost-button" type="button" data-account-view="login">Voltar ao login</button>
+              <p class="form-status" id="resetRequestStatus"></p>
             </form>
           </section>
 
