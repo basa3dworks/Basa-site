@@ -426,11 +426,15 @@ function dynamicComboRequirement() {
   const averageUnitPrice = cartAverageUnitPrice();
   const shippingCost = estimatedShippingCost();
   if (!quantity || !averageUnitPrice || !shippingCost) return { ready: false, remaining: 0, required: 0 };
-  const required = Math.max(2, Math.ceil(shippingCost / averageUnitPrice) + 1);
+  const shippingContributionRate = 0.2;
+  const shippingContributionPerItem = averageUnitPrice * shippingContributionRate;
+  const required = Math.max(2, Math.ceil(shippingCost / shippingContributionPerItem) + 1);
   return {
     ready: quantity >= required,
     remaining: Math.max(0, required - quantity),
-    required
+    required,
+    shippingContributionRate,
+    shippingContributionPerItem
   };
 }
 

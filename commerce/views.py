@@ -326,16 +326,20 @@ def _coupon_eligibility(coupon, item_count, subtotal):
 
 def _combo_requirement(subtotal, item_count, shipping_cost):
     if not subtotal or not item_count or not shipping_cost:
-        return {"ready": False, "remaining": 0, "required": 0, "averageUnitPrice": 0}
+        return {"ready": False, "remaining": 0, "required": 0, "averageUnitPrice": 0, "shippingContributionRate": 0.2, "shippingContributionPerItem": 0}
     average_unit_price = subtotal / item_count
-    if not average_unit_price:
-        return {"ready": False, "remaining": 0, "required": 0, "averageUnitPrice": 0}
-    required = max(2, int((shipping_cost / average_unit_price) + 0.999999) + 1)
+    contribution_rate = 0.2
+    contribution_per_item = average_unit_price * contribution_rate
+    if not contribution_per_item:
+        return {"ready": False, "remaining": 0, "required": 0, "averageUnitPrice": 0, "shippingContributionRate": contribution_rate, "shippingContributionPerItem": 0}
+    required = max(2, int((shipping_cost / contribution_per_item) + 0.999999) + 1)
     return {
         "ready": item_count >= required,
         "remaining": max(0, required - item_count),
         "required": required,
         "averageUnitPrice": round(average_unit_price, 2),
+        "shippingContributionRate": contribution_rate,
+        "shippingContributionPerItem": round(contribution_per_item, 2),
     }
 
 

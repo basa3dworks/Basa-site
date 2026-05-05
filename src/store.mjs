@@ -272,18 +272,22 @@ export function couponEligibility({ coupon, itemCount, subtotal }) {
 
 function dynamicComboRequirement({ subtotal, itemCount, shipping }) {
   if (!subtotal || !itemCount || !shipping) {
-    return { ready: false, remaining: 0, required: 0, averageUnitPrice: 0 };
+    return { ready: false, remaining: 0, required: 0, averageUnitPrice: 0, shippingContributionRate: 0.2, shippingContributionPerItem: 0 };
   }
   const averageUnitPrice = subtotal / itemCount;
-  if (!averageUnitPrice) {
-    return { ready: false, remaining: 0, required: 0, averageUnitPrice: 0 };
+  const shippingContributionRate = 0.2;
+  const shippingContributionPerItem = averageUnitPrice * shippingContributionRate;
+  if (!shippingContributionPerItem) {
+    return { ready: false, remaining: 0, required: 0, averageUnitPrice: 0, shippingContributionRate, shippingContributionPerItem: 0 };
   }
-  const required = Math.max(2, Math.ceil(shipping / averageUnitPrice) + 1);
+  const required = Math.max(2, Math.ceil(shipping / shippingContributionPerItem) + 1);
   return {
     ready: itemCount >= required,
     remaining: Math.max(0, required - itemCount),
     required,
-    averageUnitPrice: Math.round(averageUnitPrice * 100) / 100
+    averageUnitPrice: Math.round(averageUnitPrice * 100) / 100,
+    shippingContributionRate,
+    shippingContributionPerItem: Math.round(shippingContributionPerItem * 100) / 100
   };
 }
 
