@@ -27,6 +27,26 @@ python manage.py runserver 3001
 
 O Django ja serve as paginas publicas e compartilha a mesma camada de dados (`basa_store` no PostgreSQL ou `data/db.json` local). Mantenha o Node como start de producao ate todos os endpoints de pagamento, frete e operacao estarem homologados no Django.
 
+Primeira camada Django ja portada:
+
+- paginas publicas HTML e ativos estaticos;
+- catalogo publico;
+- login/sessao admin;
+- dashboard admin;
+- produtos;
+- configuracoes, stories, campanhas e cupons;
+- clientes, afiliados e futuros vendedores;
+- encomendas/orcamentos e mensagens;
+- status operacional de pedidos;
+- CEP, cupom, frete simples e checkout mock.
+
+Ainda ficam no Node ate a virada final:
+
+- checkout Mercado Pago real;
+- webhooks Mercado Pago;
+- cotacao/etiqueta real Melhor Envio;
+- acoes operacionais de etiqueta na central de pedidos.
+
 ## O que ja esta implementado
 
 - Catalogo publico de produtos.
