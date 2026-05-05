@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, re_path
 
 from commerce import views
 
@@ -35,4 +35,5 @@ urlpatterns = [
     path("api/admin/products", views.api_admin_products),
     path("api/admin/products/<str:product_id>/campaign", views.api_admin_product_campaign),
     path("api/admin/products/<str:product_id>", views.api_admin_product_detail),
+    re_path(r"^(?P<asset_path>.+\.(?:css|js|json|png|jpg|jpeg|webp|gif|svg|ico|mp4|webm|mov|woff|woff2|ttf))$", views.public_asset),
 ]

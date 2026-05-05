@@ -1,6 +1,7 @@
 import hashlib
 import hmac
 import json
+import mimetypes
 import os
 import re
 import secrets
@@ -346,6 +347,24 @@ def public_page(request, page="index.html"):
     if not file_path.exists() or file_path.suffix != ".html":
         raise Http404()
     return FileResponse(file_path.open("rb"), content_type="text/html; charset=utf-8")
+
+
+def public_asset(request, asset_path):
+    safe_parts = [part for part in Path(asset_path).parts if part not in {"", ".", ".."}]
+    file_path = (PUBLIC_DIR / Path(*safe_parts)).resolve()
+    public_root = PUBLIC_DIR.resolve()
+    if public_root not in file_path.parents and file_path != public_root:
+        raise Http404()
+    if not file_path.exists() or not file_path.is_file():
+        raise Http404()
+    content_type = mimetypes.guess_type(file_path.name)[0] or "application/octet-stream"
+    if file_path.suffix in {".css", ".js", ".json"}:
+        content_type = {
+            ".css": "text/css; charset=utf-8",
+            ".js": "application/javascript; charset=utf-8",
+            ".json": "application/json; charset=utf-8",
+        }[file_path.suffix]
+    return FileResponse(file_path.open("rb"), content_type=content_type)
 
 
 def api_session(request):
