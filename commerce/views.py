@@ -1452,11 +1452,17 @@ def api_admin_order_detail(request, order_id):
     error = _require_admin(request)
     if error:
         return error
-    body = _json_body(request)
     db = read_db()
-    order = next((item for item in db.get("orders", []) if item.get("id") == order_id), None)
-    if not order:
+    orders = db.setdefault("orders", [])
+    index = next((idx for idx, item in enumerate(orders) if item.get("id") == order_id), -1)
+    if index < 0:
         return JsonResponse({"error": "Pedido nao encontrado."}, status=404)
+    if request.method == "DELETE":
+        order = orders.pop(index)
+        write_db(db)
+        return JsonResponse({"order": order, "orders": orders})
+    body = _json_body(request)
+    order = orders[index]
     next_status = body.get("status") or order.get("status")
     if next_status != order.get("status"):
         order.setdefault("history", []).append({

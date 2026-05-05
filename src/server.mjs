@@ -1383,11 +1383,17 @@ async function router(req, res) {
         return send(res, 200, { product, products: db.products });
       }
 
-      if (url.pathname.match(/^\/api\/admin\/orders\/[^/]+$/) && req.method === "PATCH") {
+      if (url.pathname.match(/^\/api\/admin\/orders\/[^/]+$/) && ["PATCH", "DELETE"].includes(req.method)) {
         const id = decodeURIComponent(url.pathname.split("/").pop());
-        const body = await readJson(req);
-        const order = db.orders.find((item) => item.id === id);
+        const orderIndex = db.orders.findIndex((item) => item.id === id);
+        const order = db.orders[orderIndex];
         if (!order) return send(res, 404, { error: "Pedido nao encontrado." });
+        if (req.method === "DELETE") {
+          const [removed] = db.orders.splice(orderIndex, 1);
+          await writeDb(db);
+          return send(res, 200, { order: removed, orders: db.orders });
+        }
+        const body = await readJson(req);
         const nextStatus = body.status || order.status;
         setOrderStatus(order, nextStatus, { source: "admin", note: body.note || "" });
         await writeDb(db);
