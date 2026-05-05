@@ -1189,6 +1189,27 @@ function addSpec(key = "", value = "") {
   $("#specsList").append(row);
 }
 
+function addColor(color = {}) {
+  const row = document.createElement("div");
+  row.className = "repeatable-row color-row";
+  const name = typeof color === "string" ? color : color.name || "";
+  const hex = typeof color === "string" ? "#ffffff" : color.hex || "#ffffff";
+  row.innerHTML = `
+    <input name="colorName" value="${escapeHtml(name)}" placeholder="Nome. Ex: Branco">
+    <input name="colorHex" type="color" value="${/^#[0-9a-fA-F]{6}$/.test(hex) ? hex : "#ffffff"}" aria-label="Cor hexadecimal">
+    <input name="colorHexText" value="${/^#[0-9a-fA-F]{6}$/.test(hex) ? hex : "#ffffff"}" maxlength="7" aria-label="Hexadecimal da cor">
+    <button class="ghost-button remove-row" type="button" aria-label="Remover cor">Remover</button>
+  `;
+  const colorInput = row.querySelector('[name="colorHex"]');
+  const textInput = row.querySelector('[name="colorHexText"]');
+  colorInput.addEventListener("input", () => { textInput.value = colorInput.value; });
+  textInput.addEventListener("input", () => {
+    if (/^#[0-9a-fA-F]{6}$/.test(textInput.value)) colorInput.value = textInput.value;
+  });
+  row.querySelector("button").addEventListener("click", () => row.remove());
+  $("#colorsList").append(row);
+}
+
 function resetProductForm() {
   const form = $("#productForm");
   form.reset();
@@ -1201,6 +1222,9 @@ function resetProductForm() {
   form.elements.lengthCm.value = "18";
   form.elements.sellerPaysShipping.checked = false;
   form.elements.freeShippingMinQuantity.value = "";
+  form.elements.imageFile.required = true;
+  $("#colorsList").innerHTML = "";
+  addColor({ name: "Branco", hex: "#ffffff" });
   form.elements.bundleType.value = "single";
   form.elements.piecesIncluded.value = "1";
   $("#highlightsList").innerHTML = "";
@@ -1212,6 +1236,7 @@ function resetProductForm() {
   $("#productSubmitButton").textContent = "Publicar produto";
   $("#cancelProductEditButton").hidden = true;
   $("#deleteProductButton").hidden = true;
+  $("#productMediaStatus").textContent = "";
   updateEmbeddedShippingPreview();
 }
 
@@ -1365,7 +1390,9 @@ function editProduct(productId) {
   form.elements.compareAtPrice.value = productBaseCompareAtPrice(product) || "";
   form.elements.stock.value = product.stock || 0;
   form.elements.affiliateCommissionPercent.value = product.affiliateCommissionPercent || 0;
-  form.elements.colors.value = (product.variants?.colors || []).join("\n");
+  $("#colorsList").innerHTML = "";
+  const colors = product.variants?.colors || [];
+  (colors.length ? colors : [{ name: "Branco", hex: "#ffffff" }]).forEach((color) => addColor(color));
   form.elements.bundleType.value = product.variants?.bundleType || (Number(product.variants?.piecesIncluded || 1) > 1 ? "kit" : "single");
   form.elements.piecesIncluded.value = product.variants?.piecesIncluded || 1;
   form.elements.weightKg.value = product.shipping?.weightKg || 0.3;
@@ -1374,11 +1401,13 @@ function editProduct(productId) {
   form.elements.lengthCm.value = product.shipping?.lengthCm || 18;
   form.elements.sellerPaysShipping.checked = Boolean(product.shipping?.sellerPaysShipping);
   form.elements.freeShippingMinQuantity.value = product.shipping?.freeShippingMinQuantity || "";
-  form.elements.image.value = product.image || "";
+  form.elements.imageFile.value = "";
+  form.elements.imageFile.required = false;
   form.elements.description.value = product.description || "";
   form.elements.longDescription.value = product.longDescription || "";
   form.elements.videoUrl.value = product.videoUrl || "";
-  form.elements.gallery.value = (product.gallery || []).join("\n");
+  form.elements.galleryFiles.value = "";
+  $("#productMediaStatus").textContent = product.image ? `Imagem atual preservada. Envie nova foto somente se quiser trocar.` : "";
 
   $("#highlightsList").innerHTML = "";
   (product.highlights?.length ? product.highlights : [""]).forEach((item) => addHighlight(item));
@@ -2034,24 +2063,36 @@ $("#productForm").addEventListener("submit", async (event) => {
   event.preventDefault();
   $("#productStatus").textContent = "Publicando...";
   const form = event.currentTarget;
-  const body = Object.fromEntries(new FormData(form).entries());
-  const productId = body.productId;
-  body.sellerPaysShipping = form.elements.sellerPaysShipping.checked;
-  body.highlights = [...form.querySelectorAll('[name="highlightItem"]')].map((input) => input.value.trim()).filter(Boolean);
-  body.specs = Object.fromEntries([...form.querySelectorAll(".spec-row")].map((row) => {
+  const body = new FormData(form);
+  const productId = form.elements.productId.value;
+  const colors = [...form.querySelectorAll(".color-row")].map((row) => ({
+    name: row.querySelector('[name="colorName"]').value.trim(),
+    hex: row.querySelector('[name="colorHexText"]').value.trim()
+  })).filter((color) => color.name);
+  const highlights = [...form.querySelectorAll('[name="highlightItem"]')].map((input) => input.value.trim()).filter(Boolean);
+  const specs = Object.fromEntries([...form.querySelectorAll(".spec-row")].map((row) => {
     const key = row.querySelector('[name="specKey"]').value.trim();
     const value = row.querySelector('[name="specValue"]').value.trim();
     return [key, value];
   }).filter(([key, value]) => key && value));
-  delete body.highlightItem;
-  delete body.specKey;
-  delete body.specValue;
-  delete body.productId;
+  body.set("sellerPaysShipping", form.elements.sellerPaysShipping.checked ? "true" : "false");
+  body.set("colors", JSON.stringify(colors));
+  body.set("highlights", JSON.stringify(highlights));
+  body.set("specs", JSON.stringify(specs));
+  body.delete("highlightItem");
+  body.delete("specKey");
+  body.delete("specValue");
+  body.delete("colorName");
+  body.delete("colorHex");
+  body.delete("colorHexText");
+  body.delete("productId");
 
   try {
     const path = productId ? `/api/admin/products/${encodeURIComponent(productId)}` : "/api/admin/products";
     const method = productId ? "PUT" : "POST";
-    await api(path, { method, body: JSON.stringify(body) });
+    const response = await fetch(path, { method, body });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || "Erro ao salvar produto.");
     resetProductForm();
     $("#productStatus").textContent = productId ? "Produto atualizado." : "Produto publicado.";
     await loadDashboard();
@@ -2158,6 +2199,7 @@ $("#productForm").elements.compareAtPrice.addEventListener("input", updateEmbedd
 $("#productForm").elements.sellerPaysShipping.addEventListener("change", updateEmbeddedShippingPreview);
 $("#addHighlightButton").addEventListener("click", () => addHighlight());
 $("#addSpecButton").addEventListener("click", () => addSpec());
+$("#addColorButton").addEventListener("click", () => addColor());
 $("#cancelProductEditButton").addEventListener("click", () => {
   resetProductForm();
   $("#productStatus").textContent = "";

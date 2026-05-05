@@ -3,6 +3,7 @@ node_modules
 data/*.tmp
 django.sqlite3
 staticfiles/
+public/uploads/
 __pycache__/
 *.pyc
 *.log

@@ -40,6 +40,7 @@ const productPiecesLabel = (product) => {
   const pieces = Number(product.variants?.piecesIncluded || 1);
   return product.variants?.bundleType === "kit" || pieces > 1 ? `Kit com ${pieces} pe\u00e7as` : "1 pe\u00e7a";
 };
+const colorName = (color) => typeof color === "string" ? color : color?.name || "";
 const escapeHtml = (value) => String(value || "")
   .replaceAll("&", "&amp;")
   .replaceAll("<", "&lt;")
@@ -662,7 +663,7 @@ function renderProduct() {
           ${product.variants?.colors?.length ? `
             <label>Cor
               <select id="productColorSelect">
-                ${product.variants.colors.map((color) => `<option value="${color}">${color}</option>`).join("")}
+                ${product.variants.colors.map((color) => `<option value="${colorName(color)}">${colorName(color)}</option>`).join("")}
               </select>
             </label>
           ` : ""}

@@ -3376,6 +3376,15 @@ label {
   grid-row: span 2;
 }
 
+.color-row {
+  grid-template-columns: minmax(150px, 1fr) 46px 100px auto;
+}
+
+.color-row input[type="color"] {
+  min-height: 46px;
+  padding: 4px;
+}
+
 .social-proof-note {
   display: grid;
   gap: 10px;

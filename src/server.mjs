@@ -145,6 +145,34 @@ function productPayload(body, existing = {}, settings = {}) {
   const embeddedShippingReserve = sellerPaysShipping ? Number(settings.shippingFlatRate || 0) : 0;
   const finalPrice = sellerPaysShipping ? basePrice + embeddedShippingReserve : basePrice;
   const finalCompareAtPrice = sellerPaysShipping && compareAtBasePrice > 0 ? compareAtBasePrice + embeddedShippingReserve : compareAtBasePrice;
+  const parsedColors = (() => {
+    if (Array.isArray(body.colors)) return body.colors;
+    if (body.colors !== undefined) {
+      try { return JSON.parse(body.colors); } catch { return lines(body.colors); }
+    }
+    return existing.variants?.colors || [];
+  })();
+  const normalizedColors = (parsedColors || []).map((item) => {
+    if (typeof item === "object" && item) {
+      const hex = /^#[0-9a-fA-F]{6}$/.test(item.hex || "") ? item.hex.toLowerCase() : "#ffffff";
+      return { name: String(item.name || "").trim(), hex };
+    }
+    return { name: String(item || "").trim(), hex: "#ffffff" };
+  }).filter((item) => item.name);
+  const parsedHighlights = (() => {
+    if (Array.isArray(body.highlights)) return body.highlights;
+    if (body.highlights !== undefined) {
+      try { return JSON.parse(body.highlights); } catch { return lines(body.highlights); }
+    }
+    return existing.highlights || [];
+  })();
+  const parsedSpecs = (() => {
+    if (typeof body.specs === "object" && body.specs !== null) return body.specs;
+    if (body.specs !== undefined) {
+      try { return JSON.parse(body.specs); } catch { return specs(body.specs); }
+    }
+    return existing.specs || {};
+  })();
   return {
     ...existing,
     sku: skuBase || generatedSku,
@@ -152,11 +180,11 @@ function productPayload(body, existing = {}, settings = {}) {
     slug: body.slug || existing.slug || name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
     description: body.description ?? existing.description,
     longDescription: body.longDescription || body.description || existing.longDescription || existing.description,
-    highlights: Array.isArray(body.highlights) ? body.highlights : body.highlights !== undefined ? lines(body.highlights) : existing.highlights || [],
-    specs: typeof body.specs === "object" && body.specs !== null ? body.specs : body.specs !== undefined ? specs(body.specs) : existing.specs || {},
+    highlights: parsedHighlights,
+    specs: parsedSpecs,
     variants: {
       bundleType: body.bundleType === "kit" ? "kit" : "single",
-      colors: Array.isArray(body.colors) ? body.colors.map((item) => String(item).trim()).filter(Boolean) : body.colors !== undefined ? lines(body.colors) : existing.variants?.colors || [],
+      colors: normalizedColors,
       piecesIncluded: Math.max(1, Number(body.piecesIncluded ?? existing.variants?.piecesIncluded ?? 1))
     },
     videoUrl: body.videoUrl ?? existing.videoUrl ?? "",
@@ -420,7 +448,14 @@ async function readMultipart(req) {
     const name = header.match(/name="([^"]+)"/)?.[1];
     const filename = header.match(/filename="([^"]*)"/)?.[1];
     const type = header.match(/Content-Type:\s*([^\r\n]+)/i)?.[1] || "application/octet-stream";
-    if (name && filename) files[name] = { filename, type, buffer: value };
+    if (name && filename) {
+      const upload = { filename, type, buffer: value };
+      if (files[name]) {
+        files[name] = Array.isArray(files[name]) ? [...files[name], upload] : [files[name], upload];
+      } else {
+        files[name] = upload;
+      }
+    }
     else if (name) fields[name] = value.toString("utf8");
     start = next;
   }
@@ -483,6 +518,32 @@ async function saveReviewUpload(upload) {
   await fs.mkdir(uploadDir, { recursive: true });
   await fs.writeFile(path.join(uploadDir, filename), upload.buffer);
   return `/uploads/reviews/${filename}`;
+}
+
+async function saveProductUpload(upload) {
+  if (!upload?.buffer?.length) return "";
+  if (!upload.type.startsWith("image/")) {
+    throw Object.assign(new Error("Use uma imagem em jpg, png, webp ou gif."), { status: 400 });
+  }
+  const filename = safeUploadName(upload.filename);
+  const uploadDir = path.join(publicDir, "uploads", "products");
+  await fs.mkdir(uploadDir, { recursive: true });
+  await fs.writeFile(path.join(uploadDir, filename), upload.buffer);
+  return `/uploads/products/${filename}`;
+}
+
+async function productPayloadFromRequest(req, existing = {}, settings = {}) {
+  const isMultipart = String(req.headers["content-type"] || "").includes("multipart/form-data");
+  if (!isMultipart) return productPayload(await readJson(req), existing, settings);
+  const { fields, files } = await readMultipart(req);
+  const imageUrl = await saveProductUpload(Array.isArray(files.imageFile) ? files.imageFile[0] : files.imageFile);
+  const galleryFiles = Array.isArray(files.galleryFiles) ? files.galleryFiles : files.galleryFiles ? [files.galleryFiles] : [];
+  const galleryUploads = (await Promise.all(galleryFiles.map((file) => saveProductUpload(file)))).filter(Boolean);
+  const body = { ...fields };
+  if (imageUrl) body.image = imageUrl;
+  else if (existing.image) body.image = existing.image;
+  body.gallery = galleryUploads.length ? [body.image || existing.image, ...galleryUploads].filter(Boolean) : existing.gallery || [body.image || existing.image].filter(Boolean);
+  return productPayload(body, existing, settings);
 }
 
 function socialPostPayload(fields = {}, existing = {}, photos = null) {
@@ -1238,8 +1299,7 @@ async function router(req, res) {
       }
 
       if (url.pathname === "/api/admin/products" && req.method === "POST") {
-        const body = await readJson(req);
-        const product = productPayload(body, { id: body.id || crypto.randomUUID() }, db.settings);
+        const product = await productPayloadFromRequest(req, { id: crypto.randomUUID() }, db.settings);
         db.products.unshift(product);
         await writeDb(db);
         return send(res, 201, { product });
@@ -1251,8 +1311,9 @@ async function router(req, res) {
         if (!product) return send(res, 404, { error: "Produto nao encontrado." });
         if (req.method === "GET") return send(res, 200, { product, reviews: product.reviews || [], products: db.products });
         const { fields, files } = await readMultipart(req);
-        const photo = await saveReviewUpload(files.photos);
-        const review = socialPostPayload(fields, {}, photo ? [photo] : []);
+        const photoFiles = Array.isArray(files.photos) ? files.photos : files.photos ? [files.photos] : [];
+        const photos = (await Promise.all(photoFiles.map((file) => saveReviewUpload(file)))).filter(Boolean);
+        const review = socialPostPayload(fields, {}, photos);
         product.reviews ||= [];
         product.reviews.unshift(review);
         await writeDb(db);
@@ -1274,18 +1335,18 @@ async function router(req, res) {
           return send(res, 200, { product, review, reviews: product.reviews, products: db.products });
         }
         const { fields, files } = await readMultipart(req);
-        const photo = await saveReviewUpload(files.photos);
-        product.reviews[index] = socialPostPayload(fields, product.reviews[index], photo ? [photo] : null);
+        const photoFiles = Array.isArray(files.photos) ? files.photos : files.photos ? [files.photos] : [];
+        const photos = (await Promise.all(photoFiles.map((file) => saveReviewUpload(file)))).filter(Boolean);
+        product.reviews[index] = socialPostPayload(fields, product.reviews[index], photos.length ? photos : null);
         await writeDb(db);
         return send(res, 200, { product, review: product.reviews[index], reviews: product.reviews, products: db.products });
       }
 
       if (url.pathname.match(/^\/api\/admin\/products\/[^/]+$/) && req.method === "PUT") {
         const id = decodeURIComponent(url.pathname.split("/").pop());
-        const body = await readJson(req);
         const index = db.products.findIndex((product) => product.id === id);
         if (index === -1) return send(res, 404, { error: "Produto nao encontrado." });
-        db.products[index] = productPayload(body, db.products[index], db.settings);
+        db.products[index] = await productPayloadFromRequest(req, db.products[index], db.settings);
         await writeDb(db);
         return send(res, 200, { product: db.products[index] });
       }

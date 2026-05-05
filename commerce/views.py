@@ -326,6 +326,35 @@ def _product_sku(name, existing=None):
     return f"B3D-{prefix[:18]}-{secrets.token_hex(3).upper()}"
 
 
+def _product_colors(value, existing=None):
+    existing = existing or []
+    if value is None:
+        value = existing
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+            value = parsed
+        except json.JSONDecodeError:
+            value = _lines(value)
+    colors = []
+    for item in value or []:
+        if isinstance(item, dict):
+            name = str(item.get("name") or item.get("label") or "").strip()
+            hex_value = str(item.get("hex") or item.get("value") or "#ffffff").strip()
+        else:
+            raw = str(item or "").strip()
+            if "|" in raw:
+                name, hex_value = [part.strip() for part in raw.split("|", 1)]
+            else:
+                name, hex_value = raw, "#ffffff"
+        if not name:
+            continue
+        if not re.match(r"^#[0-9a-fA-F]{6}$", hex_value):
+            hex_value = "#ffffff"
+        colors.append({"name": name, "hex": hex_value.lower()})
+    return colors
+
+
 def _request_status(value):
     return value if value in {"new", "in_review", "quoted", "approved", "in_production", "shipped", "completed", "canceled"} else "new"
 
@@ -364,6 +393,25 @@ def _social_post_payload(post, existing=None, photos=None):
         "photos": photos,
         "approved": approved,
     }
+
+
+def _product_post_payload(request, existing=None):
+    body = request.POST.dict() if request.content_type and "multipart/form-data" in request.content_type else _json_body(request)
+    existing = existing or {}
+    image_url = _save_upload(request.FILES.get("imageFile"), "products") if hasattr(request, "FILES") else ""
+    gallery_uploads = []
+    if hasattr(request, "FILES"):
+        gallery_uploads = [_save_upload(file_obj, "products") for file_obj in request.FILES.getlist("galleryFiles")]
+    if image_url:
+        body["image"] = image_url
+    elif existing.get("image"):
+        body["image"] = existing.get("image")
+    gallery = [body.get("image") or existing.get("image", "")]
+    gallery.extend([url for url in gallery_uploads if url])
+    if not gallery_uploads:
+        gallery = existing.get("gallery") or gallery
+    body["gallery"] = [url for url in gallery if url]
+    return _product_payload(body, existing)
 
 
 def _coupon_is_expired(coupon):
@@ -492,15 +540,15 @@ def _product_payload(body, existing=None):
         "slug": body.get("slug") or existing.get("slug") or _slug(name),
         "description": body.get("description", existing.get("description", "")),
         "longDescription": body.get("longDescription") or body.get("description") or existing.get("longDescription", ""),
-        "highlights": body.get("highlights") if isinstance(body.get("highlights"), list) else _lines(body.get("highlights", "\n".join(existing.get("highlights", [])))),
-        "specs": body.get("specs") if isinstance(body.get("specs"), dict) else existing.get("specs", {}),
+        "highlights": body.get("highlights") if isinstance(body.get("highlights"), list) else (json.loads(body.get("highlights")) if str(body.get("highlights", "")).strip().startswith("[") else _lines(body.get("highlights", "\n".join(existing.get("highlights", []))))),
+        "specs": body.get("specs") if isinstance(body.get("specs"), dict) else (json.loads(body.get("specs")) if str(body.get("specs", "")).strip().startswith("{") else existing.get("specs", {})),
         "variants": {
             "bundleType": "kit" if body.get("bundleType") == "kit" else "single",
-            "colors": body.get("colors") if isinstance(body.get("colors"), list) else _lines(body.get("colors", "")),
+            "colors": _product_colors(body.get("colors"), existing.get("variants", {}).get("colors", [])),
             "piecesIncluded": max(1, int(float(body.get("piecesIncluded") or existing.get("variants", {}).get("piecesIncluded") or 1))),
         },
         "videoUrl": body.get("videoUrl", existing.get("videoUrl", "")),
-        "gallery": body.get("gallery") if isinstance(body.get("gallery"), list) else [body.get("image") or existing.get("image", "")],
+        "gallery": body.get("gallery") if isinstance(body.get("gallery"), list) else existing.get("gallery", [body.get("image") or existing.get("image", "")]),
         "price": price,
         "compareAtPrice": round(float(body.get("compareAtPrice") or existing.get("compareAtPrice") or 0), 2),
         "affiliateCommissionPercent": max(0, min(100, float(body.get("affiliateCommissionPercent") or existing.get("affiliateCommissionPercent") or 0))),
@@ -1189,8 +1237,7 @@ def api_admin_products(request):
     db = read_db()
     if request.method == "GET":
         return JsonResponse({"products": db.get("products", [])})
-    body = _json_body(request)
-    product = _product_payload(body)
+    product = _product_post_payload(request)
     db.setdefault("products", []).insert(0, product)
     write_db(db)
     return JsonResponse({"product": product}, status=201)
@@ -1317,8 +1364,7 @@ def api_admin_product_detail(request, product_id):
         removed = products.pop(index)
         write_db(db)
         return JsonResponse({"product": removed})
-    body = _json_body(request)
-    products[index] = _product_payload(body, products[index])
+    products[index] = _product_post_payload(request, products[index])
     write_db(db)
     return JsonResponse({"product": products[index]})
 

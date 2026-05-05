@@ -660,7 +660,7 @@ function renderProducts() {
         ${ratingMarkup(product)}
         ${flashOfferMarkup(product)}
         <p>${product.description}</p>
-        <span class="product-variant-note">${productPiecesLabel(product)}${product.variants?.colors?.length ? ` | ${product.variants.colors.length} cores` : ""}</span>
+        <span class="product-variant-note">${productPiecesLabel(product)}</span>
         <div class="product-actions">
           <div class="price-block">
             ${product.compareAtPrice ? `<span class="old-price">${money(product.compareAtPrice)}</span>` : ""}

@@ -144,7 +144,7 @@
                 <h2>Novo produto</h2>
               </div>
             </div>
-            <form id="productForm" class="stack-form">
+            <form id="productForm" class="stack-form" enctype="multipart/form-data">
               <input name="productId" type="hidden">
               <label>SKU<input name="sku" placeholder="Ex: B3D-ORG-001"></label>
               <label>Nome<input name="name" required></label>
@@ -153,7 +153,16 @@
               <label>Preço antigo<input name="compareAtPrice" type="number" step="0.01" min="0" placeholder="Opcional"></label>
               <label>Estoque<input name="stock" type="number" min="0" required></label>
               <label>Comissão afiliado %<input name="affiliateCommissionPercent" type="number" min="0" max="100" step="0.1" value="0"></label>
-              <label>Cores disponíveis<textarea name="colors" rows="3" placeholder="Uma cor por linha. Ex: Preto, Branco, Azul"></textarea></label>
+              <fieldset class="repeatable-field product-color-field">
+                <div class="repeatable-head">
+                  <div>
+                    <legend>Cores disponíveis</legend>
+                    <span>Cadastre nome e cor hexadecimal da variação.</span>
+                  </div>
+                  <button class="ghost-button" type="button" id="addColorButton">Adicionar cor</button>
+                </div>
+                <div class="repeatable-list" id="colorsList"></div>
+              </fieldset>
               <label>Formato
                 <select name="bundleType">
                   <option value="single">1 peça</option>
@@ -181,11 +190,12 @@
                 <label>Frete grátis ao levar X unidades<input name="freeShippingMinQuantity" type="number" min="0" placeholder="0 para desativar"></label>
                 <p class="embedded-shipping-preview" id="embeddedShippingPreview"></p>
               </fieldset>
-              <label>Imagem URL<input name="image" type="url" required></label>
+              <label>Imagem principal<input name="imageFile" type="file" accept="image/*" required></label>
               <label>Descrição<textarea name="description" rows="4" required></textarea></label>
               <label>Descrição detalhada<textarea name="longDescription" rows="5" placeholder="Texto maior para a página do produto"></textarea></label>
               <label>Video URL<input name="videoUrl" type="url" placeholder="https://www.youtube.com/embed/..."></label>
-              <label>Galeria<textarea name="gallery" rows="3" placeholder="Uma URL de imagem por linha"></textarea></label>
+              <label>Galeria de fotos<input name="galleryFiles" type="file" accept="image/*" multiple></label>
+              <p class="form-status" id="productMediaStatus"></p>
               <fieldset class="repeatable-field">
                 <div class="repeatable-head">
                   <div>
