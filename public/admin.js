@@ -766,11 +766,22 @@ function renderPeopleLists() {
 
 function formatShipping(order) {
   if (!order.shippingOption) {
-    if (order.promotion?.reason === "seller_pays_shipping") return "Frete gratis assumido pela loja. Envio definido internamente.";
+    if (order.promotion?.reason === "seller_pays_shipping") return "Frete grátis assumido pela loja. Envio definido internamente.";
     return `Entrega: ${money(order.shipping || 0)}`;
   }
   const option = order.shippingOption;
   return `${option.carrier} - ${option.service} | ${money(option.price)}${option.deliveryDays ? ` | ${option.deliveryDays} dias uteis` : ""}`;
+}
+
+function formatShippingBenefit(order) {
+  const benefit = order.shippingBenefit;
+  if (!benefit) return "Cálculo de benefício ainda não registrado neste pedido.";
+  const combo = benefit.combo || {};
+  const zip = benefit.zipCode ? `CEP ${benefit.zipCode}` : "CEP não informado";
+  const requirement = combo.required
+    ? `${combo.ready ? "Kit liberado" : `faltavam ${combo.remaining} ${combo.remaining === 1 ? "item" : "itens"}`} de ${combo.required} unidade(s) calculadas`
+    : "kit não calculado";
+  return `${zip} | frete base ${money(benefit.baseShipping || 0)} | ${requirement}`;
 }
 
 function orderStatusLabel(status) {
@@ -1467,6 +1478,7 @@ function renderSelectedOrderDetail(order) {
       <section>
         <h3>Envio e etiqueta</h3>
         <span>${formatShipping(order)}</span>
+        <small>${formatShippingBenefit(order)}</small>
         ${orderShippingFlow(order)}
       </section>
       <section>
@@ -1487,7 +1499,7 @@ function renderSelectedOrderDetail(order) {
         <span>Etiqueta: ${flow.print?.url ? "pronta" : "pendente"}</span>
         <details>
           <summary>Ver JSON do pedido</summary>
-          <pre>${JSON.stringify({ payment: order.payment || null, shipping: order.shippingOption || null, workflow: order.shippingWorkflow || null, promotion: order.promotion || null }, null, 2)}</pre>
+          <pre>${JSON.stringify({ payment: order.payment || null, shipping: order.shippingOption || null, shippingBenefit: order.shippingBenefit || null, workflow: order.shippingWorkflow || null, promotion: order.promotion || null }, null, 2)}</pre>
         </details>
       </section>
     </div>

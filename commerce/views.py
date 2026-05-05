@@ -324,12 +324,28 @@ def _coupon_eligibility(coupon, item_count, subtotal):
     return True, ""
 
 
-def _cart_totals(db, items, shipping_option=None, coupon=None):
+def _combo_requirement(subtotal, item_count, shipping_cost):
+    if not subtotal or not item_count or not shipping_cost:
+        return {"ready": False, "remaining": 0, "required": 0, "averageUnitPrice": 0}
+    average_unit_price = subtotal / item_count
+    if not average_unit_price:
+        return {"ready": False, "remaining": 0, "required": 0, "averageUnitPrice": 0}
+    required = max(2, int((shipping_cost / average_unit_price) + 0.999999) + 1)
+    return {
+        "ready": item_count >= required,
+        "remaining": max(0, required - item_count),
+        "required": required,
+        "averageUnitPrice": round(average_unit_price, 2),
+    }
+
+
+def _cart_totals(db, items, shipping_option=None, coupon=None, zip_code=""):
     products = {product.get("id"): product for product in db.get("products", [])}
     lines = []
     subtotal = 0.0
     item_count = 0
-    seller_pays_shipping = False
+    all_items_seller_paid = True
+    product_quantity_free_shipping = False
     for item in items:
         product = products.get(item.get("productId"))
         if not product:
@@ -339,7 +355,10 @@ def _cart_totals(db, items, shipping_option=None, coupon=None):
         total = round(unit_price * quantity, 2)
         item_count += quantity
         subtotal += total
-        seller_pays_shipping = seller_pays_shipping or bool(product.get("shipping", {}).get("sellerPaysShipping"))
+        product_shipping = product.get("shipping", {})
+        all_items_seller_paid = all_items_seller_paid and bool(product_shipping.get("sellerPaysShipping"))
+        min_quantity = int(float(product_shipping.get("freeShippingMinQuantity") or 0))
+        product_quantity_free_shipping = product_quantity_free_shipping or (min_quantity > 0 and quantity >= min_quantity)
         lines.append({
             "productId": product.get("id"),
             "name": product.get("name"),
@@ -349,20 +368,46 @@ def _cart_totals(db, items, shipping_option=None, coupon=None):
             "variant": item.get("variant") or {},
         })
     subtotal = round(subtotal, 2)
-    free_shipping = seller_pays_shipping
+    all_items_seller_paid = bool(lines) and all_items_seller_paid
     discount = 0.0
+    free_shipping_by_coupon = False
     if coupon:
         eligible, _ = _coupon_eligibility(coupon, item_count, subtotal)
         if eligible:
             if coupon.get("type") == "free_shipping":
-                free_shipping = True
+                free_shipping_by_coupon = True
             elif coupon.get("type") == "percent":
                 discount = round(subtotal * float(coupon.get("value") or 0) / 100, 2)
             else:
                 discount = min(subtotal, round(float(coupon.get("value") or 0), 2))
-    shipping = 0.0 if free_shipping else round(float((shipping_option or {}).get("price") or 0), 2)
+    base_shipping = round(float((shipping_option or {}).get("price") or db.get("settings", {}).get("shippingFlatRate") or 0), 2)
+    combo = _combo_requirement(subtotal, item_count, base_shipping)
+    free_shipping_by_combo = combo["ready"]
+    free_shipping = free_shipping_by_coupon or free_shipping_by_combo or all_items_seller_paid or product_quantity_free_shipping
+    shipping = 0.0 if free_shipping else base_shipping
     total = round(max(0, subtotal - discount) + shipping, 2)
-    return lines, subtotal, discount, shipping, total, free_shipping
+    reason = (
+        "coupon" if free_shipping_by_coupon else
+        "combo" if free_shipping_by_combo else
+        "seller_pays_shipping" if all_items_seller_paid else
+        "product_quantity" if product_quantity_free_shipping else
+        None
+    )
+    shipping_benefit = {
+        "zipCode": re.sub(r"\D", "", str(zip_code or "")),
+        "baseShipping": base_shipping,
+        "shippingCharged": shipping,
+        "freeShipping": free_shipping,
+        "reason": reason,
+        "itemCount": item_count,
+        "subtotal": subtotal,
+        "combo": combo,
+        "message": "Frete Grátis liberado." if free_shipping else (
+            f"Leve mais {combo['remaining']} {'item' if combo['remaining'] == 1 else 'itens'} para conseguir Frete Grátis."
+            if combo["required"] else "Calcule a entrega para ver o kit de Frete Grátis."
+        ),
+    }
+    return lines, subtotal, discount, shipping, total, free_shipping, shipping_benefit
 
 
 def _product_payload(body, existing=None):
@@ -487,12 +532,18 @@ def api_shipping_quote(request):
     body = _json_body(request)
     db = read_db()
     items = body.get("items", [])
-    lines, subtotal, _discount, _shipping, _total, free_shipping = _cart_totals(db, items)
+    zip_code = re.sub(r"\D", "", str(body.get("zipCode", "")))
+    flat_rate = float(db.get("settings", {}).get("shippingFlatRate") or 24.9)
+    provisional_quote = {"id": "jt-standard", "price": flat_rate}
+    lines, subtotal, _discount, _shipping, _total, free_shipping, shipping_benefit = _cart_totals(db, items, provisional_quote, zip_code=zip_code)
     if not lines:
         return JsonResponse({"quotes": [], "error": "Adicione produtos ao carrinho."}, status=400)
     if free_shipping:
-        return JsonResponse({"quotes": [{"id": "free-shipping", "provider": "basa", "carrier": "Basa 3D Works", "service": "Frete Gratis", "price": 0, "deliveryDays": 0}]})
-    flat_rate = float(db.get("settings", {}).get("shippingFlatRate") or 24.9)
+        return JsonResponse({
+            "quotes": [{"id": "free-shipping", "provider": "basa", "carrier": "Basa 3D Works", "service": "Frete Grátis", "price": 0, "deliveryDays": 0}],
+            "subtotal": subtotal,
+            "shippingBenefit": shipping_benefit,
+        })
     quotes = [{
         "id": "jt-standard",
         "provider": "django-mock",
@@ -502,7 +553,7 @@ def api_shipping_quote(request):
         "originalPrice": round(flat_rate, 2),
         "deliveryDays": 5,
     }]
-    return JsonResponse({"quotes": quotes, "subtotal": subtotal})
+    return JsonResponse({"quotes": quotes, "subtotal": subtotal, "shippingBenefit": shipping_benefit})
 
 
 @csrf_exempt
@@ -513,7 +564,7 @@ def api_coupons_validate(request):
     coupon = next((item for item in db.get("coupons", []) if str(item.get("code", "")).upper() == code), None)
     if not coupon:
         return JsonResponse({"valid": False, "error": "Cupom nao encontrado."}, status=404)
-    lines, subtotal, _discount, _shipping, _total, _free_shipping = _cart_totals(db, body.get("items", []))
+    lines, subtotal, _discount, _shipping, _total, _free_shipping, _shipping_benefit = _cart_totals(db, body.get("items", []))
     item_count = sum(line["quantity"] for line in lines)
     valid, reason = _coupon_eligibility(coupon, item_count, subtotal)
     return JsonResponse({"valid": valid, "reason": reason, "coupon": coupon})
@@ -530,7 +581,13 @@ def api_checkout(request):
     if coupon_code:
         coupon = next((item for item in db.get("coupons", []) if str(item.get("code", "")).upper() == str(coupon_code).upper()), None)
     shipping_option = body.get("shippingOption") or {}
-    lines, subtotal, discount, shipping, total, free_shipping = _cart_totals(db, body.get("items", []), shipping_option, coupon)
+    lines, subtotal, discount, shipping, total, free_shipping, shipping_benefit = _cart_totals(
+        db,
+        body.get("items", []),
+        shipping_option,
+        coupon,
+        zip_code=body.get("customer", {}).get("zipCode", "") or body.get("zipCode", ""),
+    )
     if not lines:
         return JsonResponse({"error": "Carrinho vazio."}, status=400)
     if shipping > 0 and not shipping_option:
@@ -547,9 +604,10 @@ def api_checkout(request):
         "shipping": shipping,
         "total": total,
         "freeShipping": free_shipping,
+        "shippingBenefit": shipping_benefit,
         "shippingOption": shipping_option or None,
         "payment": {"provider": "mock", "status": "pending", "checkoutUrl": ""},
-        "history": [{"id": f"hist-{secrets.token_hex(6)}", "createdAt": _now(), "type": "order", "source": "django", "note": "Pedido criado."}],
+        "history": [{"id": f"hist-{secrets.token_hex(6)}", "createdAt": _now(), "type": "order", "source": "django", "note": f"Pedido criado. {shipping_benefit.get('message', '')}".strip()}],
     }
     db.setdefault("orders", []).insert(0, order)
     write_db(db)

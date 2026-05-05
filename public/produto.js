@@ -5,7 +5,8 @@
   customerSession: JSON.parse(localStorage.getItem("basa_customer_session") || "null"),
   settings: null,
   shippingQuotes: [],
-  selectedShipping: null
+  selectedShipping: null,
+  shippingBenefit: null
 };
 
 const debugCustomer = {
@@ -218,14 +219,19 @@ function productQuantity() {
   return Math.max(1, Number($("#productQuantityInput")?.value || 1));
 }
 
+function resetShippingCalculation() {
+  state.selectedShipping = null;
+  state.shippingQuotes = [];
+  state.shippingBenefit = null;
+}
+
 function addToCart(productId) {
   const color = selectedColor();
   const item = state.cart.find((line) => line.productId === productId && (line.color || "") === color);
   const quantity = productQuantity();
   if (item) item.quantity += quantity;
   else state.cart.push({ productId, color, quantity });
-  state.selectedShipping = null;
-  state.shippingQuotes = [];
+  resetShippingCalculation();
   saveCart();
   $("#cartPanel").classList.add("open");
 }
@@ -236,8 +242,7 @@ function setCartQuantity(productId, color, quantity) {
     if (item.productId !== productId || (item.color || "") !== (color || "")) return [item];
     return nextQuantity > 0 ? [{ ...item, quantity: nextQuantity }] : [];
   });
-  state.selectedShipping = null;
-  state.shippingQuotes = [];
+  resetShippingCalculation();
   saveCart();
 }
 
@@ -395,13 +400,15 @@ function freeShippingPromo(form) {
   const couponIsExpired = registeredCoupon?.expiresAt && new Date(registeredCoupon.expiresAt).getTime() <= Date.now();
   const subtotal = cartSubtotal();
   const byCoupon = Boolean(registeredCoupon && !couponIsExpired && registeredCoupon.type === "free_shipping" && cartQuantity() >= Number(registeredCoupon.minItems || 1) && subtotal >= Number(registeredCoupon.minSubtotal || 0));
-  const byCombo = dynamicComboRequirement().ready;
+  const backendFree = Boolean(state.shippingBenefit?.freeShipping);
+  const backendReason = state.shippingBenefit?.reason === "combo" ? "kit" : state.shippingBenefit?.reason === "coupon" ? "cupom" : state.shippingBenefit?.reason === "product_quantity" ? "quantidade do produto" : state.shippingBenefit?.reason === "seller_pays_shipping" ? "produto" : "";
+  const byCombo = state.shippingBenefit?.reason === "combo" ? backendFree : dynamicComboRequirement().ready;
   const byProduct = cartQuantity() > 0 && state.cart.every((item) => state.products.find((product) => product.id === item.productId)?.shipping?.sellerPaysShipping);
   const byProductQuantity = state.cart.some((item) => {
     const minQuantity = Number(state.products.find((product) => product.id === item.productId)?.shipping?.freeShippingMinQuantity || 0);
     return minQuantity > 0 && item.quantity >= minQuantity;
   });
-  return { eligible: byCoupon || byCombo || byProduct || byProductQuantity, coupon, reason: byCoupon ? "cupom" : byCombo ? "kit" : byProduct ? "produto" : byProductQuantity ? "quantidade do produto" : "" };
+  return { eligible: byCoupon || byCombo || byProduct || byProductQuantity || backendFree, coupon, reason: byCoupon ? "cupom" : byCombo ? "kit" : byProduct ? "produto" : byProductQuantity ? "quantidade do produto" : backendReason };
 }
 
 function allCartItemsHaveSellerPaidShipping() {
@@ -432,6 +439,7 @@ function cartSubtotal() {
 
 function comboProgressMessage() {
   if (!cartQuantity()) return "Adicione produtos ao carrinho para ver benef\u00edcios de frete.";
+  if (state.shippingBenefit?.message) return state.shippingBenefit.message;
   if (hasActiveCartFreeShippingBenefit()) return "Frete Gr\u00e1tis ativo neste pedido.";
   const requirement = dynamicComboRequirement();
   if (!requirement.required) return "Calcule a entrega para ver o kit de Frete Gr\u00e1tis.";
@@ -493,10 +501,12 @@ async function quoteShipping() {
   const form = $("#checkoutForm");
   const cep = form.elements.zipCode.value.replace(/\D/g, "");
   if (!state.cart.length) {
+    resetShippingCalculation();
     $("#shippingOptions").innerHTML = "";
     return;
   }
   if (cep.length !== 8) {
+    state.shippingBenefit = null;
     $("#shippingOptions").innerHTML = "<p>Informe um CEP v\u00e1lido para calcular a entrega.</p>";
     return;
   }
@@ -504,6 +514,7 @@ async function quoteShipping() {
   if (allCartItemsHaveSellerPaidShipping()) {
     state.shippingQuotes = [];
     state.selectedShipping = null;
+    state.shippingBenefit = { freeShipping: true, reason: "seller_pays_shipping", message: "Frete Grátis liberado." };
     $("#shippingOptions").innerHTML = `<p class="promo-note">Frete gr\u00e1tis neste pedido. A forma de envio ser\u00e1 definida pela Basa 3D Works.</p>`;
     clearDeliverySelectionWarning();
     renderCart();
@@ -524,6 +535,7 @@ async function quoteShipping() {
 
   state.shippingQuotes = data.quotes || [];
   state.selectedShipping = state.shippingQuotes[0] || null;
+  state.shippingBenefit = data.shippingBenefit || null;
   if (state.selectedShipping) clearDeliverySelectionWarning();
   renderShippingOptions();
   renderCart();
@@ -715,8 +727,7 @@ function renderCart() {
   document.querySelectorAll("[data-remove]").forEach((button) => {
     button.addEventListener("click", () => {
       state.cart = state.cart.filter((item) => item.productId !== button.dataset.remove || (item.color || "") !== (button.dataset.removeColor || ""));
-      state.selectedShipping = null;
-      state.shippingQuotes = [];
+      resetShippingCalculation();
       saveCart();
       $("#shippingOptions").innerHTML = "<p>Calcule a entrega novamente ap\u00f3s alterar o carrinho.</p>";
     });
@@ -762,6 +773,7 @@ async function checkout(event) {
       customer: readCustomer(event.currentTarget),
       customerLoggedIn: true,
       shippingOption: state.selectedShipping,
+      zipCode: event.currentTarget.elements.zipCode?.value || "",
       coupon: event.currentTarget.elements.coupon?.value || ""
     })
   });

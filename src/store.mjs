@@ -270,12 +270,21 @@ export function couponEligibility({ coupon, itemCount, subtotal }) {
   return { eligible: true, reason: "coupon" };
 }
 
-function dynamicComboFreeShipping({ subtotal, itemCount, shipping }) {
-  if (!subtotal || !itemCount || !shipping) return false;
+function dynamicComboRequirement({ subtotal, itemCount, shipping }) {
+  if (!subtotal || !itemCount || !shipping) {
+    return { ready: false, remaining: 0, required: 0, averageUnitPrice: 0 };
+  }
   const averageUnitPrice = subtotal / itemCount;
-  if (!averageUnitPrice) return false;
+  if (!averageUnitPrice) {
+    return { ready: false, remaining: 0, required: 0, averageUnitPrice: 0 };
+  }
   const required = Math.max(2, Math.ceil(shipping / averageUnitPrice) + 1);
-  return itemCount >= required;
+  return {
+    ready: itemCount >= required,
+    remaining: Math.max(0, required - itemCount),
+    required,
+    averageUnitPrice: Math.round(averageUnitPrice * 100) / 100
+  };
 }
 
 export function orderFromCart({ db, customer, items, shippingOption, coupon }) {
@@ -318,10 +327,13 @@ export function orderFromCart({ db, customer, items, shippingOption, coupon }) {
   const couponStatus = couponEligibility({ coupon: couponRecord, itemCount, subtotal });
   const freeShippingByCoupon = couponStatus.eligible && couponRecord?.type === "free_shipping";
   const baseShipping = shippingOption ? Math.max(0, Number(shippingOption.price || 0)) : db.settings.shippingFlatRate;
-  const freeShippingByCombo = dynamicComboFreeShipping({ subtotal, itemCount, shipping: baseShipping });
+  const comboRequirement = dynamicComboRequirement({ subtotal, itemCount, shipping: baseShipping });
+  const freeShippingByCombo = comboRequirement.ready;
   const shipping = freeShippingByCoupon || freeShippingByCombo || allItemsFreeShipping || productQuantityFreeShipping ? 0 : baseShipping;
   const total = Math.round((subtotal + shipping) * 100) / 100;
   const seller = db.products.find((product) => product.id === lines[0].productId).seller;
+  const freeShipping = freeShippingByCoupon || freeShippingByCombo || allItemsFreeShipping || productQuantityFreeShipping;
+  const freeShippingReason = freeShippingByCoupon ? "coupon" : freeShippingByCombo ? "combo" : allItemsFreeShipping ? "seller_pays_shipping" : productQuantityFreeShipping ? "product_quantity" : null;
 
   return {
     id: `BASA-${Date.now()}`,
@@ -340,11 +352,26 @@ export function orderFromCart({ db, customer, items, shippingOption, coupon }) {
       originalPrice: baseShipping,
       deliveryDays: Number(shippingOption.deliveryDays || 0)
     } : null,
+    shippingBenefit: {
+      zipCode: String(customer?.zipCode || "").replace(/\D/g, ""),
+      baseShipping,
+      shippingCharged: shipping,
+      freeShipping,
+      reason: freeShippingReason,
+      itemCount,
+      subtotal,
+      combo: comboRequirement,
+      message: freeShipping
+        ? "Frete Grátis liberado."
+        : comboRequirement.required
+          ? `Leve mais ${comboRequirement.remaining} ${comboRequirement.remaining === 1 ? "item" : "itens"} para conseguir Frete Grátis.`
+          : "Calcule a entrega para ver o kit de Frete Grátis."
+    },
     promotion: {
       coupon: normalizedCoupon,
       couponId: couponRecord?.id || null,
-      freeShipping: freeShippingByCoupon || freeShippingByCombo || allItemsFreeShipping || productQuantityFreeShipping,
-      reason: freeShippingByCoupon ? "coupon" : freeShippingByCombo ? "combo" : allItemsFreeShipping ? "seller_pays_shipping" : productQuantityFreeShipping ? "product_quantity" : null
+      freeShipping,
+      reason: freeShippingReason
     },
     total,
     seller
