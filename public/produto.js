@@ -77,6 +77,17 @@ function ratingMarkup(product) {
 function socialReviewsSection(product) {
   const reviews = product.publicReviews || [];
   if (!reviews.length) return "";
+  const isVideoMedia = (url) => /\.(mp4|webm|mov|m4v)$/i.test(String(url || "").split("?")[0]);
+  const renderMedia = (review) => {
+    const media = review.media || review.photos || [];
+    return media.length ? `<div class="product-review-photos">${media.map((item) => {
+      const url = typeof item === "string" ? item : item?.url;
+      if (!url) return "";
+      return isVideoMedia(url)
+        ? `<video src="${url}" controls muted playsinline aria-label="Vídeo enviado por cliente"></video>`
+        : `<img src="${url}" alt="Foto enviada por cliente">`;
+    }).join("")}</div>` : "";
+  };
   return `
     <section class="panel product-reviews-panel">
       <div class="panel-head">
@@ -93,7 +104,7 @@ function socialReviewsSection(product) {
               ${review.rating ? `<span>${Number(review.rating).toFixed(1)} ★</span>` : ""}
             </div>
             ${review.comment ? `<p>${escapeHtml(review.comment)}</p>` : ""}
-            ${(review.photos || []).length ? `<div class="product-review-photos">${review.photos.map((photo) => `<img src="${photo}" alt="Foto enviada por cliente">`).join("")}</div>` : ""}
+            ${renderMedia(review)}
           </article>
         `).join("")}
       </div>

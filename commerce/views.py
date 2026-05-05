@@ -186,10 +186,11 @@ def _public_product(product, db):
                     "rating": _number_or_zero(review.get("rating")),
                     "comment": review.get("comment", ""),
                     "photos": review.get("photos", []),
+                    "media": review.get("media") or review.get("photos", []),
                     "createdAt": review.get("createdAt"),
                 }
                 for review in public_reviews
-                if review.get("comment") or review.get("photos") or _number_or_zero(review.get("rating")) > 0
+                if review.get("comment") or review.get("photos") or review.get("media") or _number_or_zero(review.get("rating")) > 0
             ],
         }
     )
@@ -373,9 +374,10 @@ def _save_upload(file_obj, folder):
     return f"/uploads/{folder}/{name}"
 
 
-def _social_post_payload(post, existing=None, photos=None):
+def _social_post_payload(post, existing=None, photos=None, media=None):
     existing = existing or {}
     photos = photos if photos is not None else existing.get("photos", [])
+    media = media if media is not None else existing.get("media") or photos
     rating = max(0, min(5, _number_or_zero(post.get("rating", existing.get("rating", 0)))))
     sold_units = max(0, int(float(post.get("soldUnits", existing.get("soldUnits", 0)) or 0)))
     approved_value = post.get("approved", existing.get("approved", True))
@@ -391,6 +393,7 @@ def _social_post_payload(post, existing=None, photos=None):
         "soldUnits": sold_units,
         "comment": str(post.get("comment", existing.get("comment", ""))).strip(),
         "photos": photos,
+        "media": media,
         "approved": approved,
     }
 
@@ -1400,8 +1403,14 @@ def api_admin_product_social_posts(request, product_id):
         return JsonResponse({"error": "Produto nao encontrado."}, status=404)
     if request.method == "GET":
         return JsonResponse({"product": product, "reviews": product.get("reviews", []), "products": db.get("products", [])})
-    photos = [_save_upload(file_obj, "reviews") for file_obj in request.FILES.getlist("photos")]
-    review = _social_post_payload(request.POST, photos=[photo for photo in photos if photo])
+    upload_files = request.FILES.getlist("mediaFiles") or request.FILES.getlist("photos")
+    saved_media = [_save_upload(file_obj, "reviews") for file_obj in upload_files]
+    media = [item for item in saved_media if item]
+    photos = [
+        url for url, file_obj in zip(media, upload_files)
+        if str(getattr(file_obj, "content_type", "")).startswith("image/")
+    ]
+    review = _social_post_payload(request.POST, photos=photos, media=media)
     product.setdefault("reviews", []).insert(0, review)
     write_db(db)
     return JsonResponse({"product": product, "review": review, "reviews": product.get("reviews", []), "products": db.get("products", [])}, status=201)
@@ -1424,9 +1433,16 @@ def api_admin_product_social_post_detail(request, product_id, review_id):
         review = reviews.pop(index)
         write_db(db)
         return JsonResponse({"product": product, "review": review, "reviews": reviews, "products": db.get("products", [])})
-    photos = [_save_upload(file_obj, "reviews") for file_obj in request.FILES.getlist("photos")]
-    next_photos = [photo for photo in photos if photo] or reviews[index].get("photos", [])
-    reviews[index] = _social_post_payload(request.POST, reviews[index], next_photos)
+    upload_files = request.FILES.getlist("mediaFiles") or request.FILES.getlist("photos")
+    saved_media = [_save_upload(file_obj, "reviews") for file_obj in upload_files]
+    media = [item for item in saved_media if item]
+    photos = [
+        url for url, file_obj in zip(media, upload_files)
+        if str(getattr(file_obj, "content_type", "")).startswith("image/")
+    ]
+    next_media = media or reviews[index].get("media") or reviews[index].get("photos", [])
+    next_photos = photos or reviews[index].get("photos", [])
+    reviews[index] = _social_post_payload(request.POST, reviews[index], next_photos, next_media)
     write_db(db)
     return JsonResponse({"product": product, "review": reviews[index], "reviews": reviews, "products": db.get("products", [])})
 

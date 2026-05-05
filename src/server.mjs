@@ -510,8 +510,8 @@ async function saveCustomRequestUpload(upload) {
 
 async function saveReviewUpload(upload) {
   if (!upload?.buffer?.length) return "";
-  if (!upload.type.startsWith("image/")) {
-    throw Object.assign(new Error("Use uma imagem em jpg, png, webp ou gif."), { status: 400 });
+  if (!upload.type.startsWith("image/") && !upload.type.startsWith("video/")) {
+    throw Object.assign(new Error("Use uma imagem ou video do pedido."), { status: 400 });
   }
   const filename = safeUploadName(upload.filename);
   const uploadDir = path.join(publicDir, "uploads", "reviews");
@@ -549,9 +549,11 @@ async function productPayloadFromRequest(req, existing = {}, settings = {}) {
   return productPayload(body, existing, settings);
 }
 
-function socialPostPayload(fields = {}, existing = {}, photos = null) {
+function socialPostPayload(fields = {}, existing = {}, photos = null, media = null) {
   const approvedValue = fields.approved ?? existing.approved ?? true;
   const approved = typeof approvedValue === "boolean" ? approvedValue : !["false", "0", "off", "no"].includes(String(approvedValue).toLowerCase());
+  const nextPhotos = photos || existing.photos || [];
+  const nextMedia = media || existing.media || nextPhotos;
   return {
     ...existing,
     id: existing.id || crypto.randomUUID(),
@@ -561,7 +563,8 @@ function socialPostPayload(fields = {}, existing = {}, photos = null) {
     rating: Math.max(0, Math.min(5, Number(fields.rating ?? existing.rating ?? 0))),
     soldUnits: Math.max(0, Number(fields.soldUnits ?? existing.soldUnits ?? 0)),
     comment: String(fields.comment ?? existing.comment ?? "").trim(),
-    photos: photos || existing.photos || [],
+    photos: nextPhotos,
+    media: nextMedia,
     approved
   };
 }
@@ -1314,9 +1317,12 @@ async function router(req, res) {
         if (!product) return send(res, 404, { error: "Produto nao encontrado." });
         if (req.method === "GET") return send(res, 200, { product, reviews: product.reviews || [], products: db.products });
         const { fields, files } = await readMultipart(req);
-        const photoFiles = Array.isArray(files.photos) ? files.photos : files.photos ? [files.photos] : [];
-        const photos = (await Promise.all(photoFiles.map((file) => saveReviewUpload(file)))).filter(Boolean);
-        const review = socialPostPayload(fields, {}, photos);
+        const rawMediaFiles = files.mediaFiles || files.photos;
+        const mediaFiles = Array.isArray(rawMediaFiles) ? rawMediaFiles : rawMediaFiles ? [rawMediaFiles] : [];
+        const saved = await Promise.all(mediaFiles.map(async (file) => ({ file, url: await saveReviewUpload(file) })));
+        const media = saved.map((item) => item.url).filter(Boolean);
+        const photos = saved.filter((item) => item.url && item.file.type.startsWith("image/")).map((item) => item.url);
+        const review = socialPostPayload(fields, {}, photos, media);
         product.reviews ||= [];
         product.reviews.unshift(review);
         await writeDb(db);
@@ -1338,9 +1344,12 @@ async function router(req, res) {
           return send(res, 200, { product, review, reviews: product.reviews, products: db.products });
         }
         const { fields, files } = await readMultipart(req);
-        const photoFiles = Array.isArray(files.photos) ? files.photos : files.photos ? [files.photos] : [];
-        const photos = (await Promise.all(photoFiles.map((file) => saveReviewUpload(file)))).filter(Boolean);
-        product.reviews[index] = socialPostPayload(fields, product.reviews[index], photos.length ? photos : null);
+        const rawMediaFiles = files.mediaFiles || files.photos;
+        const mediaFiles = Array.isArray(rawMediaFiles) ? rawMediaFiles : rawMediaFiles ? [rawMediaFiles] : [];
+        const saved = await Promise.all(mediaFiles.map(async (file) => ({ file, url: await saveReviewUpload(file) })));
+        const media = saved.map((item) => item.url).filter(Boolean);
+        const photos = saved.filter((item) => item.url && item.file.type.startsWith("image/")).map((item) => item.url);
+        product.reviews[index] = socialPostPayload(fields, product.reviews[index], photos.length ? photos : null, media.length ? media : null);
         await writeDb(db);
         return send(res, 200, { product, review: product.reviews[index], reviews: product.reviews, products: db.products });
       }

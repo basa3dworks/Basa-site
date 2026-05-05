@@ -799,6 +799,24 @@ function socialRatingLabel(rating) {
   return value ? `${value.toFixed(value % 1 ? 1 : 0)} estrelas` : "Sem nota";
 }
 
+function isVideoMedia(url) {
+  return /\.(mp4|webm|mov|m4v)$/i.test(String(url || "").split("?")[0]);
+}
+
+function reviewMediaList(review) {
+  return review?.media || review?.photos || [];
+}
+
+function renderReviewMedia(media, className) {
+  return media.length ? `<div class="${className}">${media.map((item) => {
+    const url = typeof item === "string" ? item : item?.url;
+    if (!url) return "";
+    return isVideoMedia(url)
+      ? `<video src="${url}" controls muted playsinline aria-label="Vídeo do pedido"></video>`
+      : `<img src="${url}" alt="Foto do pedido">`;
+  }).join("")}</div>` : "";
+}
+
 function renderSocialProofList() {
   const target = $("#socialProofList");
   if (!target) return;
@@ -822,7 +840,7 @@ function renderSocialProofList() {
           <strong>${escapeHtml(review.customerName || "Cliente Basa")}</strong>
           <span>${socialRatingLabel(review.rating)} | +${Number(review.soldUnits || 0)} vendido(s)${review.approved === false ? " | Oculto" : ""}</span>
           <p>${escapeHtml(review.comment || "Sem comentário")}</p>
-          ${(review.photos || []).length ? `<div class="social-proof-photos">${review.photos.map((photo) => `<img src="${photo}" alt="Foto do pedido">`).join("")}</div>` : ""}
+          ${renderReviewMedia(reviewMediaList(review), "social-proof-photos")}
         </div>
         <div class="story-admin-actions">
           <button class="ghost-button table-action" type="button" data-edit-social="${review.id}">Editar</button>
@@ -1350,7 +1368,7 @@ function editSocialProof(reviewId) {
   }
   form.elements.soldUnits.value = review.soldUnits || 0;
   form.elements.comment.value = review.comment || "";
-  form.elements.photos.value = "";
+  form.elements.mediaFiles.value = "";
   form.elements.approved.checked = review.approved !== false;
   $("#socialProofSubmitButton").textContent = "Salvar edição";
   $("#cancelSocialProofEditButton").hidden = false;

@@ -211,8 +211,9 @@ export function publicProduct(product, db = {}) {
       rating: Number(review.rating || 0),
       comment: review.comment || "",
       photos: review.photos || [],
+      media: review.media || review.photos || [],
       createdAt: review.createdAt
-    })).filter((review) => review.rating || review.comment || review.photos.length),
+    })).filter((review) => review.rating || review.comment || review.photos.length || review.media.length),
     campaign: product.campaign || null,
     shipping: product.shipping || {},
     stock: product.stock,
