@@ -437,7 +437,7 @@ async function generateAiInsights() {
   try {
     const result = await api("/api/admin/ai-insights", { method: "POST", body: JSON.stringify({}) });
     renderAiInsightText(result.insight);
-    if (source) source.textContent = result.source === "openai" ? `OpenAI ${result.model || ""}`.trim() : "Leitura local";
+    if (source) source.textContent = result.warning || (result.source === "openai" ? `OpenAI ${result.model || ""}`.trim() : "Leitura local");
   } catch (error) {
     if (source) source.textContent = "Erro na análise";
     $("#aiInsightOutput").innerHTML = `<article class="ai-recommendation-card danger"><b>Não foi possível gerar agora</b><p>${escapeHtml(error.message)}</p></article>`;

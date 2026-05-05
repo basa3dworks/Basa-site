@@ -952,6 +952,13 @@ def api_admin_ai_insights(request):
             payload = json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="ignore")
+        if exc.code == 429:
+            return JsonResponse({
+                "source": "local",
+                "warning": "A OpenAI recusou a chamada por limite, cota ou billing da conta. Usando análise local por enquanto.",
+                "context": context,
+                "insight": _fallback_insights(context),
+            })
         return JsonResponse({"error": f"OpenAI retornou erro {exc.code}.", "detail": detail}, status=502)
     except Exception as exc:
         return JsonResponse({"error": f"Não foi possível gerar insights agora: {exc}"}, status=502)
