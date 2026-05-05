@@ -2103,6 +2103,9 @@ label {
   z-index: 50;
   display: flex;
   width: 248px;
+  height: 100vh;
+  height: 100dvh;
+  max-height: 100dvh;
   flex-direction: column;
   gap: 4px;
   margin: 0;
@@ -2112,6 +2115,22 @@ label {
   background: #111827;
   color: #c8d2df;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #44546a #111827;
+}
+
+.admin-logged-in .admin-tabs::-webkit-scrollbar {
+  width: 8px;
+}
+
+.admin-logged-in .admin-tabs::-webkit-scrollbar-track {
+  background: #111827;
+}
+
+.admin-logged-in .admin-tabs::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #44546a;
 }
 
 .admin-sidebar-brand {
