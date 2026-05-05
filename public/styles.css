@@ -2097,6 +2097,23 @@ label {
   margin: 4px 0 0;
 }
 
+.pricing-admin-panel {
+  padding: 14px;
+}
+
+.pricing-admin-panel .panel-head {
+  padding: 8px 8px 0;
+}
+
+.pricing-frame {
+  display: block;
+  width: 100%;
+  min-height: min(82vh, 900px);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #101018;
+}
+
 .admin-search {
   width: min(320px, 100%);
   color: var(--muted);

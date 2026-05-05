@@ -4,6 +4,8 @@ Sistema de e-commerce para vitrine publica, carrinho, checkout, painel admin, pe
 
 ## Como rodar
 
+Servidor atual em Node.js:
+
 ```bash
 npm install
 node src/server.mjs
@@ -15,6 +17,15 @@ Por padrao o site abre em:
 - Admin: `http://localhost:3000/admin.html`
 
 Configure as credenciais locais no arquivo `.env`. Em producao, cadastre as variaveis de ambiente na plataforma de hospedagem usando `.env.example` como referencia.
+
+Base Django em migracao paralela:
+
+```bash
+pip install -r requirements.txt
+python manage.py runserver 3001
+```
+
+O Django ja serve as paginas publicas e compartilha a mesma camada de dados (`basa_store` no PostgreSQL ou `data/db.json` local). Mantenha o Node como start de producao ate todos os endpoints de pagamento, frete e operacao estarem homologados no Django.
 
 ## O que ja esta implementado
 
@@ -29,6 +40,8 @@ Configure as credenciais locais no arquivo `.env`. Em producao, cadastre as vari
 - Integracao preparada com Mercado Pago.
 - Integracao preparada com Melhor Envio.
 - Cupons, campanhas e metricas comerciais.
+- Calculadora de precificacao integrada ao painel admin.
+- Base Django inicial para migracao sem interromper a loja online.
 
 ## Pagamentos
 
@@ -81,7 +94,8 @@ O checkout chama `/api/shipping/quote`, mostra as opcoes de entrega e grava a op
 
 ## Proximos passos recomendados
 
-- Separar o banco em tabelas relacionais durante a migracao para Django.
+- Completar a paridade dos endpoints Node no Django antes de trocar o start da Railway.
+- Separar o banco em tabelas relacionais durante a segunda etapa da migracao para Django.
 - Criar gerenciamento completo de usuarios admin.
 - Integrar gateway real de pagamento com webhooks.
 - Criar area do cliente e rastreio de pedidos.
