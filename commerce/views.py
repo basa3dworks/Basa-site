@@ -48,6 +48,13 @@ def _lines(value):
     return [line.strip() for line in str(value or "").splitlines() if line.strip()]
 
 
+def _number_or_zero(value):
+    try:
+        return float(value or 0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
 def _admin_ok(request):
     token = request.COOKIES.get("basa_admin", "")
     try:
@@ -144,12 +151,22 @@ def _verify_password(password, stored):
 
 def _public_product(product, db):
     orders = db.get("orders", [])
-    sold = sum(
+    order_sold = sum(
         int(item.get("quantity") or 0)
         for order in orders
         if order.get("status") in {"paid", "in_production", "shipped", "completed"}
         for item in order.get("items", [])
         if item.get("productId") == product.get("id")
+    )
+    public_reviews = [
+        review for review in product.get("reviews", [])
+        if review.get("approved", True) is not False
+    ]
+    rated_reviews = [review for review in public_reviews if _number_or_zero(review.get("rating")) > 0]
+    social_sold = sum(int(float(review.get("soldUnits") or 0)) for review in public_reviews)
+    rating_average = (
+        round(sum(_number_or_zero(review.get("rating")) for review in rated_reviews) / len(rated_reviews), 1)
+        if rated_reviews else 0
     )
     favorite_count = int(product.get("favoriteCount") or 0) + sum(
         1 for customer in db.get("customers", []) if product.get("id") in customer.get("favorites", [])
@@ -157,10 +174,23 @@ def _public_product(product, db):
     payload = dict(product)
     payload.update(
         {
-            "soldCount": int(product.get("soldCount") or 0) or sold,
+            "soldCount": int(float(product.get("soldCount") or 0)) + order_sold + social_sold,
             "favoriteCount": favorite_count,
             "gallery": product.get("gallery") or [product.get("image")],
             "regularPrice": product.get("price"),
+            "rating": {"average": rating_average, "count": len(rated_reviews)},
+            "publicReviews": [
+                {
+                    "id": review.get("id"),
+                    "customerName": review.get("customerName", "Cliente Basa"),
+                    "rating": _number_or_zero(review.get("rating")),
+                    "comment": review.get("comment", ""),
+                    "photos": review.get("photos", []),
+                    "createdAt": review.get("createdAt"),
+                }
+                for review in public_reviews
+                if review.get("comment") or review.get("photos") or _number_or_zero(review.get("rating")) > 0
+            ],
         }
     )
     return payload
@@ -312,6 +342,28 @@ def _save_upload(file_obj, folder):
         for chunk in file_obj.chunks():
             handle.write(chunk)
     return f"/uploads/{folder}/{name}"
+
+
+def _social_post_payload(post, existing=None, photos=None):
+    existing = existing or {}
+    photos = photos if photos is not None else existing.get("photos", [])
+    rating = max(0, min(5, _number_or_zero(post.get("rating", existing.get("rating", 0)))))
+    sold_units = max(0, int(float(post.get("soldUnits", existing.get("soldUnits", 0)) or 0)))
+    approved_value = post.get("approved", existing.get("approved", True))
+    approved = approved_value if isinstance(approved_value, bool) else str(approved_value).lower() not in {"false", "0", "off", "no"}
+    customer_name = str(post.get("customerName", existing.get("customerName", "Cliente Basa"))).strip() or "Cliente Basa"
+    return {
+        **existing,
+        "id": existing.get("id") or f"rev-{secrets.token_hex(6)}",
+        "createdAt": existing.get("createdAt") or _now(),
+        "updatedAt": _now(),
+        "customerName": customer_name,
+        "rating": rating,
+        "soldUnits": sold_units,
+        "comment": str(post.get("comment", existing.get("comment", ""))).strip(),
+        "photos": photos,
+        "approved": approved,
+    }
 
 
 def _coupon_is_expired(coupon):
@@ -1284,6 +1336,48 @@ def api_admin_product_campaign(request, product_id):
     product["campaign"] = None if body.get("clear") else _campaign_payload(body)
     write_db(db)
     return JsonResponse({"product": product, "products": db.get("products", [])})
+
+
+@csrf_exempt
+def api_admin_product_social_posts(request, product_id):
+    error = _require_admin(request)
+    if error:
+        return error
+    db = read_db()
+    product = next((item for item in db.get("products", []) if item.get("id") == product_id), None)
+    if not product:
+        return JsonResponse({"error": "Produto nao encontrado."}, status=404)
+    if request.method == "GET":
+        return JsonResponse({"product": product, "reviews": product.get("reviews", []), "products": db.get("products", [])})
+    photos = [_save_upload(file_obj, "reviews") for file_obj in request.FILES.getlist("photos")]
+    review = _social_post_payload(request.POST, photos=[photo for photo in photos if photo])
+    product.setdefault("reviews", []).insert(0, review)
+    write_db(db)
+    return JsonResponse({"product": product, "review": review, "reviews": product.get("reviews", []), "products": db.get("products", [])}, status=201)
+
+
+@csrf_exempt
+def api_admin_product_social_post_detail(request, product_id, review_id):
+    error = _require_admin(request)
+    if error:
+        return error
+    db = read_db()
+    product = next((item for item in db.get("products", []) if item.get("id") == product_id), None)
+    if not product:
+        return JsonResponse({"error": "Produto nao encontrado."}, status=404)
+    reviews = product.setdefault("reviews", [])
+    index = next((idx for idx, item in enumerate(reviews) if item.get("id") == review_id), -1)
+    if index < 0:
+        return JsonResponse({"error": "Review nao encontrada."}, status=404)
+    if request.method == "DELETE":
+        review = reviews.pop(index)
+        write_db(db)
+        return JsonResponse({"product": product, "review": review, "reviews": reviews, "products": db.get("products", [])})
+    photos = [_save_upload(file_obj, "reviews") for file_obj in request.FILES.getlist("photos")]
+    next_photos = [photo for photo in photos if photo] or reviews[index].get("photos", [])
+    reviews[index] = _social_post_payload(request.POST, reviews[index], next_photos)
+    write_db(db)
+    return JsonResponse({"product": product, "review": reviews[index], "reviews": reviews, "products": db.get("products", [])})
 
 
 @csrf_exempt

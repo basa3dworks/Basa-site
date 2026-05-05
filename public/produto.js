@@ -40,6 +40,12 @@ const productPiecesLabel = (product) => {
   const pieces = Number(product.variants?.piecesIncluded || 1);
   return product.variants?.bundleType === "kit" || pieces > 1 ? `Kit com ${pieces} pe\u00e7as` : "1 pe\u00e7a";
 };
+const escapeHtml = (value) => String(value || "")
+  .replaceAll("&", "&amp;")
+  .replaceAll("<", "&lt;")
+  .replaceAll(">", "&gt;")
+  .replaceAll('"', "&quot;")
+  .replaceAll("'", "&#039;");
 
 function soldLabel(count) {
   const sold = Number(count || 0);
@@ -65,6 +71,33 @@ function ratingMarkup(product) {
     return `<span class="star" style="--fill:${fill}%">&#9733;</span>`;
   }).join("");
   return `<div class="rating-row detail-rating"><span>${average.toFixed(1)}</span><span class="stars" aria-label="${average.toFixed(1)} de 5">${proportionalStars}</span><span>(${count})</span></div>`;
+}
+
+function socialReviewsSection(product) {
+  const reviews = product.publicReviews || [];
+  if (!reviews.length) return "";
+  return `
+    <section class="panel product-reviews-panel">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">Reviews</p>
+          <h2>Quem comprou conta</h2>
+        </div>
+      </div>
+      <div class="product-review-list">
+        ${reviews.slice(0, 8).map((review) => `
+          <article class="product-review-card">
+            <div class="product-review-head">
+              <strong>${escapeHtml(review.customerName || "Cliente Basa")}</strong>
+              ${review.rating ? `<span>${Number(review.rating).toFixed(1)} ★</span>` : ""}
+            </div>
+            ${review.comment ? `<p>${escapeHtml(review.comment)}</p>` : ""}
+            ${(review.photos || []).length ? `<div class="product-review-photos">${review.photos.map((photo) => `<img src="${photo}" alt="Foto enviada por cliente">`).join("")}</div>` : ""}
+          </article>
+        `).join("")}
+      </div>
+    </section>
+  `;
 }
 
 function campaignIsRunning(campaign) {
@@ -680,6 +713,7 @@ function renderProduct() {
         </dl>
       </article>
     </section>
+    ${socialReviewsSection(product)}
   `;
 
   document.querySelectorAll("[data-add]").forEach((button) => {

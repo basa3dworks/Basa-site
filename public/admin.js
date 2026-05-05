@@ -17,6 +17,7 @@ let currentAffiliates = [];
 let currentSellers = [];
 let selectedOrderId = "";
 let currentMetricsView = "overview";
+let currentSocialProductId = "";
 
 function applyTheme(theme) {
   document.body.dataset.theme = theme || "atelier";
@@ -64,11 +65,15 @@ function isRecentlyPosted(product) {
 
 function dynamicSoldCount(product) {
   const paidStatuses = new Set(["paid", "in_production", "shipped", "completed"]);
-  return currentOrders
+  const realSold = currentOrders
     .filter((order) => paidStatuses.has(order.status))
     .flatMap((order) => order.items || [])
     .filter((item) => item.productId === product.id)
     .reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+  const socialSold = (product.reviews || [])
+    .filter((review) => review.approved !== false)
+    .reduce((sum, review) => sum + Number(review.soldUnits || 0), 0);
+  return Number(product.soldCount || 0) + realSold + socialSold;
 }
 
 function ratingSummary(product) {
@@ -505,6 +510,33 @@ function renderStoryProductOptions({ keepSelected = false } = {}) {
     : products[0]?.id || "";
 }
 
+function renderSocialProductOptions({ keepSelected = false } = {}) {
+  const select = $("#socialProductSelect");
+  if (!select) return;
+  const selectedProductId = select.value || currentSocialProductId;
+  const query = $("#socialProductSearchInput")?.value || "";
+  const filteredProducts = currentProducts.filter((product) => matchesSearch([
+    product.sku,
+    product.name,
+    product.category,
+    product.status,
+    product.description
+  ].join(" "), query));
+  const selectedProduct = currentProducts.find((product) => product.id === selectedProductId);
+  const products = keepSelected && selectedProduct && !filteredProducts.some((product) => product.id === selectedProduct.id)
+    ? [selectedProduct, ...filteredProducts]
+    : filteredProducts;
+  select.innerHTML = products.length
+    ? products.map((product) => `<option value="${product.id}">${product.sku ? `${product.sku} - ` : ""}${product.name}</option>`).join("")
+    : `<option value="">Nenhum produto encontrado</option>`;
+  const nextValue = keepSelected && selectedProductId && products.some((product) => product.id === selectedProductId)
+    ? selectedProductId
+    : products[0]?.id || "";
+  select.value = nextValue;
+  currentSocialProductId = nextValue;
+  renderSocialProofList();
+}
+
 function campaignTypeLabel(type) {
   return {
     featured: "Destaque",
@@ -755,6 +787,56 @@ function renderStoryAdminList() {
   });
   document.querySelectorAll("[data-delete-story]").forEach((button) => {
     button.addEventListener("click", () => deleteStory(button.dataset.deleteStory));
+  });
+}
+
+function socialProduct() {
+  return currentProducts.find((product) => product.id === ($("#socialProductSelect")?.value || currentSocialProductId));
+}
+
+function socialRatingLabel(rating) {
+  const value = Number(rating || 0);
+  return value ? `${value.toFixed(value % 1 ? 1 : 0)} estrelas` : "Sem nota";
+}
+
+function renderSocialProofList() {
+  const target = $("#socialProofList");
+  if (!target) return;
+  const product = socialProduct();
+  if (!product) {
+    target.innerHTML = "<p>Selecione um produto para ver as postagens sociais.</p>";
+    return;
+  }
+  const reviews = product.reviews || [];
+  target.innerHTML = `
+    <div class="social-proof-list-head">
+      <div>
+        <strong>${product.name}</strong>
+        <span>${product.sku || "Sem SKU"} | ${ratingSummary(product)} | ${dynamicSoldCount(product)} vendidos reais</span>
+      </div>
+      <small>${reviews.length} postagem(ns) social(is)</small>
+    </div>
+    ${reviews.length ? reviews.map((review) => `
+      <article class="social-proof-card">
+        <div>
+          <strong>${escapeHtml(review.customerName || "Cliente Basa")}</strong>
+          <span>${socialRatingLabel(review.rating)} | +${Number(review.soldUnits || 0)} vendido(s)${review.approved === false ? " | Oculto" : ""}</span>
+          <p>${escapeHtml(review.comment || "Sem comentário")}</p>
+          ${(review.photos || []).length ? `<div class="social-proof-photos">${review.photos.map((photo) => `<img src="${photo}" alt="Foto do pedido">`).join("")}</div>` : ""}
+        </div>
+        <div class="story-admin-actions">
+          <button class="ghost-button table-action" type="button" data-edit-social="${review.id}">Editar</button>
+          <button class="ghost-button table-action" type="button" data-delete-social="${review.id}">Excluir</button>
+        </div>
+      </article>
+    `).join("") : "<p>Nenhuma prova social cadastrada para este produto.</p>"}
+  `;
+
+  document.querySelectorAll("[data-edit-social]").forEach((button) => {
+    button.addEventListener("click", () => editSocialProof(button.dataset.editSocial));
+  });
+  document.querySelectorAll("[data-delete-social]").forEach((button) => {
+    button.addEventListener("click", () => deleteSocialProof(button.dataset.deleteSocial));
   });
 }
 
@@ -1145,6 +1227,22 @@ function resetStoryForm() {
   $("#cancelStoryEditButton").hidden = true;
 }
 
+function resetSocialProofForm() {
+  const form = $("#socialProofForm");
+  if (!form) return;
+  const productId = form.elements.productId.value || currentSocialProductId;
+  form.reset();
+  form.elements.reviewId.value = "";
+  form.elements.rating.value = "5";
+  form.elements.soldUnits.value = "0";
+  form.elements.approved.checked = true;
+  renderSocialProductOptions({ keepSelected: true });
+  form.elements.productId.value = productId || form.elements.productId.value;
+  currentSocialProductId = form.elements.productId.value;
+  $("#socialProofSubmitButton").textContent = "Salvar prova social";
+  $("#cancelSocialProofEditButton").hidden = true;
+}
+
 function resetCustomerAdminForm() {
   const form = $("#customerAdminForm");
   form.reset();
@@ -1208,6 +1306,50 @@ async function deleteStory(storyId) {
     $("#storyStatus").textContent = "Story excluido.";
   } catch (error) {
     $("#storyStatus").textContent = error.message;
+  }
+}
+
+function editSocialProof(reviewId) {
+  const product = socialProduct();
+  const review = product?.reviews?.find((item) => item.id === reviewId);
+  if (!product || !review) return;
+  const form = $("#socialProofForm");
+  form.elements.reviewId.value = review.id;
+  form.elements.productId.value = product.id;
+  currentSocialProductId = product.id;
+  form.elements.customerName.value = review.customerName || "";
+  form.elements.rating.value = String(review.rating ?? 0);
+  if (![...form.elements.rating.options].some((option) => option.value === form.elements.rating.value)) {
+    form.elements.rating.add(new Option(`${review.rating} estrelas`, String(review.rating)));
+    form.elements.rating.value = String(review.rating);
+  }
+  form.elements.soldUnits.value = review.soldUnits || 0;
+  form.elements.comment.value = review.comment || "";
+  form.elements.photos.value = "";
+  form.elements.approved.checked = review.approved !== false;
+  $("#socialProofSubmitButton").textContent = "Salvar edição";
+  $("#cancelSocialProofEditButton").hidden = false;
+  $("#socialProofStatus").textContent = `Editando prova social de ${review.customerName || "Cliente Basa"}.`;
+  form.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+async function deleteSocialProof(reviewId) {
+  const product = socialProduct();
+  if (!product || !reviewId || !confirm("Excluir esta prova social?")) return;
+  $("#socialProofStatus").textContent = "Excluindo prova social...";
+  try {
+    const result = await api(`/api/admin/products/${encodeURIComponent(product.id)}/social-posts/${encodeURIComponent(reviewId)}`, {
+      method: "DELETE",
+      body: "{}"
+    });
+    currentProducts = result.products || currentProducts.map((item) => item.id === result.product.id ? result.product : item);
+    renderSocialProductOptions({ keepSelected: true });
+    renderProductsTable();
+    renderAdminDashboard();
+    resetSocialProofForm();
+    $("#socialProofStatus").textContent = "Prova social excluída.";
+  } catch (error) {
+    $("#socialProofStatus").textContent = error.message;
   }
 }
 
@@ -1746,6 +1888,7 @@ async function loadDashboard() {
   renderHeroSlideList();
   renderCouponList(data.coupons || []);
   renderStoryProductOptions({ keepSelected: true });
+  renderSocialProductOptions({ keepSelected: true });
   renderCampaignProductOptions({ keepSelected: true });
   renderCampaignList();
   renderStoryAdminList();
@@ -1921,6 +2064,12 @@ $("#refreshButton").addEventListener("click", loadDashboard);
 $("#productSearchInput").addEventListener("input", renderProductsTable);
 $("#storySearchInput").addEventListener("input", renderStoryAdminList);
 $("#storyProductSearchInput").addEventListener("input", () => renderStoryProductOptions());
+$("#socialProductSearchInput")?.addEventListener("input", () => renderSocialProductOptions());
+$("#socialProductSelect")?.addEventListener("change", () => {
+  currentSocialProductId = $("#socialProductSelect").value;
+  resetSocialProofForm();
+  renderSocialProofList();
+});
 $("#campaignProductSearchInput").addEventListener("input", () => renderCampaignProductOptions());
 $("#campaignProductSelect").addEventListener("change", () => {
   fillCampaignFormFromSelected.formDirty = false;
@@ -1969,6 +2118,38 @@ $("#metricsExportButton")?.addEventListener("click", () => {
   URL.revokeObjectURL(link.href);
 });
 $("#heroSlideForm").addEventListener("submit", uploadHeroSlide);
+$("#socialProofForm")?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const productId = form.elements.productId.value;
+  if (!productId) return;
+  $("#socialProofStatus").textContent = "Salvando prova social...";
+  const reviewId = form.elements.reviewId.value;
+  const body = new FormData(form);
+  body.set("approved", form.elements.approved.checked ? "true" : "false");
+  body.delete("reviewId");
+  try {
+    const path = reviewId
+      ? `/api/admin/products/${encodeURIComponent(productId)}/social-posts/${encodeURIComponent(reviewId)}`
+      : `/api/admin/products/${encodeURIComponent(productId)}/social-posts`;
+    const response = await fetch(path, { method: reviewId ? "PUT" : "POST", body });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "Não foi possível salvar a prova social.");
+    currentProducts = result.products || currentProducts.map((product) => product.id === result.product.id ? result.product : product);
+    currentSocialProductId = result.product.id;
+    renderSocialProductOptions({ keepSelected: true });
+    renderProductsTable();
+    renderAdminDashboard();
+    resetSocialProofForm();
+    $("#socialProofStatus").textContent = reviewId ? "Prova social atualizada." : "Prova social salva.";
+  } catch (error) {
+    $("#socialProofStatus").textContent = error.message;
+  }
+});
+$("#cancelSocialProofEditButton")?.addEventListener("click", () => {
+  resetSocialProofForm();
+  $("#socialProofStatus").textContent = "";
+});
 document.querySelectorAll("[data-admin-tab]").forEach((button) => {
   button.addEventListener("click", () => showAdminPanel(button.dataset.adminTab));
 });

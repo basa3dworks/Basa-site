@@ -473,6 +473,35 @@ async function saveCustomRequestUpload(upload) {
   };
 }
 
+async function saveReviewUpload(upload) {
+  if (!upload?.buffer?.length) return "";
+  if (!upload.type.startsWith("image/")) {
+    throw Object.assign(new Error("Use uma imagem em jpg, png, webp ou gif."), { status: 400 });
+  }
+  const filename = safeUploadName(upload.filename);
+  const uploadDir = path.join(publicDir, "uploads", "reviews");
+  await fs.mkdir(uploadDir, { recursive: true });
+  await fs.writeFile(path.join(uploadDir, filename), upload.buffer);
+  return `/uploads/reviews/${filename}`;
+}
+
+function socialPostPayload(fields = {}, existing = {}, photos = null) {
+  const approvedValue = fields.approved ?? existing.approved ?? true;
+  const approved = typeof approvedValue === "boolean" ? approvedValue : !["false", "0", "off", "no"].includes(String(approvedValue).toLowerCase());
+  return {
+    ...existing,
+    id: existing.id || crypto.randomUUID(),
+    createdAt: existing.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    customerName: String(fields.customerName || existing.customerName || "Cliente Basa").trim() || "Cliente Basa",
+    rating: Math.max(0, Math.min(5, Number(fields.rating ?? existing.rating ?? 0))),
+    soldUnits: Math.max(0, Number(fields.soldUnits ?? existing.soldUnits ?? 0)),
+    comment: String(fields.comment ?? existing.comment ?? "").trim(),
+    photos: photos || existing.photos || [],
+    approved
+  };
+}
+
 async function removeHeroSlideUpload(imageUrl) {
   if (!imageUrl || !imageUrl.startsWith("/uploads/hero/")) return;
   const resolved = path.resolve(publicDir, imageUrl.slice(1));
@@ -1214,6 +1243,41 @@ async function router(req, res) {
         db.products.unshift(product);
         await writeDb(db);
         return send(res, 201, { product });
+      }
+
+      if (url.pathname.match(/^\/api\/admin\/products\/[^/]+\/social-posts$/) && ["GET", "POST"].includes(req.method)) {
+        const id = decodeURIComponent(url.pathname.split("/").at(-2));
+        const product = db.products.find((item) => item.id === id);
+        if (!product) return send(res, 404, { error: "Produto nao encontrado." });
+        if (req.method === "GET") return send(res, 200, { product, reviews: product.reviews || [], products: db.products });
+        const { fields, files } = await readMultipart(req);
+        const photo = await saveReviewUpload(files.photos);
+        const review = socialPostPayload(fields, {}, photo ? [photo] : []);
+        product.reviews ||= [];
+        product.reviews.unshift(review);
+        await writeDb(db);
+        return send(res, 201, { product, review, reviews: product.reviews, products: db.products });
+      }
+
+      if (url.pathname.match(/^\/api\/admin\/products\/[^/]+\/social-posts\/[^/]+$/) && ["PUT", "DELETE"].includes(req.method)) {
+        const parts = url.pathname.split("/");
+        const productId = decodeURIComponent(parts[4]);
+        const reviewId = decodeURIComponent(parts[6]);
+        const product = db.products.find((item) => item.id === productId);
+        if (!product) return send(res, 404, { error: "Produto nao encontrado." });
+        product.reviews ||= [];
+        const index = product.reviews.findIndex((item) => item.id === reviewId);
+        if (index === -1) return send(res, 404, { error: "Review nao encontrada." });
+        if (req.method === "DELETE") {
+          const [review] = product.reviews.splice(index, 1);
+          await writeDb(db);
+          return send(res, 200, { product, review, reviews: product.reviews, products: db.products });
+        }
+        const { fields, files } = await readMultipart(req);
+        const photo = await saveReviewUpload(files.photos);
+        product.reviews[index] = socialPostPayload(fields, product.reviews[index], photo ? [photo] : null);
+        await writeDb(db);
+        return send(res, 200, { product, review: product.reviews[index], reviews: product.reviews, products: db.products });
       }
 
       if (url.pathname.match(/^\/api\/admin\/products\/[^/]+$/) && req.method === "PUT") {

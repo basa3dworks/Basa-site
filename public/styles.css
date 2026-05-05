@@ -3365,6 +3365,118 @@ label {
   margin-top: 10px;
 }
 
+.social-admin-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 520px) minmax(260px, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.social-proof-form label:nth-child(6) {
+  grid-row: span 2;
+}
+
+.social-proof-note {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--soft);
+}
+
+.social-proof-note span {
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.social-proof-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.social-proof-list-head,
+.social-proof-card {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.social-proof-list-head span,
+.social-proof-list-head small,
+.social-proof-card span {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+}
+
+.social-proof-card {
+  align-items: flex-start;
+}
+
+.social-proof-card p {
+  margin: 8px 0 0;
+  color: var(--muted);
+}
+
+.social-proof-photos,
+.product-review-photos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.social-proof-photos img,
+.product-review-photos img {
+  width: 76px;
+  height: 76px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid var(--line);
+}
+
+.product-reviews-panel {
+  max-width: 1180px;
+  margin: 24px auto;
+}
+
+.product-review-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.product-review-card {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.product-review-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--ink);
+}
+
+.product-review-head span {
+  color: #2878ff;
+  font-weight: 900;
+}
+
+.product-review-card p {
+  margin: 10px 0 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
 .sender-settings {
   margin-top: 14px;
 }

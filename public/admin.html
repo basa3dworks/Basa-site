@@ -52,6 +52,7 @@
           <button class="admin-tab" type="button" data-admin-tab="products"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m4 7 8-4 8 4-8 4-8-4Zm0 0v10l8 4 8-4V7M12 11v10"/></svg></span>Produtos</button>
           <button class="admin-tab" type="button" data-admin-tab="pricing"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM8 9h8M8 13h3m5 0h0M8 17h3m5 0h0"/></svg></span>Precificação</button>
           <button class="admin-tab" type="button" data-admin-tab="stories"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 4h6a4 4 0 0 1 4 4v8a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4V8a4 4 0 0 1 4-4Zm3 5v6m-3-3h6"/></svg></span>Stories</button>
+          <button class="admin-tab" type="button" data-admin-tab="social"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.8 1-6.1-4.4-4.3 6.1-.9L12 3Z"/></svg></span>Gerador social</button>
           <button class="admin-tab" type="button" data-admin-tab="campaigns"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 13V7l11-3v16L4 17v-4Zm0 0h-1m12-1h4m-2-4 2-2m-2 10 2 2"/></svg></span>Campanhas</button>
           <button class="admin-tab" type="button" data-admin-tab="promotions"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12 12 4h8v8l-8 8-8-8Zm12-4h0M8 16l8-8"/></svg></span>Cupons</button>
           <button class="admin-tab" type="button" data-admin-tab="settings"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 6h14v12H5zM8 10h8m-8 4h5"/></svg></span>Hero / Banner</button>
@@ -257,6 +258,55 @@
           </form>
           <p class="form-status" id="storyStatus"></p>
           <div class="story-admin-list" id="storyAdminList"></div>
+        </section>
+
+        <section class="panel" data-admin-panel="social" hidden>
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Prova social</p>
+              <h2>Gerador social</h2>
+              <span>Cadastre avaliações, fotos reais do pedido e unidades vendidas quando quiser.</span>
+            </div>
+          </div>
+          <div class="social-admin-grid">
+            <form id="socialProofForm" class="stack-form social-proof-form" enctype="multipart/form-data">
+              <input name="reviewId" type="hidden">
+              <label>Buscar produto
+                <input id="socialProductSearchInput" type="search" placeholder="Nome, SKU ou categoria">
+              </label>
+              <label>Produto
+                <select name="productId" id="socialProductSelect" required></select>
+              </label>
+              <label>Nome do cliente<input name="customerName" placeholder="Ex: Cliente verificado"></label>
+              <label>Nota
+                <select name="rating">
+                  <option value="5">5 estrelas</option>
+                  <option value="4.8">4.8 estrelas</option>
+                  <option value="4.5">4.5 estrelas</option>
+                  <option value="4">4 estrelas</option>
+                  <option value="0">Sem nota</option>
+                </select>
+              </label>
+              <label>Unidades vendidas a somar<input name="soldUnits" type="number" min="0" value="0"></label>
+              <label>Comentário<textarea name="comment" rows="4" placeholder="Ex: Produto chegou bem embalado e ficou perfeito no setup."></textarea></label>
+              <label>Fotos do pedido<input name="photos" type="file" accept="image/*" multiple></label>
+              <label class="checkbox-row">
+                <input name="approved" type="checkbox" value="true" checked>
+                <span>Exibir na loja</span>
+              </label>
+              <div class="form-actions">
+                <button class="primary-button" id="socialProofSubmitButton" type="submit">Salvar prova social</button>
+                <button class="ghost-button" id="cancelSocialProofEditButton" type="button" hidden>Cancelar edição</button>
+              </div>
+              <p class="form-status" id="socialProofStatus"></p>
+            </form>
+            <aside class="social-proof-note">
+              <strong>Como isso funciona</strong>
+              <span>Cada postagem soma vendidos, entra no cálculo da nota e pode exibir fotos na página do produto. Se desmarcar "Exibir na loja", ela fica guardada no admin sem aparecer para o cliente.</span>
+              <span>Os contadores continuam obedecendo os botões de exibição do Hero / Banner.</span>
+            </aside>
+          </div>
+          <div class="social-proof-list" id="socialProofList"></div>
         </section>
 
         <section class="panel" data-admin-panel="settings" hidden>

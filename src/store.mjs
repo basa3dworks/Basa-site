@@ -125,11 +125,15 @@ function paidOrderStatuses() {
 }
 
 function dynamicSoldCount(product, orders = []) {
-  return orders
+  const orderSold = orders
     .filter((order) => paidOrderStatuses().has(order.status))
     .flatMap((order) => order.items || [])
     .filter((item) => item.productId === product.id)
     .reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+  const socialSold = (product.reviews || [])
+    .filter((review) => review.approved !== false)
+    .reduce((sum, review) => sum + Number(review.soldUnits || 0), 0);
+  return orderSold + socialSold;
 }
 
 function dynamicRating(product) {
@@ -176,7 +180,8 @@ function campaignPrice(product, now = Date.now()) {
 }
 
 export function publicProduct(product, db = {}) {
-  const soldCount = Number(product.soldCount || 0) || dynamicSoldCount(product, db.orders || []);
+  const publicReviews = (product.reviews || []).filter((review) => review.approved !== false);
+  const soldCount = Number(product.soldCount || 0) + dynamicSoldCount(product, db.orders || []);
   const rating = product.rating?.count ? product.rating : dynamicRating(product);
   const favoriteCount = Number(product.favoriteCount || 0) + (db.customers || []).filter((customer) => (customer.favorites || []).includes(product.id)).length;
   const pricing = campaignPrice(product);
@@ -200,6 +205,14 @@ export function publicProduct(product, db = {}) {
     soldCount,
     favoriteCount,
     rating,
+    publicReviews: publicReviews.map((review) => ({
+      id: review.id,
+      customerName: review.customerName || "Cliente Basa",
+      rating: Number(review.rating || 0),
+      comment: review.comment || "",
+      photos: review.photos || [],
+      createdAt: review.createdAt
+    })).filter((review) => review.rating || review.comment || review.photos.length),
     campaign: product.campaign || null,
     shipping: product.shipping || {},
     stock: product.stock,

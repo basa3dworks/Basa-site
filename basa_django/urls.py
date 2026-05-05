@@ -39,6 +39,8 @@ urlpatterns = [
     path("api/admin/custom-requests/<str:request_id>", views.api_admin_custom_request_detail),
     path("api/admin/products", views.api_admin_products),
     path("api/admin/products/<str:product_id>/campaign", views.api_admin_product_campaign),
+    path("api/admin/products/<str:product_id>/social-posts", views.api_admin_product_social_posts),
+    path("api/admin/products/<str:product_id>/social-posts/<str:review_id>", views.api_admin_product_social_post_detail),
     path("api/admin/products/<str:product_id>", views.api_admin_product_detail),
     re_path(r"^(?P<asset_path>.+\.(?:css|js|json|png|jpg|jpeg|webp|gif|svg|ico|mp4|webm|mov|woff|woff2|ttf))$", views.public_asset),
 ]
