@@ -6,6 +6,7 @@ import os
 import re
 import secrets
 import unicodedata
+import urllib.error
 import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -21,6 +22,8 @@ from .store import BASE_DIR, read_db, write_db
 PUBLIC_DIR = BASE_DIR / "public"
 ADMIN_USER = os.environ.get("ADMIN_USER", "admin@basa3d.com")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin")
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+OPENAI_INSIGHTS_MODEL = os.environ.get("OPENAI_INSIGHTS_MODEL", "gpt-4.1-mini")
 SESSION_SECRET = os.environ.get("SESSION_SECRET") or os.environ.get("DJANGO_SECRET_KEY") or "dev-secret"
 signer = TimestampSigner(key=SESSION_SECRET, salt="basa-admin")
 
@@ -825,6 +828,136 @@ def api_admin_dashboard(request):
         "affiliates": db.get("affiliates", []),
         "sellers": db.get("sellers", []),
     })
+
+
+def _paid_orders(db):
+    paid_statuses = {"paid", "in_production", "shipped", "completed"}
+    return [order for order in db.get("orders", []) if order.get("status") in paid_statuses]
+
+
+def _admin_insight_context(db):
+    orders = _paid_orders(db)
+    products = db.get("products", [])
+    requests = db.get("customRequests", [])
+    coupons = db.get("coupons", [])
+    revenue = round(sum(float(order.get("total") or 0) for order in orders), 2)
+    units = sum(sum(int(float(item.get("quantity") or 0)) for item in order.get("items", [])) for order in orders)
+    shipping_revenue = round(sum(float(order.get("shipping") or 0) for order in orders), 2)
+    free_shipping_orders = len([order for order in orders if float(order.get("shipping") or 0) == 0])
+    product_rows = []
+    for product in products:
+        product_id = product.get("id")
+        lines = [line for order in orders for line in order.get("items", []) if line.get("productId") == product_id]
+        sold = sum(int(float(line.get("quantity") or 0)) for line in lines)
+        product_rows.append({
+            "name": product.get("name"),
+            "category": product.get("category"),
+            "price": product.get("price"),
+            "stock": product.get("stock"),
+            "soldUnits": sold,
+            "revenue": round(sum(float(line.get("total") or 0) for line in lines), 2),
+            "campaign": product.get("campaign") or None,
+            "sellerPaysShipping": bool(product.get("shipping", {}).get("sellerPaysShipping")),
+        })
+    product_rows.sort(key=lambda item: item["revenue"], reverse=True)
+    return {
+        "store": db.get("settings", {}).get("storeName", "Basa 3D Works"),
+        "summary": {
+            "activeProducts": len([product for product in products if product.get("status", "active") == "active"]),
+            "paidOrders": len(orders),
+            "revenue": revenue,
+            "units": units,
+            "averageTicket": round(revenue / len(orders), 2) if orders else 0,
+            "shippingRevenue": shipping_revenue,
+            "freeShippingOrders": free_shipping_orders,
+            "openQuotes": len([item for item in requests if item.get("status") not in {"completed", "canceled"}]),
+            "activeCoupons": len([coupon for coupon in coupons if coupon.get("active") is not False]),
+        },
+        "topProducts": product_rows[:8],
+        "productsWithoutSales": [item for item in product_rows if item["soldUnits"] == 0][:8],
+        "recentOrders": [{
+            "id": order.get("id"),
+            "status": order.get("status"),
+            "total": order.get("total"),
+            "shipping": order.get("shipping"),
+            "createdAt": order.get("createdAt"),
+            "items": [item.get("name") for item in order.get("items", [])],
+        } for order in db.get("orders", [])[:8]],
+        "campaigns": [product.get("campaign") for product in products if product.get("campaign")],
+    }
+
+
+def _fallback_insights(context):
+    summary = context["summary"]
+    top_product = context["topProducts"][0] if context["topProducts"] else None
+    weak_product = context["productsWithoutSales"][0] if context["productsWithoutSales"] else None
+    lines = [
+        "Prioridade 1: cadastrar e revisar produtos reais com fotos fortes, preço final e estoque correto antes de impulsionar tráfego.",
+        f"Pedidos pagos: {summary['paidOrders']} | receita: R$ {summary['revenue']:.2f} | ticket médio: R$ {summary['averageTicket']:.2f}.",
+    ]
+    if top_product:
+        lines.append(f"Produto para campanha: {top_product['name']} concentra melhor sinal de venda. Use oferta curta, story de produção e cupom de carrinho.")
+    if weak_product:
+        lines.append(f"Produto para revisar: {weak_product['name']} ainda não vendeu. Verifique foto, nome, preço antigo, benefício e categoria.")
+    if summary["openQuotes"]:
+        lines.append(f"Sob medida: existem {summary['openQuotes']} orçamento(s) aberto(s). Priorize resposta rápida, porque esse cliente já levantou a mão.")
+    lines.append("IA externa ainda não configurada. Defina OPENAI_API_KEY na Railway para receber uma análise gerada pela API.")
+    return "\n".join(lines)
+
+
+def _extract_openai_text(payload):
+    if payload.get("output_text"):
+        return payload["output_text"]
+    chunks = []
+    for item in payload.get("output", []):
+        for content in item.get("content", []):
+            if content.get("type") in {"output_text", "text"} and content.get("text"):
+                chunks.append(content["text"])
+    return "\n".join(chunks).strip()
+
+
+@csrf_exempt
+def api_admin_ai_insights(request):
+    error = _require_admin(request)
+    if error:
+        return error
+    db = read_db()
+    context = _admin_insight_context(db)
+    if not OPENAI_API_KEY:
+        return JsonResponse({"source": "local", "context": context, "insight": _fallback_insights(context)})
+
+    prompt = (
+        "Você é um consultor comercial para um ecommerce brasileiro de impressão 3D chamado Basa 3D Works. "
+        "Analise os dados e entregue recomendações práticas, curtas e priorizadas. "
+        "Fale em português do Brasil. Não invente dados ausentes. "
+        "Responda com: Diagnóstico, Próximas ações, Produtos para impulsionar, Riscos e Experimentos da semana.\n\n"
+        f"Dados:\n{json.dumps(context, ensure_ascii=False)}"
+    )
+    request_data = json.dumps({
+        "model": OPENAI_INSIGHTS_MODEL,
+        "input": prompt,
+        "max_output_tokens": 900,
+    }).encode("utf-8")
+    api_request = urllib.request.Request(
+        "https://api.openai.com/v1/responses",
+        data=request_data,
+        headers={
+            "Authorization": f"Bearer {OPENAI_API_KEY}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(api_request, timeout=35) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="ignore")
+        return JsonResponse({"error": f"OpenAI retornou erro {exc.code}.", "detail": detail}, status=502)
+    except Exception as exc:
+        return JsonResponse({"error": f"Não foi possível gerar insights agora: {exc}"}, status=502)
+
+    text = _extract_openai_text(payload)
+    return JsonResponse({"source": "openai", "model": OPENAI_INSIGHTS_MODEL, "context": context, "insight": text or _fallback_insights(context)})
 
 
 @csrf_exempt

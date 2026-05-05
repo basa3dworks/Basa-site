@@ -43,6 +43,15 @@ function matchesSearch(text, query) {
   return !normalizedQuery || normalizeSearch(text).includes(normalizedQuery);
 }
 
+function escapeHtml(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 function isRecentlyPosted(product) {
   const createdAt = new Date(product.createdAt || 0).getTime();
   return Number.isFinite(createdAt) && createdAt > 0 && Date.now() - createdAt <= 30 * 24 * 60 * 60 * 1000;
@@ -350,6 +359,94 @@ function renderMetrics() {
   `).join("");
   applyMetricsView();
 }
+
+function aiInsightSummary() {
+  const paid = paidOrders("all");
+  const revenue = paid.reduce((sum, order) => sum + Number(order.total || 0), 0);
+  const units = orderItemsTotal(paid);
+  const freeShippingOrders = paid.filter((order) => Number(order.shipping || 0) === 0).length;
+  const openRequests = currentRequests.filter((request) => !["completed", "canceled"].includes(request.status)).length;
+  const rows = productMetricRows(paid);
+  const topProduct = rows.find((row) => row.units > 0);
+  const noSales = rows.filter((row) => row.units === 0).length;
+  return {
+    paid,
+    rows,
+    topProduct,
+    noSales,
+    openRequests,
+    revenue,
+    units,
+    averageTicket: paid.length ? revenue / paid.length : 0,
+    freeShippingOrders
+  };
+}
+
+function renderAiInsightBrief() {
+  const summary = aiInsightSummary();
+  const brief = $("#aiInsightBrief");
+  if (!brief) return;
+  brief.innerHTML = `
+    <article><span>Receita paga</span><strong>${money(summary.revenue)}</strong><small>${summary.paid.length} pedido(s)</small></article>
+    <article><span>Ticket médio</span><strong>${money(summary.averageTicket)}</strong><small>${summary.units} unidade(s)</small></article>
+    <article><span>Frete grátis</span><strong>${summary.freeShippingOrders}</strong><small>pedido(s) beneficiados</small></article>
+    <article><span>Orçamentos abertos</span><strong>${summary.openRequests}</strong><small>sob medida</small></article>
+  `;
+}
+
+function renderLocalAiInsight() {
+  const summary = aiInsightSummary();
+  const output = $("#aiInsightOutput");
+  const source = $("#aiInsightSource");
+  if (!output) return;
+  if (source) source.textContent = "Leitura local";
+  const topProduct = summary.topProduct?.product?.name || "sem produto vencedor ainda";
+  output.innerHTML = `
+    <article class="ai-recommendation-card strong">
+      <b>Prioridade comercial</b>
+      <p>Revise produtos reais, fotos, estoque e preço final antes de comprar tráfego. A IA usa estes dados para sugerir campanhas melhores.</p>
+    </article>
+    <article class="ai-recommendation-card">
+      <b>Produto para observar</b>
+      <p>${topProduct}. Quando houver vendas suficientes, use esse item como base para oferta relâmpago e story de produção.</p>
+    </article>
+    <article class="ai-recommendation-card">
+      <b>Risco atual</b>
+      <p>${summary.noSales} produto(s) ainda sem venda paga. Teste título, imagem principal, preço antigo e categoria.</p>
+    </article>
+  `;
+}
+
+function renderAiInsightText(text) {
+  const output = $("#aiInsightOutput");
+  if (!output) return;
+  const blocks = String(text || "").split(/\n{2,}/).map((block) => block.trim()).filter(Boolean);
+  output.innerHTML = blocks.length ? blocks.map((block, index) => `
+    <article class="ai-recommendation-card ${index === 0 ? "strong" : ""}">
+      <p>${escapeHtml(block).replace(/\n/g, "<br>")}</p>
+    </article>
+  `).join("") : "<p>A IA não retornou texto para exibir.</p>";
+}
+
+async function generateAiInsights() {
+  const button = $("#generateInsightsButton");
+  const source = $("#aiInsightSource");
+  if (button) button.disabled = true;
+  if (button) button.textContent = "Gerando...";
+  if (source) source.textContent = "Consultando IA";
+  try {
+    const result = await api("/api/admin/ai-insights", { method: "POST", body: JSON.stringify({}) });
+    renderAiInsightText(result.insight);
+    if (source) source.textContent = result.source === "openai" ? `OpenAI ${result.model || ""}`.trim() : "Leitura local";
+  } catch (error) {
+    if (source) source.textContent = "Erro na análise";
+    $("#aiInsightOutput").innerHTML = `<article class="ai-recommendation-card danger"><b>Não foi possível gerar agora</b><p>${escapeHtml(error.message)}</p></article>`;
+  } finally {
+    if (button) button.disabled = false;
+    if (button) button.textContent = "Gerar insights";
+  }
+}
+
 function fillShippingSettings(settings) {
   const form = $("#shippingSettingsForm");
   const sender = settings.sender || {};
@@ -1628,7 +1725,8 @@ async function loadDashboard() {
   renderStoryAdminList();
   fillShippingSettings(data.settings);
   updateEmbeddedShippingPreview();
-  renderMetrics();
+  renderAiInsightBrief();
+  renderLocalAiInsight();
   renderProductsTable();
   renderOrdersList();
   renderPeopleLists();
@@ -1814,8 +1912,9 @@ $("#sellerForm").addEventListener("submit", saveSeller);
 $("#cancelCustomerEditButton").addEventListener("click", resetCustomerAdminForm);
 $("#cancelAffiliateEditButton").addEventListener("click", resetAffiliateForm);
 $("#cancelSellerEditButton").addEventListener("click", resetSellerForm);
-$("#metricsPeriodSelect").addEventListener("change", renderMetrics);
-$("#metricsOrderTypeSelect").addEventListener("change", renderMetrics);
+$("#generateInsightsButton")?.addEventListener("click", generateAiInsights);
+$("#metricsPeriodSelect")?.addEventListener("change", renderMetrics);
+$("#metricsOrderTypeSelect")?.addEventListener("change", renderMetrics);
 $("#salesMonitorFullscreenButton")?.addEventListener("click", toggleSalesMonitorFullscreen);
 document.querySelectorAll("[data-metrics-view]").forEach((button) => {
   button.addEventListener("click", () => {
@@ -1823,7 +1922,7 @@ document.querySelectorAll("[data-metrics-view]").forEach((button) => {
     applyMetricsView();
   });
 });
-$("#metricsExportButton").addEventListener("click", () => {
+$("#metricsExportButton")?.addEventListener("click", () => {
   const rows = productMetricRows(paidOrders($("#metricsPeriodSelect")?.value || "30"));
   const csv = ["Produto,Categoria,Unidades,Receita,Ticket,Avaliacao"]
     .concat(rows.map((row) => [

@@ -2063,6 +2063,9 @@ label {
 }
 
 .admin-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   min-height: 40px;
   border: 0;
   border-radius: 7px;
@@ -2076,6 +2079,31 @@ label {
 .admin-tab.active {
   color: #fff;
   background: var(--brand);
+}
+
+.tab-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  color: inherit;
+  background: rgba(26, 48, 41, 0.06);
+}
+
+.admin-tab.active .tab-icon {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.tab-icon svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .panel {
@@ -2112,6 +2140,100 @@ label {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #101018;
+}
+
+.ai-insights-panel {
+  background: linear-gradient(135deg, #ffffff 0%, #f3f8f5 100%);
+}
+
+.ai-insights-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.44fr) minmax(0, 1fr);
+  gap: 16px;
+}
+
+.ai-insight-brief,
+.ai-insight-output {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.ai-insight-brief,
+.ai-output-head {
+  padding: 16px;
+}
+
+.ai-insight-brief h3,
+.ai-output-head h3 {
+  margin: 0;
+}
+
+.ai-brief-grid,
+.ai-output-box {
+  display: grid;
+  gap: 10px;
+}
+
+.ai-brief-grid {
+  margin-top: 12px;
+}
+
+.ai-brief-grid article,
+.ai-recommendation-card {
+  padding: 14px;
+  border-radius: 8px;
+  background: #f5f7f6;
+}
+
+.ai-brief-grid span,
+.ai-output-head span {
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.ai-brief-grid strong {
+  display: block;
+  margin: 5px 0;
+  font-size: 1.45rem;
+}
+
+.ai-output-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.ai-output-box {
+  padding: 16px;
+}
+
+.ai-recommendation-card {
+  border: 1px solid transparent;
+}
+
+.ai-recommendation-card.strong {
+  border-color: rgba(32, 126, 86, 0.28);
+  background: #ecf8f1;
+}
+
+.ai-recommendation-card.danger {
+  border-color: rgba(180, 45, 37, 0.28);
+  background: #fff3f1;
+}
+
+.ai-recommendation-card b {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.ai-recommendation-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
 }
 
 .admin-search {
@@ -3793,6 +3915,7 @@ pre {
   .section-head,
   .admin-hero,
   .admin-grid,
+  .ai-insights-layout,
   .metrics-layout,
   .metrics-kpi-grid,
   .marketplace-metrics-grid,

@@ -46,17 +46,17 @@
         <div class="stats-grid" id="statsGrid"></div>
 
         <div class="admin-tabs" role="tablist" aria-label="Areas do painel admin">
-          <button class="admin-tab" type="button" data-admin-tab="metrics">Métricas</button>
-          <button class="admin-tab active" type="button" data-admin-tab="products">Produtos</button>
-          <button class="admin-tab" type="button" data-admin-tab="pricing">Precificação</button>
-          <button class="admin-tab" type="button" data-admin-tab="stories">Stories</button>
-          <button class="admin-tab" type="button" data-admin-tab="campaigns">Campanhas</button>
-          <button class="admin-tab" type="button" data-admin-tab="people">Pessoas</button>
-          <button class="admin-tab" type="button" data-admin-tab="orders">Meus pedidos</button>
-          <button class="admin-tab" type="button" data-admin-tab="requests">Encomendas</button>
-          <button class="admin-tab" type="button" data-admin-tab="shipping">Envio</button>
-          <button class="admin-tab" type="button" data-admin-tab="promotions">Cupons</button>
-          <button class="admin-tab" type="button" data-admin-tab="settings">Aparencia</button>
+          <button class="admin-tab" type="button" data-admin-tab="insights"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3v4m0 10v4M5.6 5.6l2.8 2.8m7.2 7.2 2.8 2.8M3 12h4m10 0h4M5.6 18.4l2.8-2.8m7.2-7.2 2.8-2.8"/></svg></span>Insights IA</button>
+          <button class="admin-tab active" type="button" data-admin-tab="products"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m4 7 8-4 8 4-8 4-8-4Zm0 0v10l8 4 8-4V7M12 11v10"/></svg></span>Produtos</button>
+          <button class="admin-tab" type="button" data-admin-tab="pricing"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM8 9h8M8 13h3m5 0h0M8 17h3m5 0h0"/></svg></span>Precificação</button>
+          <button class="admin-tab" type="button" data-admin-tab="stories"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 4h6a4 4 0 0 1 4 4v8a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4V8a4 4 0 0 1 4-4Zm3 5v6m-3-3h6"/></svg></span>Stories</button>
+          <button class="admin-tab" type="button" data-admin-tab="campaigns"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 13V7l11-3v16L4 17v-4Zm0 0h-1m12-1h4m-2-4 2-2m-2 10 2 2"/></svg></span>Campanhas</button>
+          <button class="admin-tab" type="button" data-admin-tab="people"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM3 20a5 5 0 0 1 10 0m-2 0a5 5 0 0 1 10 0"/></svg></span>Pessoas</button>
+          <button class="admin-tab" type="button" data-admin-tab="orders"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-2-1-2 1-2-1-2 1-2-1-2 1V3Zm3 5h6m-6 4h6m-6 4h4"/></svg></span>Pedidos</button>
+          <button class="admin-tab" type="button" data-admin-tab="requests"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 5h14v10H8l-3 3V5Zm4 4h6m-6 3h4"/></svg></span>Encomendas</button>
+          <button class="admin-tab" type="button" data-admin-tab="shipping"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 7h11v10H3zM14 11h4l3 3v3h-7V11ZM7 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm10 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/></svg></span>Envio</button>
+          <button class="admin-tab" type="button" data-admin-tab="promotions"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12 12 4h8v8l-8 8-8-8Zm12-4h0M8 16l8-8"/></svg></span>Cupons</button>
+          <button class="admin-tab" type="button" data-admin-tab="settings"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm0-5v3m0 12v3M4.2 4.2l2.1 2.1m11.4 11.4 2.1 2.1M3 12h3m12 0h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg></span>Aparência</button>
         </div>
 
         <section class="panel pricing-admin-panel" data-admin-panel="pricing" hidden>
@@ -70,142 +70,28 @@
           <iframe class="pricing-frame" src="/calculadora.html" title="Calculadora de precificação Basa 3D Works"></iframe>
         </section>
 
-        <section class="panel metrics-dashboard" data-admin-panel="metrics" hidden>
-          <div class="metrics-topline">
-            <div class="metrics-tabs" aria-label="Se&ccedil;&otilde;es de m&eacute;tricas">
-              <button class="active" type="button" data-metrics-view="overview">Vis&atilde;o geral</button>
-              <button type="button" data-metrics-view="product">Produto</button>
-              <button type="button" data-metrics-view="sales">Vendas</button>
-              <button type="button" data-metrics-view="services">Servi&ccedil;os</button>
-              <button type="button" data-metrics-view="traffic">Tr&aacute;fego</button>
-              <button type="button" data-metrics-view="marketing">Marketing</button>
-              <button type="button" data-metrics-view="assistant">Assistente de vendas</button>
+        <section class="panel ai-insights-panel" data-admin-panel="insights" hidden>
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Assistente comercial</p>
+              <h2>Insights IA</h2>
+              <span>Leitura de produtos, pedidos, campanhas, cupons, frete e encomendas.</span>
             </div>
-            <div class="metrics-links">
-              <span>Saber mais</span>
-              <button type="button" data-metrics-view="monitor">Monitor de vendas ao vivo</button>
-            </div>
+            <button class="primary-button" type="button" id="generateInsightsButton">Gerar insights</button>
           </div>
-          <section class="sales-monitor" data-metrics-section="monitor">
-            <button class="monitor-fullscreen-button" type="button" id="salesMonitorFullscreenButton">Tela cheia</button>
-            <div class="sales-monitor-hero">
-              <div>
-                <h3>Vendas Hoje</h3>
-                <span id="salesMonitorClock">--/--/---- --:--:-- (GMT-03)</span>
-              </div>
-              <strong id="salesMonitorTotal">R$ 0,00</strong>
-            </div>
-            <div class="sales-monitor-grid">
-              <section class="monitor-card">
-                <h3>M&eacute;tricas principais</h3>
-                <div class="monitor-metric-grid" id="salesMonitorMetrics"></div>
-              </section>
-              <section class="monitor-card monitor-chart-card">
-                <div class="monitor-card-head">
-                  <h3>Tend&ecirc;ncia de vendas</h3>
-                  <span><i></i>Hoje</span>
-                </div>
-                <div class="monitor-chart" id="salesMonitorChart"></div>
-              </section>
-              <section class="monitor-card">
-                <h3>Top 5 dos produtos &agrave; venda</h3>
-                <div class="monitor-top-products" id="salesMonitorTopProducts"></div>
-              </section>
-            </div>
-          </section>
-          <div class="metrics-filters">
-            <label>Per&iacute;odo dos dados
-              <select id="metricsPeriodSelect">
-                <option value="all">Todo o hist&oacute;rico</option>
-                <option value="7">&Uacute;ltimos 7 dias</option>
-                <option value="30" selected>&Uacute;ltimos 30 dias</option>
-                <option value="90">&Uacute;ltimos 90 dias</option>
-              </select>
-            </label>
-            <label>Tipo de pedido
-              <select id="metricsOrderTypeSelect">
-                <option value="all">Produto pago</option>
-                <option value="free_shipping">Com frete gr&aacute;tis</option>
-                <option value="shipping_paid">Com frete pago</option>
-              </select>
-            </label>
-            <button class="ghost-button" type="button" id="metricsExportButton">Exportar dados</button>
-          </div>
-          <div class="marketplace-metrics-grid" data-metrics-section="main realtime">
-            <section class="metrics-card metrics-main-card" data-metrics-section="main sales">
-              <div class="metrics-card-head">
-                <h3>M&eacute;tricas principais</h3>
-                <span>Vendas, pedidos, visitantes estimados e convers&atilde;o</span>
-              </div>
-              <div class="metrics-kpi-grid" id="metricsKpiGrid"></div>
-              <div class="trend-head">
-                <strong>Gr&aacute;fico de tend&ecirc;ncias de cada m&eacute;trica</strong>
-                <span><i class="dot sales"></i>Vendas <i class="dot orders"></i>Pedidos <i class="dot visitors"></i>Visitantes</span>
-              </div>
-              <div class="metrics-trend-chart" id="metricsTrendChart"></div>
+          <div class="ai-insights-layout">
+            <section class="ai-insight-brief">
+              <h3>Resumo operacional</h3>
+              <div class="ai-brief-grid" id="aiInsightBrief"></div>
             </section>
-            <section class="metrics-card realtime-card" data-metrics-section="realtime traffic assistant">
-              <div class="metrics-card-head">
-                <h3>M&eacute;tricas em tempo real</h3>
-                <span>Atualiza&ccedil;&atilde;o em tempo real</span>
+            <section class="ai-insight-output">
+              <div class="ai-output-head">
+                <h3>Recomendação da IA</h3>
+                <span id="aiInsightSource">Pronto para analisar</span>
               </div>
-              <div class="metrics-list" id="metricsRealtime"></div>
-            </section>
-          </div>
-          <section class="metrics-card traffic-card" data-metrics-section="traffic marketing">
-            <div class="metrics-card-head">
-              <h3>Fontes de tr&aacute;fego</h3>
-              <span>Contribui&ccedil;&atilde;o estimada das vendas na loja</span>
-            </div>
-            <div class="traffic-source-grid" id="metricsTrafficSources"></div>
-          </section>
-          <div class="metrics-layout">
-            <section class="metrics-card" data-metrics-section="product">
-              <div class="metrics-card-head">
-                <h3>Desempenho por produto</h3>
-                <span>Receita, unidades e avalia&ccedil;&atilde;o</span>
+              <div class="ai-output-box" id="aiInsightOutput">
+                <p>Carregue o painel e clique em gerar insights para receber ações comerciais priorizadas.</p>
               </div>
-              <div class="metrics-table-wrap">
-                <table class="metrics-table">
-                  <thead><tr><th>Produto</th><th>Unid.</th><th>Receita</th><th>Ticket</th><th>Avalia&ccedil;&atilde;o</th><th>For&ccedil;a</th></tr></thead>
-                  <tbody id="metricsProductRows"></tbody>
-                </table>
-              </div>
-            </section>
-            <section class="metrics-card" data-metrics-section="planning assistant marketing">
-              <div class="metrics-card-head">
-                <h3>Planejamento</h3>
-                <span>Leitura para as pr&oacute;ximas a&ccedil;&otilde;es</span>
-              </div>
-              <div class="metrics-insights" id="metricsInsights"></div>
-            </section>
-            <section class="metrics-card" data-metrics-section="campaigns marketing">
-              <div class="metrics-card-head">
-                <h3>Campanhas e frete</h3>
-                <span>Impacto comercial</span>
-              </div>
-              <div class="metrics-list" id="metricsCampaigns"></div>
-            </section>
-            <section class="metrics-card" data-metrics-section="funnel services assistant">
-              <div class="metrics-card-head">
-                <h3>Funil operacional</h3>
-                <span>Pedidos e encomendas</span>
-              </div>
-              <div class="metrics-list" id="metricsFunnel"></div>
-            </section>
-            <section class="metrics-card" data-metrics-section="finance sales services">
-              <div class="metrics-card-head">
-                <h3>Financeiro estimado</h3>
-              <span>Receita, entrega e frete gr&aacute;tis</span>
-              </div>
-              <div class="metrics-list" id="metricsFinance"></div>
-            </section>
-            <section class="metrics-card" data-metrics-section="categories product">
-              <div class="metrics-card-head">
-                <h3>Categorias</h3>
-                <span>Onde a loja est&aacute; performando</span>
-              </div>
-              <div class="metrics-list" id="metricsCategories"></div>
             </section>
           </div>
         </section>

@@ -22,6 +22,7 @@ urlpatterns = [
     path("api/custom-requests", views.api_custom_requests),
     path("api/custom-requests/<str:request_id>/messages", views.api_custom_request_messages),
     path("api/admin/dashboard", views.api_admin_dashboard),
+    path("api/admin/ai-insights", views.api_admin_ai_insights),
     path("api/admin/settings", views.api_admin_settings),
     path("api/admin/hero-slides", views.api_admin_hero_slides),
     path("api/admin/hero-slides/<str:slide_id>", views.api_admin_hero_slide_detail),
