@@ -137,6 +137,8 @@ async function getMercadoPagoPayment(paymentId) {
 
 function productPayload(body, existing = {}, settings = {}) {
   const name = body.name ?? existing.name;
+  const skuBase = String(body.sku || existing.sku || "").trim().toUpperCase();
+  const generatedSku = `B3D-${String(name || "BASA").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/(^-|-$)/g, "").split("-").slice(0, 3).join("-").slice(0, 18) || "BASA"}-${Math.random().toString(16).slice(2, 8).toUpperCase()}`;
   const sellerPaysShipping = Boolean(body.sellerPaysShipping);
   const basePrice = Number(body.price ?? existing.shipping?.basePrice ?? existing.price ?? 0);
   const compareAtBasePrice = Number(body.compareAtPrice || 0);
@@ -145,6 +147,7 @@ function productPayload(body, existing = {}, settings = {}) {
   const finalCompareAtPrice = sellerPaysShipping && compareAtBasePrice > 0 ? compareAtBasePrice + embeddedShippingReserve : compareAtBasePrice;
   return {
     ...existing,
+    sku: skuBase || generatedSku,
     name,
     slug: body.slug || existing.slug || name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
     description: body.description ?? existing.description,
@@ -160,6 +163,7 @@ function productPayload(body, existing = {}, settings = {}) {
     gallery: Array.isArray(body.gallery) ? body.gallery : body.gallery !== undefined ? [body.image || existing.image, ...lines(body.gallery)].filter(Boolean) : existing.gallery || [body.image || existing.image].filter(Boolean),
     price: Math.round(finalPrice * 100) / 100,
     compareAtPrice: Math.round(finalCompareAtPrice * 100) / 100,
+    affiliateCommissionPercent: Math.max(0, Math.min(100, Number(body.affiliateCommissionPercent ?? existing.affiliateCommissionPercent ?? 0))),
     createdAt: existing.createdAt || new Date().toISOString(),
     shipping: {
       weightKg: Number(body.weightKg ?? existing.shipping?.weightKg ?? 0.3),

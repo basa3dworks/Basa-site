@@ -31,6 +31,11 @@ function showAdminPanel(panel) {
   });
 }
 
+function jumpAdminPanel(panel) {
+  showAdminPanel(panel);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
 function normalizeSearch(value) {
   return String(value || "")
     .toLowerCase()
@@ -804,26 +809,7 @@ function partnerSearchText(item) {
 
 function renderPeopleLists() {
   const query = $("#peopleSearchInput")?.value || "";
-  const customers = currentCustomers.filter((account) => matchesSearch(customerSearchText(account), query));
   const affiliates = currentAffiliates.filter((item) => matchesSearch(partnerSearchText(item), query));
-  const sellers = currentSellers.filter((item) => matchesSearch(partnerSearchText(item), query));
-
-  $("#customersList").innerHTML = customers.length ? customers.map((account) => {
-    const customer = account.customer || {};
-    return `
-      <article class="people-card">
-        <div>
-          <strong>${customer.name || account.username}</strong>
-          <span>${customer.email || "Email não informado"}${customer.phone ? ` | ${customer.phone}` : ""}</span>
-          <small>@${account.username} | ${personStatusLabel(account.status)}${customer.city ? ` | ${customer.city}/${customer.state}` : ""}</small>
-        </div>
-        <div class="story-admin-actions">
-          <button class="ghost-button table-action" type="button" data-edit-customer="${account.id}">Editar</button>
-          <button class="ghost-button table-action" type="button" data-delete-customer="${account.id}">Excluir</button>
-        </div>
-      </article>
-    `;
-  }).join("") : "<p>Nenhum cliente encontrado.</p>";
 
   $("#affiliatesList").innerHTML = affiliates.length ? affiliates.map((affiliate) => `
     <article class="people-card">
@@ -839,26 +825,64 @@ function renderPeopleLists() {
     </article>
   `).join("") : "<p>Nenhum afiliado cadastrado.</p>";
 
-  $("#sellersList").innerHTML = sellers.length ? sellers.map((seller) => `
-    <article class="people-card">
-      <div>
-        <strong>${seller.brandName || seller.name}</strong>
-        <span>${seller.name} | ${seller.email}</span>
-        <small>${seller.code ? `Código: ${seller.code} | ` : ""}${personStatusLabel(seller.status)}${seller.paymentAccountId ? " | conta de pagamento cadastrada" : ""}</small>
-      </div>
-      <div class="story-admin-actions">
-        <button class="ghost-button table-action" type="button" data-edit-seller="${seller.id}">Editar</button>
-        <button class="ghost-button table-action" type="button" data-delete-seller="${seller.id}">Excluir</button>
-      </div>
-    </article>
-  `).join("") : "<p>Nenhum vendedor futuro cadastrado.</p>";
-
-  document.querySelectorAll("[data-edit-customer]").forEach((button) => button.addEventListener("click", () => editCustomer(button.dataset.editCustomer)));
-  document.querySelectorAll("[data-delete-customer]").forEach((button) => button.addEventListener("click", () => deleteCustomer(button.dataset.deleteCustomer)));
   document.querySelectorAll("[data-edit-affiliate]").forEach((button) => button.addEventListener("click", () => editAffiliate(button.dataset.editAffiliate)));
   document.querySelectorAll("[data-delete-affiliate]").forEach((button) => button.addEventListener("click", () => deleteAffiliate(button.dataset.deleteAffiliate)));
-  document.querySelectorAll("[data-edit-seller]").forEach((button) => button.addEventListener("click", () => editSeller(button.dataset.editSeller)));
-  document.querySelectorAll("[data-delete-seller]").forEach((button) => button.addEventListener("click", () => deleteSeller(button.dataset.deleteSeller)));
+}
+
+function renderAdminDashboard() {
+  const activeProducts = currentProducts.filter((product) => product.status !== "inactive");
+  const activeStories = currentStories.filter((story) => story.active !== false);
+  const newOrders = currentOrders.filter((order) => ["created", "awaiting_payment"].includes(order.status));
+  const openRequests = currentRequests.filter((request) => !["completed", "canceled"].includes(request.status));
+  const paidLast30 = paidOrders("30");
+  const revenue30 = paidLast30.reduce((sum, order) => sum + Number(order.total || 0), 0);
+
+  $("#statsGrid").innerHTML = `
+    <div><span>Pedidos novos</span><strong>${newOrders.length}</strong><small>Aguardando processamento</small></div>
+    <div><span>Encomendas novas</span><strong>${openRequests.length}</strong><small>${openRequests.filter((request) => request.status === "new").length} novas</small></div>
+    <div><span>Receita - 30 dias</span><strong>${money(revenue30)}</strong><small>Pedidos pagos/concluídos</small></div>
+    <div><span>Produtos ativos</span><strong>${activeProducts.length}</strong><small>Visíveis na loja</small></div>
+    <div><span>Stories ativos</span><strong>${activeStories.length}</strong><small>Exibidos no topo</small></div>
+  `;
+
+  $("#dashboardOrdersList").innerHTML = currentOrders.slice(0, 4).length
+    ? currentOrders.slice(0, 4).map((order) => `
+      <article>
+        <div><strong>${order.id}</strong><span>${order.customer?.name || "Cliente"} | ${orderStatusLabel(order.status)}</span></div>
+        <b>${money(order.total || 0)}</b>
+      </article>
+    `).join("")
+    : `<div class="dashboard-empty"><strong>Nenhum pedido ainda.</strong><span>Os pedidos novos aparecerão aqui.</span></div>`;
+
+  $("#dashboardRequestsList").innerHTML = currentRequests.slice(0, 4).length
+    ? currentRequests.slice(0, 4).map((request) => `
+      <article>
+        <div><strong>${request.customer?.name || request.name || "Cliente"}</strong><span>${requestStatusLabel(request.status)} | ${request.idea || "Orçamento sob medida"}</span></div>
+        <b>${new Date(request.createdAt || Date.now()).toLocaleDateString("pt-BR")}</b>
+      </article>
+    `).join("")
+    : `<div class="dashboard-empty"><strong>Nenhuma encomenda ainda.</strong><span>Os orçamentos sob medida aparecerão aqui.</span></div>`;
+
+  $("#dashboardProductsTable").innerHTML = currentProducts.slice(0, 6).length
+    ? currentProducts.slice(0, 6).map((product) => `
+      <tr>
+        <td><small>${product.sku || "-"}</small></td>
+        <td><strong>${product.name}</strong></td>
+        <td>${product.category || "-"}</td>
+        <td><strong>${money(product.price || 0)}</strong></td>
+        <td><span class="status-chip ${product.status === "active" ? "stage-paid" : "stage-created"}">${product.status || "active"}</span></td>
+        <td><button class="ghost-button table-action" type="button" data-edit-product="${product.id}">Editar</button></td>
+      </tr>
+    `).join("")
+    : `<tr><td colspan="6">Nenhum produto cadastrado ainda.</td></tr>`;
+
+  document.querySelectorAll("[data-admin-jump]").forEach((button) => button.addEventListener("click", () => jumpAdminPanel(button.dataset.adminJump)));
+  document.querySelectorAll("#dashboardProductsTable [data-edit-product]").forEach((button) => {
+    button.addEventListener("click", () => {
+      jumpAdminPanel("products");
+      editProduct(button.dataset.editProduct);
+    });
+  });
 }
 
 function formatShipping(order) {
@@ -1087,6 +1111,8 @@ function resetProductForm() {
   const form = $("#productForm");
   form.reset();
   form.elements.productId.value = "";
+  form.elements.sku.value = "";
+  form.elements.affiliateCommissionPercent.value = "0";
   form.elements.weightKg.value = "0.30";
   form.elements.widthCm.value = "12";
   form.elements.heightCm.value = "8";
@@ -1190,11 +1216,13 @@ function editProduct(productId) {
   if (!product) return;
   const form = $("#productForm");
   form.elements.productId.value = product.id;
+  form.elements.sku.value = product.sku || "";
   form.elements.name.value = product.name || "";
   form.elements.category.value = product.category || "";
   form.elements.price.value = productBasePrice(product);
   form.elements.compareAtPrice.value = productBaseCompareAtPrice(product) || "";
   form.elements.stock.value = product.stock || 0;
+  form.elements.affiliateCommissionPercent.value = product.affiliateCommissionPercent || 0;
   form.elements.colors.value = (product.variants?.colors || []).join("\n");
   form.elements.bundleType.value = product.variants?.bundleType || (Number(product.variants?.piecesIncluded || 1) > 1 ? "kit" : "single");
   form.elements.piecesIncluded.value = product.variants?.piecesIncluded || 1;
@@ -1416,6 +1444,7 @@ function renderProductsTable() {
   const query = $("#productSearchInput")?.value || "";
   const filteredProducts = currentProducts.filter((product) => matchesSearch([
     product.name,
+    product.sku,
     product.category,
     product.status,
     isRecentlyPosted(product) ? "novo" : "",
@@ -1423,26 +1452,28 @@ function renderProductsTable() {
     ratingSummary(product),
     product.description,
     product.shipping?.sellerPaysShipping ? "frete gratis" : "",
+    product.affiliateCommissionPercent ? `afiliado ${product.affiliateCommissionPercent}%` : "",
     product.variants?.colors?.join(" "),
     discountPercent(product) ? `${discountPercent(product)} off` : ""
   ].join(" "), query));
 
   $("#productsTable").innerHTML = filteredProducts.length ? filteredProducts.map((product) => `
     <tr>
+      <td><small>${product.sku || "-"}</small></td>
       <td><strong>${product.name}</strong></td>
       <td>${product.category}</td>
       <td>${money(product.price)}${product.shipping?.sellerPaysShipping ? `<small class="table-note">Base ${money(productBasePrice(product))} + frete</small>` : ""}</td>
       <td>${product.compareAtPrice ? money(product.compareAtPrice) : "-"}</td>
       <td>${discountPercent(product) ? `${discountPercent(product)}% OFF` : "-"}</td>
+      <td>${Number(product.affiliateCommissionPercent || 0)}%</td>
       <td>${product.stock}</td>
-      <td>${isRecentlyPosted(product) ? "Novo" : "-"}${dynamicSoldCount(product) ? ` / ${dynamicSoldCount(product)} vendidos` : ""}<small class="table-note">${ratingSummary(product)}</small></td>
       <td>${product.status}${product.shipping?.sellerPaysShipping ? " / frete grátis" : ""}${product.shipping?.freeShippingMinQuantity ? ` / frete ${product.shipping.freeShippingMinQuantity}+ un.` : ""}</td>
       <td>
         <button class="ghost-button table-action" type="button" data-edit-product="${product.id}">Editar</button>
         <button class="ghost-button table-action danger-button" type="button" data-delete-product="${product.id}">Excluir</button>
       </td>
     </tr>
-  `).join("") : `<tr><td colspan="9">${currentProducts.length ? "Nenhum produto encontrado." : "Nenhum produto cadastrado ainda."}</td></tr>`;
+  `).join("") : `<tr><td colspan="10">${currentProducts.length ? "Nenhum produto encontrado." : "Nenhum produto cadastrado ainda."}</td></tr>`;
 
   document.querySelectorAll("[data-edit-product]").forEach((button) => {
     button.addEventListener("click", () => editProduct(button.dataset.editProduct));
@@ -1700,13 +1731,8 @@ async function loadDashboard() {
   currentSettings = data.settings;
   $("#loginCard").hidden = true;
   $("#dashboard").hidden = false;
+  document.body.classList.add("admin-logged-in");
   applyTheme(data.settings.theme);
-
-  $("#statsGrid").innerHTML = `
-    <div><span>Produtos ativos</span><strong>${data.stats.products}</strong><small>itens no catalogo</small></div>
-    <div><span>Pedidos</span><strong>${data.stats.orders}</strong><small>registrados no sistema</small></div>
-    <div><span>Receita</span><strong>${money(data.stats.revenue)}</strong><small>total bruto de pedidos</small></div>
-  `;
 
   $("#splitBox").innerHTML = `
     <p><strong>Marketplace:</strong> ${data.settings.marketplaceAccountId}</p>
@@ -1727,6 +1753,7 @@ async function loadDashboard() {
   updateEmbeddedShippingPreview();
   renderAiInsightBrief();
   renderLocalAiInsight();
+  renderAdminDashboard();
   renderProductsTable();
   renderOrdersList();
   renderPeopleLists();
@@ -1906,12 +1933,12 @@ $("#campaignForm").addEventListener("input", (event) => {
 $("#orderSearchInput").addEventListener("input", renderOrdersList);
 $("#requestSearchInput").addEventListener("input", renderAdminRequests);
 $("#peopleSearchInput").addEventListener("input", renderPeopleLists);
-$("#customerAdminForm").addEventListener("submit", saveCustomerAdmin);
+$("#customerAdminForm")?.addEventListener("submit", saveCustomerAdmin);
 $("#affiliateForm").addEventListener("submit", saveAffiliate);
-$("#sellerForm").addEventListener("submit", saveSeller);
-$("#cancelCustomerEditButton").addEventListener("click", resetCustomerAdminForm);
+$("#sellerForm")?.addEventListener("submit", saveSeller);
+$("#cancelCustomerEditButton")?.addEventListener("click", resetCustomerAdminForm);
 $("#cancelAffiliateEditButton").addEventListener("click", resetAffiliateForm);
-$("#cancelSellerEditButton").addEventListener("click", resetSellerForm);
+$("#cancelSellerEditButton")?.addEventListener("click", resetSellerForm);
 $("#generateInsightsButton")?.addEventListener("click", generateAiInsights);
 $("#metricsPeriodSelect")?.addEventListener("change", renderMetrics);
 $("#metricsOrderTypeSelect")?.addEventListener("change", renderMetrics);
@@ -2081,7 +2108,7 @@ $("#logoutButton").addEventListener("click", async () => {
 
 resetProductForm();
 resetStoryForm();
-showAdminPanel("products");
+showAdminPanel("dashboard");
 checkSession().catch(() => {});
 
 

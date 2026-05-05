@@ -287,6 +287,15 @@ def _campaign_payload(body):
     }
 
 
+def _product_sku(name, existing=None):
+    current = str(existing or "").strip().upper()
+    if current:
+        return current[:48]
+    base = re.sub(r"[^A-Z0-9]+", "-", unicodedata.normalize("NFD", str(name or "BASA")).encode("ascii", "ignore").decode().upper()).strip("-")
+    prefix = "-".join(base.split("-")[:3]) or "BASA"
+    return f"B3D-{prefix[:18]}-{secrets.token_hex(3).upper()}"
+
+
 def _request_status(value):
     return value if value in {"new", "in_review", "quoted", "approved", "in_production", "shipped", "completed", "canceled"} else "new"
 
@@ -421,10 +430,12 @@ def _product_payload(body, existing=None):
     existing = existing or {}
     name = body.get("name") or existing.get("name") or "Produto"
     price = round(float(body.get("price") or existing.get("price") or 0), 2)
+    sku = _product_sku(name, body.get("sku") or existing.get("sku"))
     return {
         **existing,
         "id": existing.get("id") or f"prod-{secrets.token_hex(6)}",
         "createdAt": existing.get("createdAt") or _now(),
+        "sku": sku,
         "name": name,
         "slug": body.get("slug") or existing.get("slug") or _slug(name),
         "description": body.get("description", existing.get("description", "")),
@@ -440,6 +451,7 @@ def _product_payload(body, existing=None):
         "gallery": body.get("gallery") if isinstance(body.get("gallery"), list) else [body.get("image") or existing.get("image", "")],
         "price": price,
         "compareAtPrice": round(float(body.get("compareAtPrice") or existing.get("compareAtPrice") or 0), 2),
+        "affiliateCommissionPercent": max(0, min(100, float(body.get("affiliateCommissionPercent") or existing.get("affiliateCommissionPercent") or 0))),
         "stock": int(float(body.get("stock") or existing.get("stock") or 0)),
         "status": body.get("status") or existing.get("status") or "active",
         "category": body.get("category") or existing.get("category") or "Geral",
