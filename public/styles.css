@@ -3169,10 +3169,28 @@ label {
 .account-sidebar {
   align-self: start;
   padding: 10px;
-  display: grid;
-  gap: 6px;
   position: sticky;
   top: 96px;
+}
+
+.account-menu-group {
+  display: grid;
+  gap: 6px;
+}
+
+.account-menu-group + .account-menu-group {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.account-menu-group span {
+  padding: 6px 8px 2px;
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .account-sidebar button {
@@ -3189,6 +3207,22 @@ label {
 
 .account-sidebar button.active {
   background: var(--brand);
+  color: #fff;
+}
+
+.account-logged .account-sidebar button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.account-logged .account-sidebar button::after {
+  content: ">";
+  color: var(--muted);
+  font-weight: 900;
+}
+
+.account-logged .account-sidebar button.active::after {
   color: #fff;
 }
 
@@ -4468,12 +4502,27 @@ pre {
 
   .account-sidebar {
     position: static;
+  }
+
+  .account-menu-group {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .account-menu-group span {
+    grid-column: 1 / -1;
   }
 
   .account-sidebar button {
     text-align: center;
     padding: 10px;
+  }
+
+  .account-logged .account-sidebar button {
+    justify-content: center;
+  }
+
+  .account-logged .account-sidebar button::after {
+    content: none;
   }
 
   .story-form label:nth-child(2) {

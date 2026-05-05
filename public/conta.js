@@ -34,11 +34,20 @@ function customerFromForm(form) {
   };
 }
 
+function normalizeAccount(account) {
+  if (account?.customer) return account;
+  return {
+    username: account?.username || account?.customerUsername || account?.email?.split("@")[0] || "",
+    customer: account || {}
+  };
+}
+
 function setSession(account) {
+  const normalized = normalizeAccount(account);
   state.session = {
     loggedIn: true,
-    username: account.username,
-    customer: account.customer,
+    username: normalized.username,
+    customer: normalized.customer,
     updatedAt: new Date().toISOString()
   };
   localStorage.setItem("basa_customer_session", JSON.stringify(state.session));
@@ -48,7 +57,24 @@ function isLoggedIn() {
   return Boolean(state.session?.loggedIn && state.session?.customer?.email);
 }
 
+function updateAccountMenu() {
+  const logged = isLoggedIn();
+  const authMenu = document.querySelector("[data-account-auth-menu]");
+  const privateMenu = document.querySelector("[data-account-private-menu]");
+  if (authMenu) authMenu.hidden = logged;
+  if (privateMenu) privateMenu.hidden = !logged;
+  document.body.classList.toggle("account-logged", logged);
+}
+
 function showView(view) {
+  updateAccountMenu();
+  if (!isLoggedIn() && !["login", "register"].includes(view)) {
+    $("#loginStatus").textContent = "Entre ou crie uma conta para acessar esta área.";
+    view = "login";
+  }
+  if (isLoggedIn() && ["login", "register"].includes(view)) {
+    view = "profile";
+  }
   document.querySelectorAll("[data-account-panel]").forEach((panel) => {
     panel.hidden = panel.dataset.accountPanel !== view;
     panel.classList.toggle("active", panel.dataset.accountPanel === view);
@@ -56,11 +82,6 @@ function showView(view) {
   document.querySelectorAll("[data-account-view]").forEach((button) => {
     button.classList.toggle("active", button.dataset.accountView === view);
   });
-  if (["profile", "orders", "favorites", "quotes"].includes(view) && !isLoggedIn()) {
-    $("#loginStatus").textContent = "Entre ou crie uma conta para acessar esta área.";
-    showView("login");
-    return;
-  }
   renderAccount();
 }
 
@@ -204,7 +225,7 @@ async function login(event) {
     $("#loginStatus").textContent = data.error || "Não foi possível entrar.";
     return;
   }
-  setSession(data.account);
+  setSession(data.account || data.customer);
   await refreshPrivateData();
   $("#loginStatus").textContent = "Login confirmado.";
   showView("profile");
@@ -224,7 +245,7 @@ async function register(event) {
     $("#registerStatus").textContent = data.error || "Não foi possível criar a conta.";
     return;
   }
-  setSession(data.account);
+  setSession(data.account || data.customer);
   await refreshPrivateData();
   $("#registerStatus").textContent = data.created ? "Conta criada." : "Login confirmado.";
   showView("profile");
@@ -266,6 +287,7 @@ function logout() {
   state.orders = [];
   state.requests = [];
   localStorage.removeItem("basa_customer_session");
+  updateAccountMenu();
   renderAccount();
   showView("login");
 }

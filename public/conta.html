@@ -23,17 +23,23 @@
       <section class="account-hero">
         <p class="eyebrow">Conta do cliente</p>
         <h1>Minha Basa</h1>
-        <p>Acompanhe pedidos, favoritos e orçamentos sob medida em um lugar só.</p>
+        <p>Acompanhe seus dados, pedidos, favoritos e orçamentos quando estiver logado.</p>
       </section>
 
       <section class="account-shell">
         <aside class="account-sidebar" aria-label="Menu da conta">
-          <button class="active" type="button" data-account-view="login">Entrar</button>
-          <button type="button" data-account-view="register">Criar conta</button>
-          <button type="button" data-account-view="profile">Minha conta</button>
-          <button type="button" data-account-view="orders">Meus pedidos</button>
-          <button type="button" data-account-view="favorites">Favoritos</button>
-          <button type="button" data-account-view="quotes">Orçamentos</button>
+          <div class="account-menu-group" data-account-auth-menu>
+            <span>Acesso</span>
+            <button class="active" type="button" data-account-view="login">Entrar</button>
+            <button type="button" data-account-view="register">Criar conta</button>
+          </div>
+          <div class="account-menu-group" data-account-private-menu hidden>
+            <span>Minha Basa</span>
+            <button type="button" data-account-view="profile">Minha conta</button>
+            <button type="button" data-account-view="orders">Meus pedidos</button>
+            <button type="button" data-account-view="favorites">Favoritos</button>
+            <button type="button" data-account-view="quotes">Orçamentos</button>
+          </div>
         </aside>
 
         <div class="account-content">

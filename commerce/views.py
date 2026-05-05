@@ -493,7 +493,8 @@ def api_customer_access(request):
         customer["passwordHash"] = _hash_password(password)
     customer["updatedAt"] = _now()
     write_db(db)
-    return JsonResponse({"customer": _safe_customer_account(customer)})
+    account = _safe_customer_account(customer)
+    return JsonResponse({"account": account, "customer": account})
 
 
 def api_customer_orders(request):
