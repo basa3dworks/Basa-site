@@ -70,6 +70,30 @@ function specs(value) {
   }).filter(([key, val]) => key && val));
 }
 
+function decimal(value, fallback = 0) {
+  if (value === undefined || value === null || value === "") return fallback;
+  if (typeof value === "number") return Number.isFinite(value) ? value : fallback;
+  const normalized = String(value)
+    .trim()
+    .replace(/\s/g, "")
+    .replace(/\.(?=\d{3}(?:\D|$))/g, "")
+    .replace(",", ".");
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function positiveDecimal(value, fallback = 0) {
+  return Math.max(0, decimal(value, fallback));
+}
+
+function integer(value, fallback = 0) {
+  return Math.trunc(positiveDecimal(value, fallback));
+}
+
+function bool(value) {
+  return value === true || value === "true" || value === "on" || value === "1" || value === 1;
+}
+
 function extractShipmentId(data) {
   if (!data || typeof data !== "object") return "";
   return String(data.id || data.order_id || data.protocol || data.data?.id || data.purchase?.id || data.orders?.[0]?.id || "");
@@ -139,10 +163,10 @@ function productPayload(body, existing = {}, settings = {}) {
   const name = body.name ?? existing.name;
   const skuBase = String(body.sku || existing.sku || "").trim().toUpperCase();
   const generatedSku = `B3D-${String(name || "BASA").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/(^-|-$)/g, "").split("-").slice(0, 3).join("-").slice(0, 18) || "BASA"}-${Math.random().toString(16).slice(2, 8).toUpperCase()}`;
-  const sellerPaysShipping = Boolean(body.sellerPaysShipping);
-  const basePrice = Number(body.price ?? existing.shipping?.basePrice ?? existing.price ?? 0);
-  const compareAtBasePrice = Number(body.compareAtPrice || 0);
-  const embeddedShippingReserve = sellerPaysShipping ? Number(settings.shippingFlatRate || 0) : 0;
+  const sellerPaysShipping = bool(body.sellerPaysShipping);
+  const basePrice = positiveDecimal(body.price, existing.shipping?.basePrice ?? existing.price ?? 0);
+  const compareAtBasePrice = positiveDecimal(body.compareAtPrice, 0);
+  const embeddedShippingReserve = sellerPaysShipping ? positiveDecimal(settings.shippingFlatRate, 0) : 0;
   const finalPrice = sellerPaysShipping ? basePrice + embeddedShippingReserve : basePrice;
   const finalCompareAtPrice = sellerPaysShipping && compareAtBasePrice > 0 ? compareAtBasePrice + embeddedShippingReserve : compareAtBasePrice;
   const parsedColors = (() => {
@@ -185,26 +209,26 @@ function productPayload(body, existing = {}, settings = {}) {
     variants: {
       bundleType: body.bundleType === "kit" ? "kit" : "single",
       colors: normalizedColors,
-      piecesIncluded: Math.max(1, Number(body.piecesIncluded ?? existing.variants?.piecesIncluded ?? 1))
+      piecesIncluded: Math.max(1, integer(body.piecesIncluded, existing.variants?.piecesIncluded ?? 1))
     },
     videoUrl: body.videoUrl ?? existing.videoUrl ?? "",
     gallery: Array.isArray(body.gallery) ? body.gallery : body.gallery !== undefined ? [body.image || existing.image, ...lines(body.gallery)].filter(Boolean) : existing.gallery || [body.image || existing.image].filter(Boolean),
     price: Math.round(finalPrice * 100) / 100,
     compareAtPrice: Math.round(finalCompareAtPrice * 100) / 100,
-    affiliateCommissionPercent: Math.max(0, Math.min(100, Number(body.affiliateCommissionPercent ?? existing.affiliateCommissionPercent ?? 0))),
+    affiliateCommissionPercent: Math.max(0, Math.min(100, positiveDecimal(body.affiliateCommissionPercent, existing.affiliateCommissionPercent ?? 0))),
     createdAt: existing.createdAt || new Date().toISOString(),
     shipping: {
-      weightKg: Number(body.weightKg ?? existing.shipping?.weightKg ?? 0.3),
-      widthCm: Number(body.widthCm ?? existing.shipping?.widthCm ?? 12),
-      heightCm: Number(body.heightCm ?? existing.shipping?.heightCm ?? 8),
-      lengthCm: Number(body.lengthCm ?? existing.shipping?.lengthCm ?? 18),
+      weightKg: positiveDecimal(body.weightKg, existing.shipping?.weightKg ?? 0.3),
+      widthCm: positiveDecimal(body.widthCm, existing.shipping?.widthCm ?? 12),
+      heightCm: positiveDecimal(body.heightCm, existing.shipping?.heightCm ?? 8),
+      lengthCm: positiveDecimal(body.lengthCm, existing.shipping?.lengthCm ?? 18),
       sellerPaysShipping,
-      freeShippingMinQuantity: Math.max(0, Number(body.freeShippingMinQuantity ?? existing.shipping?.freeShippingMinQuantity ?? 0)),
+      freeShippingMinQuantity: integer(body.freeShippingMinQuantity, existing.shipping?.freeShippingMinQuantity ?? 0),
       basePrice: Math.round(basePrice * 100) / 100,
       compareAtBasePrice: Math.round(compareAtBasePrice * 100) / 100,
       embeddedShippingReserve: Math.round(embeddedShippingReserve * 100) / 100
     },
-    stock: Number(body.stock ?? existing.stock ?? 0),
+    stock: integer(body.stock, existing.stock ?? 0),
     status: body.status || existing.status || "active",
     category: body.category || existing.category || "Geral",
     image: body.image || existing.image,
@@ -962,13 +986,13 @@ async function router(req, res) {
           ...(db.settings.promotions || {})
         };
         if (body.freeShippingMinItems !== undefined) {
-          promotions.freeShippingMinItems = Math.max(1, Number(body.freeShippingMinItems || promotions.freeShippingMinItems || 3));
+          promotions.freeShippingMinItems = Math.max(1, integer(body.freeShippingMinItems, promotions.freeShippingMinItems || 3));
         }
         db.settings = {
           ...db.settings,
           theme: body.theme || db.settings.theme || "atelier",
           originZipCode: body.originZipCode !== undefined ? String(body.originZipCode || "").replace(/\D/g, "") : db.settings.originZipCode,
-          shippingFlatRate: body.shippingFlatRate !== undefined ? Math.max(0, Number(body.shippingFlatRate || 0)) : db.settings.shippingFlatRate,
+          shippingFlatRate: body.shippingFlatRate !== undefined ? positiveDecimal(body.shippingFlatRate, db.settings.shippingFlatRate || 0) : db.settings.shippingFlatRate,
           shippingProvider: body.shippingProvider || db.settings.shippingProvider || "melhor-envio",
           displaySalesCount: body.displaySalesCount !== undefined ? Boolean(body.displaySalesCount) : Boolean(db.settings.displaySalesCount),
           displayFavoriteCount: body.displayFavoriteCount !== undefined ? Boolean(body.displayFavoriteCount) : Boolean(db.settings.displayFavoriteCount),

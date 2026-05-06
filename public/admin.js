@@ -1,5 +1,15 @@
 ﻿const $ = (selector) => document.querySelector(selector);
 const money = (value) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+const decimalValue = (value, fallback = 0) => {
+  if (value === undefined || value === null || value === "") return fallback;
+  const normalized = String(value)
+    .trim()
+    .replace(/\s/g, "")
+    .replace(/\.(?=\d{3}(?:\D|$))/g, "")
+    .replace(",", ".");
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
 const themes = [
   { id: "atelier", name: "Atelier", description: "Verde, argila e metal. Atual e artesanal." },
   { id: "graphite", name: "Grafite", description: "Escuro, tecnico e premium." },
@@ -494,7 +504,7 @@ function fillShippingSettings(settings) {
   const form = $("#shippingSettingsForm");
   const sender = settings.sender || {};
   form.elements.originZipCode.value = settings.originZipCode || "";
-  form.elements.shippingFlatRate.value = Number(settings.shippingFlatRate || 0).toFixed(2);
+  form.elements.shippingFlatRate.value = decimalValue(settings.shippingFlatRate).toFixed(2);
   form.elements.shippingProvider.value = settings.shippingProvider || "melhor-envio";
   form.elements.senderName.value = sender.name || settings.storeName || "";
   form.elements.senderEmail.value = sender.email || "";
@@ -1205,9 +1215,9 @@ function updateEmbeddedShippingPreview() {
   const preview = $("#embeddedShippingPreview");
   if (!preview) return;
   const form = $("#productForm");
-  const basePrice = Number(form.elements.price.value || 0);
-  const baseCompareAtPrice = Number(form.elements.compareAtPrice.value || 0);
-  const reserve = Number(currentSettings?.shippingFlatRate || 0);
+  const basePrice = decimalValue(form.elements.price.value);
+  const baseCompareAtPrice = decimalValue(form.elements.compareAtPrice.value);
+  const reserve = decimalValue(currentSettings?.shippingFlatRate);
   const sellerPaysShipping = form.elements.sellerPaysShipping.checked;
   const finalPrice = sellerPaysShipping ? basePrice + reserve : basePrice;
   const finalCompareAtPrice = sellerPaysShipping && baseCompareAtPrice > 0 ? baseCompareAtPrice + reserve : baseCompareAtPrice;
@@ -2166,6 +2176,13 @@ $("#productForm").addEventListener("submit", async (event) => {
       return [key, value];
     }).filter(([key, value]) => key && value));
     body.set("sellerPaysShipping", form.elements.sellerPaysShipping.checked ? "true" : "false");
+    ["price", "compareAtPrice", "affiliateCommissionPercent", "weightKg", "widthCm", "heightCm", "lengthCm"].forEach((field) => {
+      if (!body.has(field)) return;
+      const raw = body.get(field);
+      const parsed = decimalValue(raw, raw === "" ? 0 : NaN);
+      if (!Number.isFinite(parsed)) throw new Error("Informe valores numericos validos. Use 89,90 ou 89.90.");
+      body.set(field, String(parsed));
+    });
     body.set("colors", JSON.stringify(colors));
     body.set("highlights", JSON.stringify(highlights));
     body.set("specs", JSON.stringify(specs));
@@ -2416,6 +2433,12 @@ $("#displaySettingsForm").addEventListener("submit", async (event) => {
 $("#shippingSettingsForm").addEventListener("submit", async (event) => {
   event.preventDefault();
   const body = Object.fromEntries(new FormData(event.currentTarget).entries());
+  const shippingFlatRate = decimalValue(body.shippingFlatRate, NaN);
+  if (!Number.isFinite(shippingFlatRate)) {
+    $("#shippingSettingsStatus").textContent = "Informe um frete valido. Use 24,90 ou 24.90.";
+    return;
+  }
+  body.shippingFlatRate = String(shippingFlatRate);
   try {
     const result = await patchAdminSettings(body, "#shippingSettingsStatus", "Salvando envio...", "Configurações de envio salvas.");
     if (!result) return;
