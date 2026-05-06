@@ -29,6 +29,7 @@ const debugCustomer = {
 };
 
 const $ = (selector) => document.querySelector(selector);
+const FREE_SHIPPING_MIN_SUBTOTAL = 100;
 const money = (value) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: state.settings?.currency || "BRL" }).format(value);
 const shippingQuoteId = (quote) => String(quote?.id ?? `${quote?.carrier || ""}-${quote?.service || ""}`);
 const moneyParts = (value) => {
@@ -480,7 +481,7 @@ function cartQuantity() {
 
 function hasActiveCartFreeShippingBenefit() {
   const allItemsSellerPaid = cartQuantity() > 0 && state.cart.every((item) => state.products.find((entry) => entry.id === item.productId)?.shipping?.sellerPaysShipping);
-  return allItemsSellerPaid;
+  return cartSubtotal() >= FREE_SHIPPING_MIN_SUBTOTAL || allItemsSellerPaid;
 }
 
 function freeShippingPromo(form) {
@@ -489,10 +490,11 @@ function freeShippingPromo(form) {
   const couponIsExpired = registeredCoupon?.expiresAt && new Date(registeredCoupon.expiresAt).getTime() <= Date.now();
   const subtotal = cartSubtotal();
   const byCoupon = Boolean(registeredCoupon && !couponIsExpired && registeredCoupon.type === "free_shipping" && cartQuantity() >= Number(registeredCoupon.minItems || 1) && subtotal >= Number(registeredCoupon.minSubtotal || 0));
+  const bySubtotal = subtotal >= FREE_SHIPPING_MIN_SUBTOTAL;
   const backendFree = Boolean(state.shippingBenefit?.freeShipping);
-  const backendReason = state.shippingBenefit?.reason === "coupon" ? "cupom" : state.shippingBenefit?.reason === "seller_pays_shipping" ? "produto" : "";
+  const backendReason = state.shippingBenefit?.reason === "coupon" ? "cupom" : state.shippingBenefit?.reason === "subtotal" ? `subtotal acima de ${money(FREE_SHIPPING_MIN_SUBTOTAL)}` : state.shippingBenefit?.reason === "seller_pays_shipping" ? "produto" : "";
   const byProduct = cartQuantity() > 0 && state.cart.every((item) => state.products.find((product) => product.id === item.productId)?.shipping?.sellerPaysShipping);
-  return { eligible: byCoupon || byProduct || backendFree, coupon, reason: byCoupon ? "cupom" : byProduct ? "produto" : backendReason };
+  return { eligible: byCoupon || bySubtotal || byProduct || backendFree, coupon, reason: byCoupon ? "cupom" : bySubtotal ? `subtotal acima de ${money(FREE_SHIPPING_MIN_SUBTOTAL)}` : byProduct ? "produto" : backendReason };
 }
 
 function allCartItemsHaveSellerPaidShipping() {
@@ -592,11 +594,16 @@ async function quoteShipping() {
     return;
   }
 
-  if (allCartItemsHaveSellerPaidShipping()) {
+  const qualifiesBySubtotal = cartSubtotal() >= FREE_SHIPPING_MIN_SUBTOTAL;
+  if (qualifiesBySubtotal || allCartItemsHaveSellerPaidShipping()) {
     state.shippingQuotes = [];
     state.selectedShipping = null;
-    state.shippingBenefit = { freeShipping: true, reason: "seller_pays_shipping", message: "Frete Grátis liberado." };
-    $("#shippingOptions").innerHTML = `<p class="promo-note">Frete gr\u00e1tis neste pedido. A forma de envio ser\u00e1 definida pela Basa 3D Works.</p>`;
+    state.shippingBenefit = {
+      freeShipping: true,
+      reason: qualifiesBySubtotal ? "subtotal" : "seller_pays_shipping",
+      message: qualifiesBySubtotal ? "Frete gratis acima de R$ 100 liberado." : "Frete Gratis liberado."
+    };
+    $("#shippingOptions").innerHTML = `<p class="promo-note">${qualifiesBySubtotal ? "Frete gr\u00e1tis acima de R$ 100 liberado." : "Frete gr\u00e1tis neste pedido. A forma de envio ser\u00e1 definida pela Basa 3D Works."}</p>`;
     clearDeliverySelectionWarning();
     renderCart();
     return;

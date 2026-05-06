@@ -26,6 +26,7 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 OPENAI_INSIGHTS_MODEL = os.environ.get("OPENAI_INSIGHTS_MODEL", "gpt-4.1-mini")
 SESSION_SECRET = os.environ.get("SESSION_SECRET") or os.environ.get("DJANGO_SECRET_KEY") or "dev-secret"
 SHIPPING_PROVIDER = "melhor-envio"
+FREE_SHIPPING_MIN_SUBTOTAL = 100.0
 MELHOR_ENVIO_TOKEN = os.environ.get("MELHOR_ENVIO_TOKEN", "")
 MELHOR_ENVIO_API_BASE = os.environ.get("MELHOR_ENVIO_API_BASE", "https://melhorenvio.com.br")
 MELHOR_ENVIO_USER_AGENT = os.environ.get("MELHOR_ENVIO_USER_AGENT", "Basa 3D Works (contato@basa3d.com)")
@@ -522,23 +523,33 @@ def _cart_totals(db, items, shipping_option=None, coupon=None, zip_code=""):
             else:
                 discount = min(subtotal, round(float(coupon.get("value") or 0), 2))
     base_shipping = round(float((shipping_option or {}).get("price") or 0), 2)
-    free_shipping = free_shipping_by_coupon or all_items_seller_paid
+    free_shipping_by_subtotal = subtotal >= FREE_SHIPPING_MIN_SUBTOTAL
+    free_shipping = free_shipping_by_coupon or free_shipping_by_subtotal or all_items_seller_paid
     shipping = 0.0 if free_shipping else base_shipping
     total = round(max(0, subtotal - discount) + shipping, 2)
     reason = (
         "coupon" if free_shipping_by_coupon else
+        "subtotal" if free_shipping_by_subtotal else
         "seller_pays_shipping" if all_items_seller_paid else
         None
     )
+    message = "Calcule a entrega para ver o valor do frete."
+    if reason == "coupon":
+        message = "Frete Gratis liberado por cupom."
+    elif reason == "subtotal":
+        message = "Frete gratis acima de R$ 100 liberado."
+    elif reason == "seller_pays_shipping":
+        message = "Frete Gratis liberado."
     shipping_benefit = {
         "zipCode": re.sub(r"\D", "", str(zip_code or "")),
         "baseShipping": base_shipping,
         "shippingCharged": shipping,
         "freeShipping": free_shipping,
+        "freeShippingMinSubtotal": FREE_SHIPPING_MIN_SUBTOTAL,
         "reason": reason,
         "itemCount": item_count,
         "subtotal": subtotal,
-        "message": "Frete Grátis liberado." if free_shipping else "Calcule a entrega para ver o valor do frete.",
+        "message": message,
     }
     return lines, subtotal, discount, shipping, total, free_shipping, shipping_benefit
 
