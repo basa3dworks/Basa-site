@@ -13,6 +13,7 @@ urlpatterns = [
     path("api/shipping/quote", views.api_shipping_quote),
     path("api/coupons/validate", views.api_coupons_validate),
     path("api/checkout", views.api_checkout),
+    path("api/webhooks/mercado-pago", views.api_mercado_pago_webhook),
     path("api/customer/access", views.api_customer_access),
     path("api/customer/orders", views.api_customer_orders),
     path("api/customer/resend-verification", views.api_customer_resend_verification),

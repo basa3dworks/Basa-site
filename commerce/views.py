@@ -27,6 +27,11 @@ OPENAI_INSIGHTS_MODEL = os.environ.get("OPENAI_INSIGHTS_MODEL", "gpt-4.1-mini")
 SESSION_SECRET = os.environ.get("SESSION_SECRET") or os.environ.get("DJANGO_SECRET_KEY") or "dev-secret"
 SHIPPING_PROVIDER = "melhor-envio"
 FREE_SHIPPING_MIN_SUBTOTAL = 100.0
+PAYMENT_PROVIDER = os.environ.get("PAYMENT_PROVIDER", "mock").strip().lower()
+MERCADO_PAGO_ACCESS_TOKEN = os.environ.get("MERCADO_PAGO_ACCESS_TOKEN", "").strip()
+MERCADO_PAGO_WEBHOOK_SECRET = os.environ.get("MERCADO_PAGO_WEBHOOK_SECRET", "").strip()
+MERCADO_PAGO_MIN_ORDER_TOTAL = max(0.0, float(os.environ.get("MERCADO_PAGO_MIN_ORDER_TOTAL", "0") or 0))
+MERCADO_PAGO_USE_SANDBOX = os.environ.get("MERCADO_PAGO_USE_SANDBOX", "").strip().lower()
 MELHOR_ENVIO_TOKEN = os.environ.get("MELHOR_ENVIO_TOKEN", "")
 MELHOR_ENVIO_API_BASE = os.environ.get("MELHOR_ENVIO_API_BASE", "https://melhorenvio.com.br")
 MELHOR_ENVIO_USER_AGENT = os.environ.get("MELHOR_ENVIO_USER_AGENT", "Basa 3D Works (contato@basa3d.com)")
@@ -678,6 +683,174 @@ def _quote_melhor_envio(db, lines):
         raise ValueError(data.get("message") or "Nao foi possivel cotar frete no Melhor Envio.") from error
 
 
+def _order_status_from_payment_status(status):
+    status = str(status or "").lower()
+    if status in {"approved", "authorized", "paid"}:
+        return "paid"
+    if status in {"pending", "in_process", "in_mediation"}:
+        return "awaiting_payment"
+    if status in {"rejected", "cancelled", "canceled", "refunded", "charged_back"}:
+        return "canceled"
+    return "awaiting_payment"
+
+
+def _should_use_mercado_pago_sandbox(access_token):
+    if MERCADO_PAGO_USE_SANDBOX in {"1", "true", "yes", "sim"}:
+        return True
+    if MERCADO_PAGO_USE_SANDBOX in {"0", "false", "no", "nao", "não"}:
+        return False
+    return str(access_token or "").startswith("TEST-")
+
+
+def _create_mercado_pago_preference(order, request):
+    if not MERCADO_PAGO_ACCESS_TOKEN:
+        raise ValueError("Configure MERCADO_PAGO_ACCESS_TOKEN na Railway.")
+    origin = _public_base_url(request).rstrip("/")
+    customer = order.get("customer", {})
+    document = _digits(customer.get("document"))
+    preference = {
+        "external_reference": order.get("id"),
+        "statement_descriptor": "BASA 3D WORKS",
+        "items": [{
+            "id": item.get("productId"),
+            "title": item.get("name") or "Produto Basa 3D",
+            "quantity": int(item.get("quantity") or 1),
+            "unit_price": _money(item.get("unitPrice")),
+            "currency_id": order.get("currency") or "BRL",
+        } for item in order.get("items", [])],
+        "shipments": {
+            "cost": _money(order.get("shipping")),
+            "mode": "not_specified",
+        },
+        "payer": {
+            "name": customer.get("name", ""),
+            "email": customer.get("email", ""),
+            "phone": {"number": _digits(customer.get("phone"))},
+            "identification": {
+                "type": "CNPJ" if len(document) > 11 else "CPF",
+                "number": document,
+            },
+            "address": {
+                "zip_code": _digits(customer.get("zipCode")),
+                "street_name": customer.get("street", ""),
+                "street_number": str(customer.get("number") or ""),
+            },
+        },
+        "back_urls": {
+            "success": f"{origin}/obrigado.html?pedido={order.get('id')}&status=approved",
+            "pending": f"{origin}/obrigado.html?pedido={order.get('id')}&status=pending",
+            "failure": f"{origin}/obrigado.html?pedido={order.get('id')}&status=failure",
+        },
+        "metadata": {
+            "order_id": order.get("id"),
+            "shipping_provider": (order.get("shippingOption") or {}).get("provider") or "none",
+            "shipping_service": (order.get("shippingOption") or {}).get("service") or "none",
+            "free_shipping_reason": (order.get("shippingBenefit") or {}).get("reason") or "none",
+        },
+        "notification_url": f"{origin}/api/webhooks/mercado-pago?source_news=webhooks",
+    }
+    request_data = json.dumps(preference).encode("utf-8")
+    api_request = urllib.request.Request(
+        "https://api.mercadopago.com/checkout/preferences",
+        data=request_data,
+        headers={
+            "Authorization": f"Bearer {MERCADO_PAGO_ACCESS_TOKEN}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(api_request, timeout=20) as response:
+            data = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as error:
+        detail = error.read().decode("utf-8", errors="ignore")
+        try:
+            payload = json.loads(detail)
+        except ValueError:
+            payload = {}
+        raise ValueError(payload.get("message") or "Nao foi possivel criar o checkout no Mercado Pago.") from error
+    use_sandbox = _should_use_mercado_pago_sandbox(MERCADO_PAGO_ACCESS_TOKEN)
+    return {
+        "provider": "mercado-pago",
+        "status": "pending_payment",
+        "paymentId": data.get("id"),
+        "checkoutUrl": (data.get("sandbox_init_point") if use_sandbox else data.get("init_point")) or data.get("init_point") or data.get("sandbox_init_point") or "",
+        "initPoint": data.get("init_point", ""),
+        "sandboxInitPoint": data.get("sandbox_init_point", ""),
+        "environment": "sandbox" if use_sandbox else "production",
+        "preference": {"id": data.get("id")},
+        "updatedAt": _now(),
+    }
+
+
+def _create_payment(order, request):
+    if PAYMENT_PROVIDER == "mercado-pago":
+        if order.get("total", 0) < MERCADO_PAGO_MIN_ORDER_TOTAL:
+            amount = f"{MERCADO_PAGO_MIN_ORDER_TOTAL:.2f}".replace(".", ",")
+            raise ValueError(f"Pedido precisa ter pelo menos R$ {amount} para pagamento real no Mercado Pago.")
+        return _create_mercado_pago_preference(order, request)
+    return {
+        "provider": "mock",
+        "status": "approved",
+        "paymentId": f"mock_{order.get('id')}",
+        "checkoutUrl": f"/obrigado.html?pedido={order.get('id')}",
+        "updatedAt": _now(),
+    }
+
+
+def _mercado_pago_signature_parts(header):
+    parts = {}
+    for part in str(header or "").split(","):
+        key, _, value = part.partition("=")
+        if key and value:
+            parts[key.strip()] = value.strip()
+    return parts
+
+
+def _verify_mercado_pago_webhook(request, data_id):
+    if not MERCADO_PAGO_WEBHOOK_SECRET:
+        return True
+    signature = _mercado_pago_signature_parts(request.headers.get("x-signature", ""))
+    request_id = request.headers.get("x-request-id", "")
+    if not signature.get("ts") or not signature.get("v1") or not request_id:
+        return False
+    manifest = ""
+    if data_id:
+        manifest += f"id:{str(data_id).lower()};"
+    manifest += f"request-id:{request_id};ts:{signature['ts']};"
+    expected = hmac.new(MERCADO_PAGO_WEBHOOK_SECRET.encode(), manifest.encode(), hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, signature["v1"])
+
+
+def _get_mercado_pago_payment(payment_id):
+    if not payment_id or not MERCADO_PAGO_ACCESS_TOKEN:
+        return None
+    api_request = urllib.request.Request(
+        f"https://api.mercadopago.com/v1/payments/{payment_id}",
+        headers={"Authorization": f"Bearer {MERCADO_PAGO_ACCESS_TOKEN}"},
+        method="GET",
+    )
+    try:
+        with urllib.request.urlopen(api_request, timeout=18) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as error:
+        if error.code == 404:
+            return None
+        raise
+
+
+def _append_order_history(order, history_type, source, to_status=None, note="", from_status=None):
+    order.setdefault("history", []).append({
+        "id": f"hist-{secrets.token_hex(6)}",
+        "createdAt": _now(),
+        "type": history_type,
+        "source": source,
+        "from": from_status,
+        "to": to_status,
+        "note": note,
+    })
+
+
 def public_page(request, page="index.html"):
     safe_page = Path(page).name
     if Path(safe_page).suffix != ".html":
@@ -838,12 +1011,78 @@ def api_checkout(request):
         "freeShipping": free_shipping,
         "shippingBenefit": shipping_benefit,
         "shippingOption": shipping_option or None,
-        "payment": {"provider": "mock", "status": "pending", "checkoutUrl": ""},
-        "history": [{"id": f"hist-{secrets.token_hex(6)}", "createdAt": _now(), "type": "order", "source": "django", "note": f"Pedido criado. {shipping_benefit.get('message', '')}".strip()}],
+        "payment": None,
+        "history": [],
     }
+    try:
+        payment = _create_payment(order, request)
+    except ValueError as error:
+        return JsonResponse({"error": str(error)}, status=502)
+    order["payment"] = payment
+    order["status"] = "paid" if payment.get("status") in {"approved", "paid", "authorized"} else "awaiting_payment"
+    _append_order_history(order, "order", "django", order["status"], f"Pedido criado. {shipping_benefit.get('message', '')}".strip())
+    _append_order_history(
+        order,
+        "payment",
+        payment.get("provider") or PAYMENT_PROVIDER,
+        order["status"],
+        "Pagamento aprovado na criacao do pedido." if order["status"] == "paid" else "Pedido aguardando confirmacao automatica do pagamento.",
+    )
     db.setdefault("orders", []).insert(0, order)
     write_db(db)
     return JsonResponse({"order": order, "payment": order["payment"]}, status=201)
+
+
+@csrf_exempt
+def api_mercado_pago_webhook(request):
+    body = _json_body(request)
+    body_data = body.get("data") if isinstance(body.get("data"), dict) else {}
+    data_id = str(
+        request.GET.get("data.id")
+        or body_data.get("id")
+        or body.get("data.id")
+        or body.get("id")
+        or ""
+    ).strip()
+    if not _verify_mercado_pago_webhook(request, request.GET.get("data.id") or data_id):
+        return JsonResponse({"received": False, "error": "Assinatura Mercado Pago invalida."}, status=401)
+    payment_data = _get_mercado_pago_payment(data_id)
+    order_id = str(
+        (payment_data or {}).get("external_reference")
+        or (payment_data or {}).get("metadata", {}).get("order_id")
+        or body.get("external_reference")
+        or body.get("orderId")
+        or ""
+    )
+    db = read_db()
+    order = next((item for item in db.get("orders", []) if item.get("id") == order_id), None)
+    if not order:
+        return JsonResponse({"received": True, "orderUpdated": False})
+    previous_status = order.get("status")
+    payment_status = (payment_data or {}).get("status") or body.get("status") or order.get("payment", {}).get("status") or "pending"
+    order["payment"] = {
+        **(order.get("payment") or {}),
+        "provider": "mercado-pago",
+        "paymentId": data_id or order.get("payment", {}).get("paymentId"),
+        "status": payment_status,
+        "statusDetail": (payment_data or {}).get("status_detail") or body.get("statusDetail") or "",
+        "updatedAt": _now(),
+    }
+    next_status = _order_status_from_payment_status(payment_status)
+    if next_status != previous_status:
+        order["status"] = next_status
+    order["updatedAt"] = _now()
+    status_detail_note = f" ({order['payment'].get('statusDetail')})" if order["payment"].get("statusDetail") else ""
+    _append_order_history(
+        order,
+        "payment",
+        "mercado-pago",
+        order.get("status"),
+        f"Pagamento Mercado Pago: {order['payment'].get('status')}{status_detail_note}.",
+        previous_status,
+    )
+    write_db(db)
+    return JsonResponse({"received": True, "orderUpdated": True, "orderId": order.get("id"), "status": order.get("status")})
 
 
 @csrf_exempt
