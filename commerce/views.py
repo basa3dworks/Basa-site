@@ -1120,31 +1120,42 @@ def api_admin_settings(request):
     promotions = {**settings.get("promotions", {})}
     if "freeShippingMinItems" in body:
         promotions["freeShippingMinItems"] = max(1, int(float(body.get("freeShippingMinItems") or promotions.get("freeShippingMinItems") or 3)))
-    settings.update({
-        "theme": body.get("theme") or settings.get("theme") or "atelier",
-        "originZipCode": re.sub(r"\D", "", str(body.get("originZipCode", settings.get("originZipCode", "")))),
-        "shippingFlatRate": max(0, float(body.get("shippingFlatRate", settings.get("shippingFlatRate", 0)) or 0)),
-        "shippingProvider": body.get("shippingProvider") or settings.get("shippingProvider") or "melhor-envio",
-        "displaySalesCount": bool(body.get("displaySalesCount", settings.get("displaySalesCount", False))),
-        "displayFavoriteCount": bool(body.get("displayFavoriteCount", settings.get("displayFavoriteCount", False))),
-        "displayRating": bool(body.get("displayRating", settings.get("displayRating", False))),
-        "promotions": promotions,
-        "sender": {
-            **settings.get("sender", {}),
-            "name": body.get("senderName", settings.get("sender", {}).get("name", "")),
-            "email": body.get("senderEmail", settings.get("sender", {}).get("email", "")),
-            "phone": re.sub(r"\D", "", str(body.get("senderPhone", settings.get("sender", {}).get("phone", "")))),
-            "document": re.sub(r"\D", "", str(body.get("senderDocument", settings.get("sender", {}).get("document", "")))),
-            "companyDocument": re.sub(r"\D", "", str(body.get("senderCompanyDocument", settings.get("sender", {}).get("companyDocument", "")))),
-            "zipCode": re.sub(r"\D", "", str(body.get("senderZipCode", settings.get("sender", {}).get("zipCode", "")))),
-            "address": body.get("senderAddress", settings.get("sender", {}).get("address", "")),
-            "number": body.get("senderNumber", settings.get("sender", {}).get("number", "")),
-            "complement": body.get("senderComplement", settings.get("sender", {}).get("complement", "")),
-            "neighborhood": body.get("senderNeighborhood", settings.get("sender", {}).get("neighborhood", "")),
-            "city": body.get("senderCity", settings.get("sender", {}).get("city", "")),
-            "state": str(body.get("senderState", settings.get("sender", {}).get("state", ""))).upper()[:2],
-        },
-    })
+    if "theme" in body:
+        settings["theme"] = body.get("theme") or settings.get("theme") or "atelier"
+    if "originZipCode" in body:
+        settings["originZipCode"] = re.sub(r"\D", "", str(body.get("originZipCode", "")))
+    if "shippingFlatRate" in body:
+        settings["shippingFlatRate"] = max(0, float(body.get("shippingFlatRate") or 0))
+    if "shippingProvider" in body:
+        settings["shippingProvider"] = body.get("shippingProvider") or "melhor-envio"
+    if "displaySalesCount" in body:
+        settings["displaySalesCount"] = bool(body.get("displaySalesCount"))
+    if "displayFavoriteCount" in body:
+        settings["displayFavoriteCount"] = bool(body.get("displayFavoriteCount"))
+    if "displayRating" in body:
+        settings["displayRating"] = bool(body.get("displayRating"))
+    settings["promotions"] = promotions
+
+    sender_fields = {
+        "senderName": ("name", str),
+        "senderEmail": ("email", str),
+        "senderPhone": ("phone", lambda value: re.sub(r"\D", "", str(value))),
+        "senderDocument": ("document", lambda value: re.sub(r"\D", "", str(value))),
+        "senderCompanyDocument": ("companyDocument", lambda value: re.sub(r"\D", "", str(value))),
+        "senderZipCode": ("zipCode", lambda value: re.sub(r"\D", "", str(value))),
+        "senderAddress": ("address", str),
+        "senderNumber": ("number", str),
+        "senderComplement": ("complement", str),
+        "senderNeighborhood": ("neighborhood", str),
+        "senderCity": ("city", str),
+        "senderState": ("state", lambda value: str(value).upper()[:2]),
+    }
+    if any(key in body for key in sender_fields):
+        sender = {**settings.get("sender", {})}
+        for form_key, (sender_key, sanitizer) in sender_fields.items():
+            if form_key in body:
+                sender[sender_key] = sanitizer(body.get(form_key, ""))
+        settings["sender"] = sender
     write_db(db)
     return JsonResponse({"settings": settings})
 
