@@ -213,9 +213,17 @@ export async function quoteShipping({ db, items, zipCode, provider = "melhor-env
     })
   });
 
-  const data = await response.json();
+  const responseText = await response.text();
+  let data = {};
+  try {
+    data = responseText ? JSON.parse(responseText) : {};
+  } catch {
+    data = {};
+  }
   if (!response.ok) {
-    throw Object.assign(new Error(data.message || "Nao foi possivel cotar frete no Melhor Envio."), { status: response.status });
+    throw Object.assign(new Error(data.message || "Nao foi possivel cotar frete no Melhor Envio."), {
+      status: response.status >= 400 && response.status < 500 ? response.status : 502
+    });
   }
 
   return {
