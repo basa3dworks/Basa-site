@@ -213,44 +213,42 @@
           <details class="checkout-details" id="checkoutDetails">
             <summary>
               <span>Dados do pedido e entrega</span>
-              <small>Cadastro, cupom e envio</small>
+              <small>CEP, cupom e envio</small>
             </summary>
             <div class="checkout-details-body">
           <div class="customer-login-box" id="customerLoginBox">
             <div>
               <h3>Entrar para comprar</h3>
-              <p id="customerLoginStatus">Preencha seus dados e salve o cadastro para finalizar o pedido.</p>
+              <p id="customerLoginStatus">Entre ou crie sua conta para finalizar o pedido.</p>
             </div>
             <div class="customer-login-actions">
-              <button class="primary-button" type="button" id="saveCustomerButton">Entrar/Cadastrar</button>
-              <button class="ghost-button debug-customer-button" type="button" id="debugCustomerButton">Cliente teste</button>
-              <button class="ghost-button" type="button" id="logoutCustomerButton" hidden>Alterar dados</button>
+              <button class="primary-button" type="button" id="saveCustomerButton">Entrar/Criar conta</button>
+              <button class="ghost-button" type="button" id="logoutCustomerButton" hidden>Alterar conta</button>
             </div>
           </div>
-          <h3>Dados para pedido</h3>
-          <label>Nome de usuário<input name="customerUsername" required autocomplete="username" placeholder="Ex: basa_cliente" data-auth-field></label>
-          <label>Senha<input name="customerPassword" type="password" required minlength="6" autocomplete="current-password" placeholder="Mínimo 6 caracteres" data-auth-field></label>
-          <label>Nome<input name="name" required autocomplete="name" data-customer-field></label>
-          <label>CPF ou CNPJ<input name="document" required inputmode="numeric" autocomplete="off" placeholder="Somente números" data-customer-field></label>
-          <label>Email<input name="email" type="email" required autocomplete="email" data-customer-field></label>
-          <label>Telefone<input name="phone" required autocomplete="tel" data-customer-field></label>
+          <div class="checkout-hidden-customer" aria-hidden="true">
+          <input name="customerUsername" autocomplete="username" data-auth-field>
+          <input name="customerPassword" type="password" autocomplete="current-password" data-auth-field>
+          <input name="name" autocomplete="name" data-customer-field>
+          <input name="document" inputmode="numeric" autocomplete="off" data-customer-field>
+          <input name="email" type="email" autocomplete="email" data-customer-field>
+          <input name="phone" autocomplete="tel" data-customer-field>
+          <input name="number" autocomplete="address-line2" data-customer-field>
+          <input name="street" autocomplete="address-line1" data-customer-field>
           <div class="checkout-grid">
-            <label>CEP<input name="zipCode" required inputmode="numeric" autocomplete="postal-code" placeholder="00000-000" data-customer-field></label>
-            <label>Número<input name="number" required autocomplete="address-line2" data-customer-field></label>
-          </div>
-          <label>Rua<input name="street" required autocomplete="address-line1" data-customer-field></label>
-          <div class="checkout-grid">
-            <label>Bairro<input name="neighborhood" required data-customer-field></label>
-            <label>Complemento<input name="complement" autocomplete="address-line3" data-customer-field></label>
+            <input name="neighborhood" data-customer-field>
+            <input name="complement" autocomplete="address-line3" data-customer-field>
           </div>
           <div class="checkout-grid">
-            <label>Cidade<input name="city" required autocomplete="address-level2" data-customer-field></label>
-            <label>Estado<input name="state" required maxlength="2" autocomplete="address-level1" data-customer-field></label>
+            <input name="city" autocomplete="address-level2" data-customer-field>
+            <input name="state" maxlength="2" autocomplete="address-level1" data-customer-field>
+          </div>
           </div>
           <section class="shipping-choice">
             <div class="section-head compact">
               <h3>Entrega</h3>
             </div>
+            <label>CEP de entrega<input name="zipCode" inputmode="numeric" autocomplete="postal-code" placeholder="00000-000"></label>
             <label>Cupom<input name="coupon" autocomplete="off" placeholder="Ex: FRETE3D"></label>
             <div id="shippingOptions" class="shipping-options">
               <p>Informe o CEP para calcular as opções de entrega.</p>

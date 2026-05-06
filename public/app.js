@@ -315,8 +315,8 @@ function applyCustomerSession(form) {
   $("#checkoutSubmitButton").disabled = false;
   $("#customerLoginBox").classList.toggle("logged", loggedIn);
   $("#customerLoginStatus").textContent = loggedIn
-    ? `Cliente identificado: ${session.customer.name || session.customer.email}.`
-    : "Preencha seus dados e salve o cadastro para finalizar o pedido.";
+    ? `Comprando como ${session.customer.name || session.customer.email}. Você pode mudar o CEP só para este pedido.`
+    : "Entre ou crie sua conta para finalizar o pedido.";
 }
 
 async function saveCustomerSession(form) {
@@ -939,7 +939,7 @@ async function checkout(event) {
   if (!state.cart.length) return;
   if (!isCustomerLoggedIn()) {
     openCheckoutDetails();
-    $("#checkoutStatus").textContent = "Entre ou cadastre seus dados antes de finalizar a compra.";
+    $("#checkoutStatus").textContent = "Entre ou crie sua conta antes de finalizar a compra.";
     $("#customerLoginBox").scrollIntoView({ behavior: "smooth", block: "nearest" });
     return;
   }
@@ -1107,8 +1107,8 @@ async function init() {
   $("#checkoutForm").addEventListener("submit", checkout);
   setupCheckoutDetails($("#checkoutForm"));
   $("#customRequestForm").addEventListener("submit", submitCustomRequest);
-  $("#saveCustomerButton").addEventListener("click", () => saveCustomerSession($("#checkoutForm")));
-  $("#debugCustomerButton").addEventListener("click", () => useDebugCustomer($("#checkoutForm")));
+  $("#saveCustomerButton").addEventListener("click", () => { window.location.href = "/conta.html"; });
+  $("#debugCustomerButton")?.addEventListener("click", () => useDebugCustomer($("#checkoutForm")));
   $("#logoutCustomerButton").addEventListener("click", () => logoutCustomer($("#checkoutForm")));
   setupCepLookup($("#checkoutForm"));
   $("#checkoutForm").elements.coupon.addEventListener("input", () => {
