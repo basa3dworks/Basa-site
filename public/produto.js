@@ -41,6 +41,10 @@ const productPiecesLabel = (product) => {
   return product.variants?.bundleType === "kit" || pieces > 1 ? `Kit com ${pieces} pe\u00e7as` : "1 pe\u00e7a";
 };
 const colorName = (color) => typeof color === "string" ? color : color?.name || "";
+const colorHex = (color) => {
+  const hex = typeof color === "object" ? color?.hex : "";
+  return /^#[0-9a-fA-F]{6}$/.test(hex || "") ? hex : "#ffffff";
+};
 const escapeHtml = (value) => String(value || "")
   .replaceAll("&", "&amp;")
   .replaceAll("<", "&lt;")
@@ -257,7 +261,8 @@ function saveCart() {
 }
 
 function selectedColor() {
-  return $("#productColorSelect")?.value || state.product?.variants?.colors?.[0] || "";
+  const checked = document.querySelector('input[name="productColor"]:checked');
+  return checked?.value || colorName(state.product?.variants?.colors?.[0]) || "";
 }
 
 function productQuantity() {
@@ -606,7 +611,6 @@ function renderProduct() {
       </div>
 
       <div class="product-detail-copy">
-        <a class="back-link" href="/#produtos">Voltar ao cat\u00e1logo</a>
         <p class="eyebrow">${product.category}</p>
         <div class="product-social-proof detail-social-proof">${productMeta(product)}</div>
         <h1>${product.name}</h1>
@@ -626,11 +630,22 @@ function renderProduct() {
         <div class="product-options">
           <span>${productPiecesLabel(product)}</span>
           ${product.variants?.colors?.length ? `
-            <label>Cor
-              <select id="productColorSelect">
-                ${product.variants.colors.map((color) => `<option value="${colorName(color)}">${colorName(color)}</option>`).join("")}
-              </select>
-            </label>
+            <fieldset class="color-choice-group" aria-label="Cor">
+              <legend>Cor</legend>
+              <div class="color-choice-list">
+                ${product.variants.colors.map((color, index) => {
+                  const name = colorName(color);
+                  const id = `productColor-${index}`;
+                  return `
+                    <label class="color-choice" for="${id}">
+                      <input id="${id}" type="radio" name="productColor" value="${escapeHtml(name)}" ${index === 0 ? "checked" : ""}>
+                      <span class="color-swatch" style="--swatch-color: ${colorHex(color)}"></span>
+                      <small>${escapeHtml(name)}</small>
+                    </label>
+                  `;
+                }).join("")}
+              </div>
+            </fieldset>
           ` : ""}
           <label class="quantity-inline">Quantidade:
             <select id="productQuantityInput" aria-label="Quantidade">
@@ -821,7 +836,7 @@ async function init() {
       <section class="product-loading">
         <p class="eyebrow">Produto n\u00e3o encontrado</p>
         <h1>N\u00e3o encontramos este item</h1>
-        <a class="primary-link" href="/#produtos">Voltar ao cat\u00e1logo</a>
+        <a class="primary-link" href="/">Ir para a loja</a>
       </section>
     `;
     renderCart();

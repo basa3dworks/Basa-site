@@ -1005,7 +1005,7 @@ textarea {
   border-radius: 8px;
   overflow: hidden;
   display: grid;
-  background: #10241f;
+  background: #fff;
   box-shadow: var(--shadow);
 }
 
@@ -1053,23 +1053,27 @@ textarea {
   width: 100%;
   height: 100%;
   border: 0;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
 }
 
 .product-thumbs {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  display: flex;
   gap: 10px;
+  overflow-x: auto;
+  padding: 2px 2px 6px;
+  scroll-snap-type: x proximity;
 }
 
 .thumb-button {
+  flex: 0 0 clamp(76px, 18%, 116px);
   padding: 0;
   border: 2px solid transparent;
   border-radius: 8px;
   overflow: hidden;
   cursor: pointer;
   background: #fff;
+  scroll-snap-align: start;
 }
 
 .thumb-button:hover,
@@ -1131,11 +1135,11 @@ textarea {
 .product-detail-copy h1 {
   margin: 8px 0 16px;
   max-width: 100%;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
   word-break: normal;
-  hyphens: auto;
-  font-size: clamp(2.4rem, 4.6vw, 4.45rem);
-  line-height: 0.98;
+  hyphens: none;
+  font-size: 3.55rem;
+  line-height: 1.03;
 }
 
 .lead {
@@ -1734,6 +1738,69 @@ label {
 .product-options span {
   color: var(--muted);
   font-weight: 900;
+}
+
+.color-choice-group {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.color-choice-group legend {
+  margin: 0 0 8px;
+  color: var(--ink);
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
+.color-choice-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.color-choice {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  width: 64px;
+  cursor: pointer;
+}
+
+.color-choice input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.color-swatch {
+  width: 42px;
+  height: 42px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--swatch-color);
+  box-shadow: 0 0 0 1px var(--line), 0 7px 16px rgba(18, 32, 26, 0.12);
+}
+
+.color-choice input:checked + .color-swatch {
+  box-shadow: 0 0 0 3px var(--brand), 0 8px 18px rgba(18, 32, 26, 0.16);
+}
+
+.color-choice input:focus-visible + .color-swatch {
+  outline: 3px solid rgba(52, 131, 250, 0.35);
+  outline-offset: 3px;
+}
+
+.color-choice small {
+  width: 100%;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: center;
+  text-overflow: ellipsis;
 }
 
 .quantity-inline {
@@ -4982,7 +5049,35 @@ pre {
   }
 
   .product-detail-copy h1 {
-    font-size: clamp(2.25rem, 12vw, 3.5rem);
+    font-size: 2.2rem;
+    line-height: 1.08;
+    overflow-wrap: normal;
+    hyphens: none;
+  }
+
+  .product-main-media {
+    aspect-ratio: 1 / 1;
+  }
+
+  .product-thumbs {
+    gap: 8px;
+  }
+
+  .thumb-button {
+    flex-basis: 62px;
+  }
+
+  .color-choice-list {
+    gap: 10px;
+  }
+
+  .color-choice {
+    width: 58px;
+  }
+
+  .color-swatch {
+    width: 38px;
+    height: 38px;
   }
 
   .product-detail-copy .hero-actions {
