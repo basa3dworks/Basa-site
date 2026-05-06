@@ -1007,6 +1007,22 @@ textarea {
   display: grid;
   background: #fff;
   box-shadow: var(--shadow);
+  cursor: zoom-in;
+}
+
+.product-media-expand {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: zoom-in;
+}
+
+.product-media-expand:focus-visible {
+  outline: 3px solid rgba(52, 131, 250, 0.42);
+  outline-offset: -6px;
 }
 
 .whatsapp-share-float {
@@ -1119,6 +1135,94 @@ textarea {
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+body.lightbox-open {
+  overflow: hidden;
+}
+
+.media-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) 64px;
+  grid-template-rows: 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 22px;
+  background: rgba(9, 18, 15, 0.88);
+  backdrop-filter: blur(10px);
+}
+
+.media-lightbox[hidden] {
+  display: none;
+}
+
+.media-lightbox-stage {
+  grid-column: 2;
+  min-width: 0;
+  height: min(82vh, 860px);
+  display: grid;
+  place-items: center;
+}
+
+.media-lightbox-item {
+  width: 100%;
+  height: 100%;
+  max-width: 1180px;
+  border: 0;
+  border-radius: 8px;
+  object-fit: contain;
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.32);
+}
+
+.media-lightbox-close,
+.media-lightbox-nav {
+  border: 0;
+  border-radius: 999px;
+  color: #17211d;
+  background: rgba(255, 255, 255, 0.92);
+  cursor: pointer;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+}
+
+.media-lightbox-close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 44px;
+  height: 44px;
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.media-lightbox-nav {
+  width: 52px;
+  height: 52px;
+  font-size: 2.4rem;
+  line-height: 1;
+}
+
+.media-lightbox-prev {
+  grid-column: 1;
+  justify-self: end;
+}
+
+.media-lightbox-next {
+  grid-column: 3;
+  justify-self: start;
+}
+
+.media-lightbox-count {
+  grid-column: 2;
+  justify-self: center;
+  padding: 7px 12px;
+  border-radius: 999px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.14);
+  font-weight: 900;
 }
 
 .product-detail-copy {
@@ -5057,6 +5161,29 @@ pre {
 
   .product-main-media {
     aspect-ratio: 1 / 1;
+  }
+
+  .media-lightbox {
+    grid-template-columns: 48px minmax(0, 1fr) 48px;
+    gap: 6px;
+    padding: 14px 8px;
+  }
+
+  .media-lightbox-stage {
+    height: 78vh;
+  }
+
+  .media-lightbox-close {
+    top: 12px;
+    right: 12px;
+    width: 42px;
+    height: 42px;
+  }
+
+  .media-lightbox-nav {
+    width: 42px;
+    height: 42px;
+    font-size: 2rem;
   }
 
   .product-thumbs {

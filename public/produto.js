@@ -6,7 +6,10 @@
   settings: null,
   shippingQuotes: [],
   selectedShipping: null,
-  shippingBenefit: null
+  shippingBenefit: null,
+  lightboxMediaItems: [],
+  lightboxProduct: null,
+  lightboxReady: false
 };
 
 const debugCustomer = {
@@ -249,6 +252,75 @@ function renderMainMedia(item, product) {
 
 function renderMainMediaFrame(item, product) {
   return `${renderMainMedia(item, product)}${whatsappShareButton(product)}`;
+}
+
+function mediaLightboxMarkup(mediaItems, product) {
+  return `
+    <div class="media-lightbox" id="mediaLightbox" hidden aria-modal="true" role="dialog" aria-label="Imagem ampliada do produto">
+      <button class="media-lightbox-close" type="button" data-lightbox-close aria-label="Fechar imagem ampliada">×</button>
+      <button class="media-lightbox-nav media-lightbox-prev" type="button" data-lightbox-prev aria-label="Imagem anterior">‹</button>
+      <div class="media-lightbox-stage" id="mediaLightboxStage"></div>
+      <button class="media-lightbox-nav media-lightbox-next" type="button" data-lightbox-next aria-label="Próxima imagem">›</button>
+      <div class="media-lightbox-count" id="mediaLightboxCount">${mediaItems.length ? `1 / ${mediaItems.length}` : ""}</div>
+    </div>
+  `;
+}
+
+function renderLightboxMedia(item, product) {
+  if (!item) return "";
+  if (item.type === "video") {
+    if (videoKind(item.src) === "file") {
+      return `<video class="media-lightbox-item" src="${item.src}" poster="${item.poster || ""}" controls autoplay playsinline></video>`;
+    }
+    return `<iframe class="media-lightbox-item" src="${embedVideoUrl(item.src, true)}" title="Video do produto ${product.name}" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>`;
+  }
+  return `<img class="media-lightbox-item" src="${item.src}" alt="${product.name}">`;
+}
+
+function setupMediaLightbox(mediaItems, product) {
+  const lightbox = $("#mediaLightbox");
+  if (!lightbox) return;
+  state.lightboxMediaItems = mediaItems;
+  state.lightboxProduct = product;
+  if (state.lightboxReady) return;
+  state.lightboxReady = true;
+  let activeIndex = 0;
+  const show = (index) => {
+    const items = state.lightboxMediaItems || [];
+    if (!items.length) return;
+    activeIndex = (index + items.length) % items.length;
+    $("#mediaLightboxStage").innerHTML = renderLightboxMedia(items[activeIndex], state.lightboxProduct);
+    $("#mediaLightboxCount").textContent = `${activeIndex + 1} / ${items.length}`;
+  };
+  const open = (index) => {
+    show(index);
+    lightbox.hidden = false;
+    document.body.classList.add("lightbox-open");
+    lightbox.querySelector("[data-lightbox-close]")?.focus();
+  };
+  const close = () => {
+    lightbox.hidden = true;
+    document.body.classList.remove("lightbox-open");
+    $("#mediaLightboxStage").innerHTML = "";
+  };
+
+  document.addEventListener("click", (event) => {
+    const button = event.target.closest?.("[data-media-expand]");
+    if (!button) return;
+    open(Number(button.dataset.mediaExpand || 0));
+  });
+  lightbox.querySelector("[data-lightbox-close]")?.addEventListener("click", close);
+  lightbox.querySelector("[data-lightbox-prev]")?.addEventListener("click", () => show(activeIndex - 1));
+  lightbox.querySelector("[data-lightbox-next]")?.addEventListener("click", () => show(activeIndex + 1));
+  lightbox.addEventListener("click", (event) => {
+    if (event.target === lightbox) close();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (lightbox.hidden) return;
+    if (event.key === "Escape") close();
+    if (event.key === "ArrowLeft") show(activeIndex - 1);
+    if (event.key === "ArrowRight") show(activeIndex + 1);
+  });
 }
 
 function applyTheme(theme) {
@@ -598,6 +670,7 @@ function renderProduct() {
       <div class="product-gallery">
         <div class="product-main-media" id="productMainMedia">
           ${renderMainMediaFrame(firstMedia, product)}
+          <button class="product-media-expand" type="button" data-media-expand="0" aria-label="Ampliar imagem do produto"></button>
         </div>
         <div class="product-thumbs">
           ${mediaItems.map((item, index) => `
@@ -695,6 +768,7 @@ function renderProduct() {
       </article>
     </section>
     ${socialReviewsSection(product)}
+    ${mediaLightboxMarkup(mediaItems, product)}
   `;
 
   document.querySelectorAll("[data-add]").forEach((button) => {
@@ -703,11 +777,13 @@ function renderProduct() {
   document.querySelectorAll("[data-media-index]").forEach((button) => {
     button.addEventListener("click", () => {
       const item = mediaItems[Number(button.dataset.mediaIndex)];
-      $("#productMainMedia").innerHTML = renderMainMediaFrame(item, product);
+      $("#productMainMedia").innerHTML = `${renderMainMediaFrame(item, product)}<button class="product-media-expand" type="button" data-media-expand="${button.dataset.mediaIndex}" aria-label="Ampliar imagem do produto"></button>`;
+      setupMediaLightbox(mediaItems, product);
       document.querySelectorAll("[data-media-index]").forEach((thumb) => thumb.classList.toggle("active", thumb === button));
     });
   });
   document.querySelector("[data-media-index]")?.classList.add("active");
+  setupMediaLightbox(mediaItems, product);
 }
 
 function renderCart() {
