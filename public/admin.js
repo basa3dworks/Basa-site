@@ -19,6 +19,7 @@ let selectedOrderId = "";
 let currentMetricsView = "overview";
 let currentSocialProductId = "";
 let productSaveInProgress = false;
+let settingsSaveInProgress = false;
 
 const uploadLimits = {
   image: 6 * 1024 * 1024,
@@ -1941,6 +1942,37 @@ async function api(path, options = {}) {
   return data;
 }
 
+function setSettingsControlsDisabled(disabled) {
+  document.querySelectorAll("[data-theme], #displaySettingsForm button, #shippingSettingsForm button").forEach((control) => {
+    control.disabled = disabled;
+  });
+}
+
+async function patchAdminSettings(payload, statusSelector, pendingMessage, successMessage) {
+  const status = statusSelector ? $(statusSelector) : null;
+  if (settingsSaveInProgress) {
+    if (status) status.textContent = "Aguarde o salvamento anterior terminar.";
+    return null;
+  }
+  settingsSaveInProgress = true;
+  setSettingsControlsDisabled(true);
+  if (status) status.textContent = pendingMessage;
+  try {
+    const result = await api("/api/admin/settings", {
+      method: "PATCH",
+      body: JSON.stringify(payload)
+    });
+    if (status) status.textContent = successMessage;
+    return result;
+  } catch (error) {
+    if (status) status.textContent = uploadFailureMessage(error);
+    throw error;
+  } finally {
+    settingsSaveInProgress = false;
+    setSettingsControlsDisabled(false);
+  }
+}
+
 async function loadDashboard() {
   const data = await api("/api/admin/dashboard");
   currentProducts = data.products || [];
@@ -2083,14 +2115,11 @@ function renderThemeGrid(activeTheme) {
 
   document.querySelectorAll("[data-theme]").forEach((button) => {
     button.addEventListener("click", async () => {
-      $("#themeStatus").textContent = "Salvando tema...";
-      const result = await api("/api/admin/settings", {
-        method: "PATCH",
-        body: JSON.stringify({ theme: button.dataset.theme })
-      });
+      if (button.classList.contains("active")) return;
+      const result = await patchAdminSettings({ theme: button.dataset.theme }, "#themeStatus", "Salvando tema...", "Tema aplicado.");
+      if (!result) return;
       applyTheme(result.settings.theme);
       renderThemeGrid(result.settings.theme);
-      $("#themeStatus").textContent = "Tema aplicado.";
     });
   });
 }
@@ -2371,31 +2400,26 @@ $("#cancelStoryEditButton").addEventListener("click", () => {
 });
 $("#displaySettingsForm").addEventListener("submit", async (event) => {
   event.preventDefault();
-  $("#displaySettingsStatus").textContent = "Salvando exibição...";
   try {
-    const result = await api("/api/admin/settings", {
-      method: "PATCH",
-      body: JSON.stringify({
-        displaySalesCount: event.currentTarget.elements.displaySalesCount.checked,
-        displayFavoriteCount: event.currentTarget.elements.displayFavoriteCount.checked,
-        displayRating: event.currentTarget.elements.displayRating.checked
-      })
-    });
+    const result = await patchAdminSettings({
+      displaySalesCount: event.currentTarget.elements.displaySalesCount.checked,
+      displayFavoriteCount: event.currentTarget.elements.displayFavoriteCount.checked,
+      displayRating: event.currentTarget.elements.displayRating.checked
+    }, "#displaySettingsStatus", "Salvando exibição...", "Exibição da vitrine salva.");
+    if (!result) return;
     currentSettings = result.settings;
     fillDisplaySettings(result.settings);
-    $("#displaySettingsStatus").textContent = "Exibição da vitrine salva.";
   } catch (error) {
     $("#displaySettingsStatus").textContent = error.message;
   }
 });
 $("#shippingSettingsForm").addEventListener("submit", async (event) => {
   event.preventDefault();
-  $("#shippingSettingsStatus").textContent = "Salvando envio...";
   const body = Object.fromEntries(new FormData(event.currentTarget).entries());
   try {
-    const result = await api("/api/admin/settings", { method: "PATCH", body: JSON.stringify(body) });
+    const result = await patchAdminSettings(body, "#shippingSettingsStatus", "Salvando envio...", "Configurações de envio salvas.");
+    if (!result) return;
     fillShippingSettings(result.settings);
-    $("#shippingSettingsStatus").textContent = "Configuracoes de envio salvas.";
   } catch (error) {
     $("#shippingSettingsStatus").textContent = error.message;
   }
