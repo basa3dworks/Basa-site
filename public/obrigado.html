@@ -13,12 +13,37 @@
         <h1>Obrigado pela compra</h1>
         <p>Recebemos o seu pedido e a equipe Basa 3D Works vai acompanhar os proximos passos.</p>
         <p class="order-code" id="orderCode"></p>
+        <div class="thank-you-actions" id="paymentActions"></div>
         <a class="primary-link" href="/">Voltar para loja</a>
       </section>
     </main>
     <script>
       const pedido = new URLSearchParams(location.search).get("pedido");
+      const money = (value) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(value || 0));
+      const session = JSON.parse(localStorage.getItem("basa_customer_session") || "null");
       document.getElementById("orderCode").textContent = pedido ? `Pedido ${pedido}` : "";
+      async function loadOrder() {
+        if (!pedido || !session?.customer?.email) return;
+        const response = await fetch(`/api/customer/orders?email=${encodeURIComponent(session.customer.email)}`);
+        const data = await response.json();
+        if (!response.ok) return;
+        const order = (data.orders || []).find((item) => item.id === pedido);
+        if (!order) return;
+        const box = document.getElementById("paymentActions");
+        if (order.status === "awaiting_payment" && order.payment?.checkoutUrl) {
+          box.innerHTML = `
+            <article class="pending-thank-you">
+              <strong>Pagamento aguardando conclusão</strong>
+              <span>${money(order.total)} | você pode retomar pelo Mercado Pago.</span>
+              <a class="primary-button" href="${order.payment.checkoutUrl}">Concluir pagamento</a>
+              <a class="ghost-button" href="/conta.html#orders">Ver meus pedidos</a>
+            </article>
+          `;
+        } else {
+          box.innerHTML = `<span class="status-chip ok">${order.status === "paid" ? "Pagamento confirmado" : "Status: " + order.status}</span>`;
+        }
+      }
+      loadOrder();
     </script>
   </body>
 </html>

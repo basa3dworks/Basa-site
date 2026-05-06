@@ -32,6 +32,7 @@ MERCADO_PAGO_ACCESS_TOKEN = os.environ.get("MERCADO_PAGO_ACCESS_TOKEN", "").stri
 MERCADO_PAGO_WEBHOOK_SECRET = os.environ.get("MERCADO_PAGO_WEBHOOK_SECRET", "").strip()
 MERCADO_PAGO_MIN_ORDER_TOTAL = max(0.0, float(os.environ.get("MERCADO_PAGO_MIN_ORDER_TOTAL", "0") or 0))
 MERCADO_PAGO_USE_SANDBOX = os.environ.get("MERCADO_PAGO_USE_SANDBOX", "").strip().lower()
+PAYMENT_PENDING_TTL_HOURS = max(1.0, float(os.environ.get("PAYMENT_PENDING_TTL_HOURS", "48") or 48))
 MELHOR_ENVIO_TOKEN = os.environ.get("MELHOR_ENVIO_TOKEN", "")
 MELHOR_ENVIO_API_BASE = os.environ.get("MELHOR_ENVIO_API_BASE", "https://melhorenvio.com.br")
 MELHOR_ENVIO_USER_AGENT = os.environ.get("MELHOR_ENVIO_USER_AGENT", "Basa 3D Works (contato@basa3d.com)")
@@ -779,6 +780,7 @@ def _create_mercado_pago_preference(order, request):
         "sandboxInitPoint": data.get("sandbox_init_point", ""),
         "environment": "sandbox" if use_sandbox else "production",
         "preference": {"id": data.get("id")},
+        "expiresAt": _payment_expires_at(),
         "updatedAt": _now(),
     }
 
@@ -849,6 +851,63 @@ def _append_order_history(order, history_type, source, to_status=None, note="", 
         "to": to_status,
         "note": note,
     })
+
+
+def _payment_expires_at():
+    return (datetime.now(timezone.utc) + timedelta(hours=PAYMENT_PENDING_TTL_HOURS)).isoformat()
+
+
+def _order_payment_url(order):
+    payment = order.get("payment") or {}
+    return payment.get("checkoutUrl") or payment.get("initPoint") or payment.get("sandboxInitPoint") or ""
+
+
+def _expire_pending_orders(db):
+    changed = False
+    now = datetime.now(timezone.utc)
+    for order in db.get("orders", []):
+        if order.get("status") != "awaiting_payment":
+            continue
+        payment = order.get("payment") or {}
+        expires_at = _parse_dt(payment.get("expiresAt"))
+        if not expires_at:
+            created_at = _parse_dt(order.get("createdAt")) or now
+            expires_at = created_at + timedelta(hours=PAYMENT_PENDING_TTL_HOURS)
+            payment["expiresAt"] = expires_at.isoformat()
+            order["payment"] = payment
+            changed = True
+        if not expires_at or expires_at > now:
+            continue
+        previous_status = order.get("status")
+        order["status"] = "canceled"
+        order["updatedAt"] = _now()
+        payment["status"] = "expired"
+        payment["updatedAt"] = _now()
+        order["payment"] = payment
+        _append_order_history(
+            order,
+            "payment",
+            "system",
+            "canceled",
+            f"Pedido cancelado automaticamente apos {PAYMENT_PENDING_TTL_HOURS:g} horas sem confirmacao de pagamento.",
+            previous_status,
+        )
+        changed = True
+    return changed
+
+
+def _public_order(order):
+    payment = order.get("payment") or {}
+    return {
+        **order,
+        "payment": {
+            "provider": payment.get("provider"),
+            "status": payment.get("status"),
+            "checkoutUrl": _order_payment_url(order),
+            "expiresAt": payment.get("expiresAt"),
+            "environment": payment.get("environment"),
+        },
+    }
 
 
 def public_page(request, page="index.html"):
@@ -1055,8 +1114,11 @@ def api_mercado_pago_webhook(request):
         or ""
     )
     db = read_db()
+    expired_changed = _expire_pending_orders(db)
     order = next((item for item in db.get("orders", []) if item.get("id") == order_id), None)
     if not order:
+        if expired_changed:
+            write_db(db)
         return JsonResponse({"received": True, "orderUpdated": False})
     previous_status = order.get("status")
     payment_status = (payment_data or {}).get("status") or body.get("status") or order.get("payment", {}).get("status") or "pending"
@@ -1204,8 +1266,10 @@ def api_customer_password_reset_confirm(request):
 def api_customer_orders(request):
     email = str(request.GET.get("email", "")).strip().lower()
     db = read_db()
+    if _expire_pending_orders(db):
+        write_db(db)
     orders = [order for order in db.get("orders", []) if str(order.get("customer", {}).get("email", "")).lower() == email]
-    return JsonResponse({"orders": orders})
+    return JsonResponse({"orders": [_public_order(order) for order in orders]})
 
 
 @csrf_exempt
@@ -1274,6 +1338,8 @@ def api_admin_dashboard(request):
     if error:
         return error
     db = read_db()
+    if _expire_pending_orders(db):
+        write_db(db)
     revenue = round(sum(float(order.get("total") or 0) for order in db.get("orders", [])), 2)
     customers = [_safe_customer_account(customer) for customer in db.get("customers", [])]
     return JsonResponse({
@@ -1824,6 +1890,24 @@ def api_admin_order_detail(request, order_id):
         return JsonResponse({"order": order, "orders": orders})
     body = _json_body(request)
     order = orders[index]
+    action = body.get("action")
+    if action == "cancel_payment":
+        previous_status = order.get("status")
+        order["status"] = "canceled"
+        order.setdefault("payment", {})["status"] = "canceled"
+        order["payment"]["updatedAt"] = _now()
+        order["updatedAt"] = _now()
+        _append_order_history(order, "payment", "admin", "canceled", body.get("note") or "Pedido cancelado manualmente no painel.", previous_status)
+        write_db(db)
+        return JsonResponse({"order": order})
+    if action == "resend_payment":
+        if order.get("status") != "awaiting_payment" or not _order_payment_url(order):
+            return JsonResponse({"error": "Este pedido nao possui pagamento pendente com link ativo."}, status=400)
+        order.setdefault("payment", {})["lastReminderAt"] = _now()
+        order["updatedAt"] = _now()
+        _append_order_history(order, "payment", "admin", "awaiting_payment", body.get("note") or "Link de pagamento marcado para reenvio manual.")
+        write_db(db)
+        return JsonResponse({"order": order, "checkoutUrl": _order_payment_url(order)})
     next_status = body.get("status") or order.get("status")
     if next_status != order.get("status"):
         order.setdefault("history", []).append({

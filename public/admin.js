@@ -1733,6 +1733,9 @@ function renderOrdersList() {
   document.querySelectorAll("[data-shipping-action]").forEach((button) => {
     button.addEventListener("click", () => runShippingAction(button));
   });
+  document.querySelectorAll("[data-payment-action]").forEach((button) => {
+    button.addEventListener("click", () => runPaymentAction(button));
+  });
 }
 
 function renderSelectedOrderDetail(order) {
@@ -1782,7 +1785,15 @@ function renderSelectedOrderDetail(order) {
         <h3>Pagamento</h3>
         <span>Provedor: <strong>${order.payment?.provider || "Não informado"}</strong></span>
         <span>Status: <strong>${order.payment?.status || "Pendente"}</strong></span>
-        <span>ID externo: ${order.payment?.id || order.payment?.externalId || "não informado"}</span>
+        <span>ID externo: ${order.payment?.paymentId || order.payment?.id || order.payment?.externalId || "não informado"}</span>
+        ${order.payment?.expiresAt ? `<span>Expira em: ${new Date(order.payment.expiresAt).toLocaleString("pt-BR")}</span>` : ""}
+        ${order.status === "awaiting_payment" && order.payment?.checkoutUrl ? `
+          <div class="order-action-row">
+            <a class="ghost-button" href="${order.payment.checkoutUrl}" target="_blank" rel="noopener">Abrir pagamento</a>
+            <button class="ghost-button" type="button" data-payment-action="resend_payment" data-order-id="${order.id}">Marcar reenvio</button>
+            <button class="ghost-button danger-button" type="button" data-payment-action="cancel_payment" data-order-id="${order.id}">Cancelar pedido</button>
+          </div>
+        ` : ""}
         <small class="muted-copy">Quando o webhook do Mercado Pago estiver ativo, esta etapa muda sozinha após a confirmação.</small>
         <label>Status operacional manual
           <select data-order-status="${order.id}">
@@ -2002,6 +2013,30 @@ async function runShippingAction(button) {
       body: JSON.stringify(payload)
     });
     if (action === "print" && result.url) window.open(result.url, "_blank", "noopener");
+    await loadDashboard();
+  } catch (error) {
+    alert(error.message);
+    button.disabled = false;
+    button.textContent = originalText;
+  }
+}
+
+async function runPaymentAction(button) {
+  const action = button.dataset.paymentAction;
+  if (action === "cancel_payment" && !confirm("Cancelar este pedido pendente?")) return;
+  button.disabled = true;
+  const originalText = button.textContent;
+  button.textContent = "Processando...";
+  try {
+    const result = await api(`/api/admin/orders/${encodeURIComponent(button.dataset.orderId)}`, {
+      method: "PATCH",
+      body: JSON.stringify({ action })
+    });
+    if (action === "resend_payment" && result.checkoutUrl) {
+      await navigator.clipboard?.writeText(result.checkoutUrl).catch(() => {});
+      alert("Link de pagamento pronto para reenvio. Se o navegador permitiu, ele foi copiado.");
+    }
+    selectedOrderId = button.dataset.orderId;
     await loadDashboard();
   } catch (error) {
     alert(error.message);

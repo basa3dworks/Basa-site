@@ -98,6 +98,20 @@ function orderStatusLabel(status) {
   }[status] || status || "Criado";
 }
 
+function pendingPaymentOrders() {
+  return state.orders.filter((order) => order.status === "awaiting_payment" && order.payment?.checkoutUrl);
+}
+
+function paymentExpiryLabel(order) {
+  if (!order.payment?.expiresAt) return "";
+  const expiresAt = new Date(order.payment.expiresAt).getTime();
+  if (!Number.isFinite(expiresAt)) return "";
+  const remainingMs = expiresAt - Date.now();
+  if (remainingMs <= 0) return "expira em instantes";
+  const hours = Math.ceil(remainingMs / 3600000);
+  return hours >= 24 ? `expira em ${Math.ceil(hours / 24)} dia(s)` : `expira em ${hours}h`;
+}
+
 function requestStatusLabel(status) {
   return {
     new: "Nova",
@@ -113,7 +127,15 @@ function requestStatusLabel(status) {
 
 function renderAccount() {
   const customer = state.session?.customer || {};
+  const pendingOrders = pendingPaymentOrders();
   $("#accountSummary").innerHTML = isLoggedIn() ? `
+    ${pendingOrders.length ? `
+      <article class="account-card pending-account-card">
+        <strong>Compra pendente</strong>
+        <span>${pendingOrders[0].id} | ${money(pendingOrders[0].total)}${paymentExpiryLabel(pendingOrders[0]) ? ` | ${paymentExpiryLabel(pendingOrders[0])}` : ""}</span>
+        <a class="primary-button" href="${pendingOrders[0].payment.checkoutUrl}">Concluir pagamento</a>
+      </article>
+    ` : ""}
     ${state.session.emailVerified === false ? `
       <article class="account-card account-warning-card">
         <strong>E-mail pendente de confirmação</strong>
@@ -145,13 +167,17 @@ function renderOrders() {
     return;
   }
   list.innerHTML = state.orders.length ? state.orders.map((order) => `
-    <article class="account-card">
+    <article class="account-card ${order.status === "awaiting_payment" ? "pending-account-card" : ""}">
       <div>
         <strong>${order.id}</strong>
         <span>${orderStatusLabel(order.status)} | ${new Date(order.createdAt).toLocaleString("pt-BR")}</span>
       </div>
       <small>${(order.items || []).map((item) => `${item.quantity}x ${item.name}`).join(", ")}</small>
       <b>${money(order.total)}</b>
+      ${order.status === "awaiting_payment" && order.payment?.checkoutUrl ? `
+        <span>${paymentExpiryLabel(order) || "Aguardando confirmação do pagamento"}</span>
+        <a class="primary-button" href="${order.payment.checkoutUrl}">Concluir pagamento</a>
+      ` : ""}
     </article>
   `).join("") : "<p>Nenhum pedido encontrado.</p>";
 }
@@ -355,7 +381,8 @@ async function init() {
   $("#logoutSidebarButton")?.addEventListener("click", logout);
   await loadProducts();
   await refreshPrivateData();
-  showView(isLoggedIn() ? "profile" : "login");
+  const hashView = location.hash.replace("#", "");
+  showView(isLoggedIn() ? (hashView === "orders" ? "orders" : "profile") : "login");
 }
 
 init();

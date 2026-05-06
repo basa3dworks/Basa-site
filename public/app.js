@@ -5,6 +5,7 @@
   cart: JSON.parse(localStorage.getItem("basa_cart") || "[]"),
   customerSession: JSON.parse(localStorage.getItem("basa_customer_session") || "null"),
   settings: null,
+  pendingOrders: [],
   shippingQuotes: [],
   selectedShipping: null,
   shippingBenefit: null,
@@ -290,6 +291,54 @@ function isCustomerLoggedIn() {
   return Boolean(state.customerSession?.loggedIn && state.customerSession?.customer?.email);
 }
 
+function pendingPaymentOrders() {
+  return state.pendingOrders.filter((order) => order.status === "awaiting_payment" && order.payment?.checkoutUrl);
+}
+
+function paymentExpiryLabel(order) {
+  if (!order.payment?.expiresAt) return "";
+  const expiresAt = new Date(order.payment.expiresAt).getTime();
+  if (!Number.isFinite(expiresAt)) return "";
+  const remainingMs = expiresAt - Date.now();
+  if (remainingMs <= 0) return "expira em instantes";
+  const hours = Math.ceil(remainingMs / 3600000);
+  return hours >= 24 ? `expira em ${Math.ceil(hours / 24)} dia(s)` : `expira em ${hours}h`;
+}
+
+async function loadPendingOrders() {
+  if (!isCustomerLoggedIn()) {
+    state.pendingOrders = [];
+    renderPendingPaymentBanner();
+    return;
+  }
+  try {
+    const email = encodeURIComponent(state.customerSession.customer.email);
+    const response = await fetch(`/api/customer/orders?email=${email}`);
+    const data = await response.json();
+    state.pendingOrders = response.ok ? (data.orders || []).filter((order) => order.status === "awaiting_payment") : [];
+  } catch {
+    state.pendingOrders = [];
+  }
+  renderPendingPaymentBanner();
+}
+
+function renderPendingPaymentBanner() {
+  document.querySelector(".pending-payment-banner")?.remove();
+  const [order] = pendingPaymentOrders();
+  if (!order) return;
+  const banner = document.createElement("aside");
+  banner.className = "pending-payment-banner";
+  banner.innerHTML = `
+    <div>
+      <strong>Você tem uma compra pendente</strong>
+      <span>${order.id} | ${money(order.total)}${paymentExpiryLabel(order) ? ` | ${paymentExpiryLabel(order)}` : ""}</span>
+    </div>
+    <a class="primary-button" href="${order.payment.checkoutUrl}">Concluir pagamento</a>
+    <a class="ghost-button" href="/conta.html#orders">Ver pedidos</a>
+  `;
+  document.body.insertBefore(banner, document.querySelector("main"));
+}
+
 function customerFields(form) {
   return [...form.querySelectorAll("[data-customer-field]")];
 }
@@ -336,6 +385,7 @@ async function saveCustomerSession(form) {
   state.customerSession = { loggedIn: true, username: data.account.username, customer, updatedAt: new Date().toISOString() };
   localStorage.setItem("basa_customer_session", JSON.stringify(state.customerSession));
   applyCustomerSession(form);
+  loadPendingOrders();
   loadCustomerRequests();
   $("#checkoutStatus").textContent = data.created ? "Cadastro criado. Agora você pode finalizar o pedido." : "Login confirmado. Agora você pode finalizar o pedido.";
 }
@@ -356,6 +406,7 @@ function useDebugCustomer(form) {
 
 function logoutCustomer(form) {
   state.customerSession = null;
+  state.pendingOrders = [];
   localStorage.removeItem("basa_customer_session");
   state.customRequests = [];
   customerFields(form).forEach((input) => {
@@ -366,6 +417,7 @@ function logoutCustomer(form) {
     input.value = "";
   });
   applyCustomerSession(form);
+  renderPendingPaymentBanner();
   renderCustomerRequests();
   $("#checkoutStatus").textContent = "Dados liberados para alteracao. Salve novamente antes de comprar.";
 }
@@ -1080,6 +1132,7 @@ async function init() {
   renderProducts();
   renderStories();
   applyCustomerSession($("#checkoutForm"));
+  loadPendingOrders();
   loadCustomerRequests();
   renderCart();
   autoQuoteShippingIfPossible();
