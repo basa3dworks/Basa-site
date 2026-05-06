@@ -1478,6 +1478,8 @@ def api_admin_product_detail(request, product_id):
         removed = products.pop(index)
         write_db(db)
         return JsonResponse({"product": removed})
+    if request.method not in {"POST", "PUT", "PATCH"}:
+        return JsonResponse({"error": "Metodo nao permitido."}, status=405)
     try:
         products[index] = _product_post_payload(request, products[index])
     except ValueError as error:

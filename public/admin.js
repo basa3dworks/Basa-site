@@ -2157,7 +2157,7 @@ $("#productForm").addEventListener("submit", async (event) => {
     body.delete("colorHexText");
     body.delete("productId");
     const path = productId ? `/api/admin/products/${encodeURIComponent(productId)}` : "/api/admin/products";
-    const method = productId ? "PUT" : "POST";
+    const method = "POST";
     const response = await fetch(path, { method, body });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(result.error || "Erro ao salvar produto.");
