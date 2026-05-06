@@ -18,7 +18,7 @@ const paymentProvider = process.env.PAYMENT_PROVIDER || "mock";
 const publicBaseUrl = process.env.PUBLIC_BASE_URL || `http://localhost:${port}`;
 const mercadoPagoWebhookSecret = process.env.MERCADO_PAGO_WEBHOOK_SECRET || "";
 const mercadoPagoMinOrderTotal = Math.max(0, Number(process.env.MERCADO_PAGO_MIN_ORDER_TOTAL || 5));
-const shippingProvider = process.env.SHIPPING_PROVIDER || "mock";
+const shippingProvider = "melhor-envio";
 const melhorEnvioToken = process.env.MELHOR_ENVIO_TOKEN || "";
 const melhorEnvioApiBase = process.env.MELHOR_ENVIO_API_BASE || "https://sandbox.melhorenvio.com.br";
 const melhorEnvioUserAgent = process.env.MELHOR_ENVIO_USER_AGENT || "Basa 3D Works (contato@basa3d.com)";
@@ -765,7 +765,7 @@ async function router(req, res) {
         db,
         items: body.items || [],
         zipCode: body.zipCode,
-        provider: db.settings.shippingProvider || shippingProvider,
+        provider: shippingProvider,
         token: melhorEnvioToken,
         apiBase: melhorEnvioApiBase,
         userAgent: melhorEnvioUserAgent
@@ -985,7 +985,7 @@ async function router(req, res) {
           ...db.settings,
           theme: body.theme || db.settings.theme || "atelier",
           originZipCode: body.originZipCode !== undefined ? String(body.originZipCode || "").replace(/\D/g, "") : db.settings.originZipCode,
-          shippingProvider: body.shippingProvider || db.settings.shippingProvider || "melhor-envio",
+          shippingProvider,
           displaySalesCount: body.displaySalesCount !== undefined ? Boolean(body.displaySalesCount) : Boolean(db.settings.displaySalesCount),
           displayFavoriteCount: body.displayFavoriteCount !== undefined ? Boolean(body.displayFavoriteCount) : Boolean(db.settings.displayFavoriteCount),
           displayRating: body.displayRating !== undefined ? Boolean(body.displayRating) : Boolean(db.settings.displayRating),
@@ -1050,7 +1050,7 @@ async function router(req, res) {
           const quote = await quoteOrderShipping({
             db,
             order,
-            provider: db.settings.shippingProvider || shippingProvider,
+            provider: shippingProvider,
             token: melhorEnvioToken,
             apiBase: melhorEnvioApiBase,
             userAgent: melhorEnvioUserAgent

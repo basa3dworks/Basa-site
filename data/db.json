@@ -7,8 +7,7 @@
     "storeCommissionPercent": 12,
     "paymentFeePercent": 4.99,
     "paymentFeeFixed": 0.49,
-    "shippingFlatRate": 24.9,
-    "originZipCode": "01001000",
+    "originZipCode": "01127010",
     "shippingProvider": "melhor-envio",
     "theme": "atelier",
     "sender": {
@@ -17,7 +16,7 @@
       "phone": "",
       "document": "",
       "companyDocument": "",
-      "zipCode": "01001000",
+      "zipCode": "01127010",
       "address": "",
       "number": "",
       "complement": "",

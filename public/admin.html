@@ -58,7 +58,6 @@
           <button class="admin-tab" type="button" data-admin-tab="settings"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 6h14v12H5zM8 10h8m-8 4h5"/></svg></span>Hero / Banner</button>
           <span class="admin-nav-label">Pedidos</span>
           <button class="admin-tab" type="button" data-admin-tab="orders"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-2-1-2 1-2-1-2 1-2-1-2 1V3Zm3 5h6m-6 4h6m-6 4h4"/></svg></span>Pedidos</button>
-          <button class="admin-tab" type="button" data-admin-tab="shipping"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 7h11v10H3zM14 11h4l3 3v3h-7V11ZM7 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm10 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/></svg></span>Envios</button>
           <button class="admin-tab" type="button" data-admin-tab="requests"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 5h14v10H8l-3 3V5Zm4 4h6m-6 3h4"/></svg></span>Encomendas</button>
           <span class="admin-nav-label">Pessoas</span>
           <button class="admin-tab" type="button" data-admin-tab="people"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M10 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-6 7a6 6 0 0 1 12 0m2-7 3 3m0-3-3 3"/></svg></span>Afiliados</button>
@@ -405,52 +404,6 @@
           <div class="campaign-summary" id="campaignProductSummary"></div>
           <p class="form-status" id="campaignStatus"></p>
           <div class="campaign-list" id="campaignList"></div>
-        </section>
-
-        <section class="panel" data-admin-panel="shipping" hidden>
-          <div class="panel-head">
-            <div>
-              <p class="eyebrow">Logistica</p>
-              <h2>Configuracoes de envio</h2>
-            </div>
-          </div>
-          <form id="shippingSettingsForm" class="shipping-settings-form">
-            <label>CEP de origem<input name="originZipCode" inputmode="numeric" placeholder="00000-000" required></label>
-            <label>Provedor
-              <select name="shippingProvider">
-                <option value="melhor-envio">Melhor Envio</option>
-                <option value="mock">Simulacao</option>
-              </select>
-            </label>
-            <fieldset class="repeatable-field sender-settings">
-              <div class="repeatable-head">
-                <div>
-                  <legend>Remetente das etiquetas</legend>
-                  <span>Esses dados vao para o Melhor Envio quando a etiqueta for criada.</span>
-                </div>
-              </div>
-              <div class="sender-settings-grid">
-                <label>Nome remetente<input name="senderName"></label>
-                <label>Email<input name="senderEmail" type="email"></label>
-                <label>Telefone<input name="senderPhone" inputmode="numeric"></label>
-                <label>CPF/CNPJ<input name="senderDocument" inputmode="numeric"></label>
-                <label>CNPJ empresa<input name="senderCompanyDocument" inputmode="numeric"></label>
-                <label>CEP remetente<input name="senderZipCode" inputmode="numeric"></label>
-                <label>Rua<input name="senderAddress"></label>
-                <label>Numero<input name="senderNumber"></label>
-                <label>Complemento<input name="senderComplement"></label>
-                <label>Bairro<input name="senderNeighborhood"></label>
-                <label>Cidade<input name="senderCity"></label>
-                <label>UF<input name="senderState" maxlength="2"></label>
-              </div>
-            </fieldset>
-            <button class="primary-button" type="submit">Salvar envio</button>
-          </form>
-          <div class="shipping-admin-note">
-            <strong>Frete gratis assumido por produto</strong>
-            <span>Quando um produto estiver marcado com frete gratis, o cliente nao escolhe Correios ou transportadora. A decisao operacional aparece dentro de Meus pedidos, junto com cliente, itens, pagamento e etiqueta.</span>
-          </div>
-          <p class="form-status" id="shippingSettingsStatus"></p>
         </section>
 
         <section class="panel" data-admin-panel="promotions" hidden>

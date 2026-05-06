@@ -500,25 +500,6 @@ async function generateAiInsights() {
   }
 }
 
-function fillShippingSettings(settings) {
-  const form = $("#shippingSettingsForm");
-  const sender = settings.sender || {};
-  form.elements.originZipCode.value = settings.originZipCode || "";
-  form.elements.shippingProvider.value = settings.shippingProvider || "melhor-envio";
-  form.elements.senderName.value = sender.name || settings.storeName || "";
-  form.elements.senderEmail.value = sender.email || "";
-  form.elements.senderPhone.value = sender.phone || "";
-  form.elements.senderDocument.value = sender.document || "";
-  form.elements.senderCompanyDocument.value = sender.companyDocument || "";
-  form.elements.senderZipCode.value = sender.zipCode || settings.originZipCode || "";
-  form.elements.senderAddress.value = sender.address || "";
-  form.elements.senderNumber.value = sender.number || "";
-  form.elements.senderComplement.value = sender.complement || "";
-  form.elements.senderNeighborhood.value = sender.neighborhood || "";
-  form.elements.senderCity.value = sender.city || "";
-  form.elements.senderState.value = sender.state || "";
-}
-
 function fillDisplaySettings(settings) {
   const form = $("#displaySettingsForm");
   if (!form) return;
@@ -1936,7 +1917,7 @@ async function api(path, options = {}) {
 }
 
 function setSettingsControlsDisabled(disabled) {
-  document.querySelectorAll("[data-theme], #displaySettingsForm button, #shippingSettingsForm button").forEach((control) => {
+  document.querySelectorAll("[data-theme], #displaySettingsForm button").forEach((control) => {
     control.disabled = disabled;
   });
 }
@@ -1998,7 +1979,6 @@ async function loadDashboard() {
   renderCampaignProductOptions({ keepSelected: true });
   renderCampaignList();
   renderStoryAdminList();
-  fillShippingSettings(data.settings);
   updateEmbeddedShippingPreview();
   renderAiInsightBrief();
   renderLocalAiInsight();
@@ -2411,17 +2391,6 @@ $("#displaySettingsForm").addEventListener("submit", async (event) => {
     fillDisplaySettings(result.settings);
   } catch (error) {
     $("#displaySettingsStatus").textContent = error.message;
-  }
-});
-$("#shippingSettingsForm").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const body = Object.fromEntries(new FormData(event.currentTarget).entries());
-  try {
-    const result = await patchAdminSettings(body, "#shippingSettingsStatus", "Salvando envio...", "Configurações de envio salvas.");
-    if (!result) return;
-    fillShippingSettings(result.settings);
-  } catch (error) {
-    $("#shippingSettingsStatus").textContent = error.message;
   }
 });
 $("#logoutButton").addEventListener("click", async () => {

@@ -177,19 +177,22 @@ function filterQuotesByJtCeiling(quotes) {
     .sort((left, right) => Number(left.price || 0) - Number(right.price || 0));
 }
 
-export async function quoteShipping({ db, items, zipCode, provider = "mock", token = "", apiBase = "https://sandbox.melhorenvio.com.br", userAgent = "" }) {
+export async function quoteShipping({ db, items, zipCode, provider = "melhor-envio", token = "", apiBase = "https://sandbox.melhorenvio.com.br", userAgent = "" }) {
   const destinationZip = onlyDigits(zipCode);
   if (destinationZip.length !== 8) {
     throw Object.assign(new Error("Informe um CEP valido para cotar o frete."), { status: 400 });
   }
 
-  if (provider !== "melhor-envio" || !token) {
+  if (provider !== "melhor-envio") {
     return {
       provider: "mock",
       originZipCode: db.settings.originZipCode,
       destinationZipCode: destinationZip,
       quotes: mockQuotes({ db, items, zipCode: destinationZip })
     };
+  }
+  if (!token) {
+    throw Object.assign(new Error("Token do Melhor Envio nao configurado."), { status: 400 });
   }
 
   const products = cartProducts({ db, items }).map(betterShippingProduct);
@@ -223,7 +226,7 @@ export async function quoteShipping({ db, items, zipCode, provider = "mock", tok
   };
 }
 
-export async function quoteOrderShipping({ db, order, provider = "mock", token = "", apiBase = "https://sandbox.melhorenvio.com.br", userAgent = "" }) {
+export async function quoteOrderShipping({ db, order, provider = "melhor-envio", token = "", apiBase = "https://sandbox.melhorenvio.com.br", userAgent = "" }) {
   const items = (order.items || []).map((item) => ({ productId: item.productId, quantity: item.quantity }));
   return quoteShipping({
     db,
