@@ -18,6 +18,12 @@ let currentSellers = [];
 let selectedOrderId = "";
 let currentMetricsView = "overview";
 let currentSocialProductId = "";
+let productSaveInProgress = false;
+
+const uploadLimits = {
+  image: 6 * 1024 * 1024,
+  video: 45 * 1024 * 1024
+};
 
 function applyTheme(theme) {
   document.body.dataset.theme = theme || "atelier";
@@ -56,6 +62,32 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function uploadLimitLabel(bytes) {
+  return `${Math.round(bytes / 1024 / 1024)} MB`;
+}
+
+function validateUploadSize(file, kind = "image") {
+  const isVideo = file.type.startsWith("video/") || /\.(mp4|webm|mov|m4v)$/i.test(file.name);
+  const limit = isVideo ? uploadLimits.video : uploadLimits.image;
+  if (file.size <= limit) return "";
+  return `${file.name} está muito pesado. Limite: ${uploadLimitLabel(limit)} para ${isVideo ? "vídeo" : "imagem"}.`;
+}
+
+function validateFormUploads(form) {
+  const errors = [...form.querySelectorAll('input[type="file"]')]
+    .flatMap((input) => [...input.files].map((file) => validateUploadSize(file)))
+    .filter(Boolean);
+  if (errors.length) throw new Error(errors[0]);
+}
+
+function uploadFailureMessage(error) {
+  const message = String(error?.message || "");
+  if (message === "Failed to fetch" || message.includes("NetworkError") || message.includes("ERR_INSUFFICIENT_RESOURCES")) {
+    return "Falha ao enviar. Confira o tamanho das fotos e vídeos, atualize a página e tente novamente.";
+  }
+  return message || "Não foi possível concluir a operação.";
 }
 
 function isRecentlyPosted(product) {
@@ -2081,33 +2113,40 @@ $("#loginForm").addEventListener("submit", async (event) => {
 
 $("#productForm").addEventListener("submit", async (event) => {
   event.preventDefault();
-  $("#productStatus").textContent = "Publicando...";
+  if (productSaveInProgress) return;
   const form = event.currentTarget;
-  const body = new FormData(form);
+  const submitButton = $("#productSubmitButton");
   const productId = form.elements.productId.value;
-  const colors = [...form.querySelectorAll(".color-row")].map((row) => ({
-    name: row.querySelector('[name="colorName"]').value.trim(),
-    hex: row.querySelector('[name="colorHexText"]').value.trim()
-  })).filter((color) => color.name);
-  const highlights = [...form.querySelectorAll('[name="highlightItem"]')].map((input) => input.value.trim()).filter(Boolean);
-  const specs = Object.fromEntries([...form.querySelectorAll(".spec-row")].map((row) => {
-    const key = row.querySelector('[name="specKey"]').value.trim();
-    const value = row.querySelector('[name="specValue"]').value.trim();
-    return [key, value];
-  }).filter(([key, value]) => key && value));
-  body.set("sellerPaysShipping", form.elements.sellerPaysShipping.checked ? "true" : "false");
-  body.set("colors", JSON.stringify(colors));
-  body.set("highlights", JSON.stringify(highlights));
-  body.set("specs", JSON.stringify(specs));
-  body.delete("highlightItem");
-  body.delete("specKey");
-  body.delete("specValue");
-  body.delete("colorName");
-  body.delete("colorHex");
-  body.delete("colorHexText");
-  body.delete("productId");
-
+  $("#productStatus").textContent = "Validando arquivos...";
+  $("#productMediaStatus").textContent = "";
+  productSaveInProgress = true;
+  submitButton.disabled = true;
+  submitButton.textContent = productId ? "Salvando..." : "Publicando...";
   try {
+    validateFormUploads(form);
+    $("#productStatus").textContent = productId ? "Salvando..." : "Publicando...";
+    const body = new FormData(form);
+    const colors = [...form.querySelectorAll(".color-row")].map((row) => ({
+      name: row.querySelector('[name="colorName"]').value.trim(),
+      hex: row.querySelector('[name="colorHexText"]').value.trim()
+    })).filter((color) => color.name);
+    const highlights = [...form.querySelectorAll('[name="highlightItem"]')].map((input) => input.value.trim()).filter(Boolean);
+    const specs = Object.fromEntries([...form.querySelectorAll(".spec-row")].map((row) => {
+      const key = row.querySelector('[name="specKey"]').value.trim();
+      const value = row.querySelector('[name="specValue"]').value.trim();
+      return [key, value];
+    }).filter(([key, value]) => key && value));
+    body.set("sellerPaysShipping", form.elements.sellerPaysShipping.checked ? "true" : "false");
+    body.set("colors", JSON.stringify(colors));
+    body.set("highlights", JSON.stringify(highlights));
+    body.set("specs", JSON.stringify(specs));
+    body.delete("highlightItem");
+    body.delete("specKey");
+    body.delete("specValue");
+    body.delete("colorName");
+    body.delete("colorHex");
+    body.delete("colorHexText");
+    body.delete("productId");
     const path = productId ? `/api/admin/products/${encodeURIComponent(productId)}` : "/api/admin/products";
     const method = productId ? "PUT" : "POST";
     const response = await fetch(path, { method, body });
@@ -2117,7 +2156,13 @@ $("#productForm").addEventListener("submit", async (event) => {
     $("#productStatus").textContent = productId ? "Produto atualizado." : "Produto publicado.";
     await loadDashboard();
   } catch (error) {
-    $("#productStatus").textContent = error.message;
+    const message = uploadFailureMessage(error);
+    $("#productStatus").textContent = message;
+    $("#productMediaStatus").textContent = message;
+  } finally {
+    productSaveInProgress = false;
+    submitButton.disabled = false;
+    submitButton.textContent = productId ? "Salvar produto" : "Publicar produto";
   }
 });
 
@@ -2217,6 +2262,17 @@ document.querySelectorAll("[data-admin-tab]").forEach((button) => {
 $("#productForm").elements.price.addEventListener("input", updateEmbeddedShippingPreview);
 $("#productForm").elements.compareAtPrice.addEventListener("input", updateEmbeddedShippingPreview);
 $("#productForm").elements.sellerPaysShipping.addEventListener("change", updateEmbeddedShippingPreview);
+$("#productForm").querySelectorAll('input[type="file"]').forEach((input) => {
+  input.addEventListener("change", () => {
+    try {
+      validateFormUploads($("#productForm"));
+      $("#productMediaStatus").textContent = "";
+    } catch (error) {
+      $("#productMediaStatus").textContent = uploadFailureMessage(error);
+      input.value = "";
+    }
+  });
+});
 $("#addHighlightButton").addEventListener("click", () => addHighlight());
 $("#addSpecButton").addEventListener("click", () => addSpec());
 $("#addColorButton").addEventListener("click", () => addColor());

@@ -360,9 +360,31 @@ def _request_status(value):
     return value if value in {"new", "in_review", "quoted", "approved", "in_production", "shipped", "completed", "canceled"} else "new"
 
 
+UPLOAD_LIMITS = {
+    "image": 6 * 1024 * 1024,
+    "video": 45 * 1024 * 1024,
+}
+
+
+def _upload_limit_label(bytes_value):
+    return f"{round(bytes_value / 1024 / 1024)} MB"
+
+
+def _upload_kind(file_obj):
+    content_type = str(getattr(file_obj, "content_type", "") or "")
+    extension = Path(file_obj.name).suffix.lower()
+    if content_type.startswith("video/") or extension in {".mp4", ".webm", ".mov", ".m4v"}:
+        return "video"
+    return "image"
+
+
 def _save_upload(file_obj, folder):
     if not file_obj:
         return ""
+    kind = _upload_kind(file_obj)
+    limit = UPLOAD_LIMITS[kind]
+    if getattr(file_obj, "size", 0) > limit:
+        raise ValueError(f"{file_obj.name} esta muito pesado. Limite: {_upload_limit_label(limit)} para {'video' if kind == 'video' else 'imagem'}.")
     upload_dir = PUBLIC_DIR / "uploads" / folder
     upload_dir.mkdir(parents=True, exist_ok=True)
     extension = Path(file_obj.name).suffix.lower() or ".bin"
@@ -1245,7 +1267,10 @@ def api_admin_products(request):
     db = read_db()
     if request.method == "GET":
         return JsonResponse({"products": db.get("products", [])})
-    product = _product_post_payload(request)
+    try:
+        product = _product_post_payload(request)
+    except ValueError as error:
+        return JsonResponse({"error": str(error)}, status=400)
     db.setdefault("products", []).insert(0, product)
     write_db(db)
     return JsonResponse({"product": product}, status=201)
@@ -1372,7 +1397,10 @@ def api_admin_product_detail(request, product_id):
         removed = products.pop(index)
         write_db(db)
         return JsonResponse({"product": removed})
-    products[index] = _product_post_payload(request, products[index])
+    try:
+        products[index] = _product_post_payload(request, products[index])
+    except ValueError as error:
+        return JsonResponse({"error": str(error)}, status=400)
     write_db(db)
     return JsonResponse({"product": products[index]})
 
