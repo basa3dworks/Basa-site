@@ -185,9 +185,8 @@
                 </div>
                 <label class="checkbox-row">
                   <input name="sellerPaysShipping" type="checkbox" value="true">
-                  <span>Assumir frete deste produto e mostrar frete grátis ao cliente</span>
+                  <span>Frete grátis: eu pago o envio deste produto</span>
                 </label>
-                <label>Frete grátis ao levar X unidades<input name="freeShippingMinQuantity" type="number" min="0" placeholder="0 para desativar"></label>
                 <p class="embedded-shipping-preview" id="embeddedShippingPreview"></p>
               </fieldset>
               <label>Imagem principal<input name="imageFile" type="file" accept="image/*" required></label>
@@ -417,7 +416,6 @@
           </div>
           <form id="shippingSettingsForm" class="shipping-settings-form">
             <label>CEP de origem<input name="originZipCode" inputmode="numeric" placeholder="00000-000" required></label>
-            <label>Frete fixo reserva<input name="shippingFlatRate" inputmode="decimal" required placeholder="Ex: 24,90"></label>
             <label>Provedor
               <select name="shippingProvider">
                 <option value="melhor-envio">Melhor Envio</option>

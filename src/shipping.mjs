@@ -140,7 +140,7 @@ function mockQuotes({ db, items, zipCode }) {
   const weight = lines.reduce((sum, line) => sum + Number(line.product.shipping?.weightKg || 0.3) * line.quantity, 0);
   const cepNumber = Number(onlyDigits(zipCode).slice(0, 5) || 0);
   const distanceFactor = Math.min(32, Math.max(0, cepNumber / 2600));
-  const base = Math.max(db.settings.shippingFlatRate || 24.9, 15 + weight * 10 + distanceFactor);
+  const base = Math.max(15, 15 + weight * 10 + distanceFactor);
 
   return [
     {

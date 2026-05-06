@@ -166,9 +166,6 @@ function productPayload(body, existing = {}, settings = {}) {
   const sellerPaysShipping = bool(body.sellerPaysShipping);
   const basePrice = positiveDecimal(body.price, existing.shipping?.basePrice ?? existing.price ?? 0);
   const compareAtBasePrice = positiveDecimal(body.compareAtPrice, 0);
-  const embeddedShippingReserve = sellerPaysShipping ? positiveDecimal(settings.shippingFlatRate, 0) : 0;
-  const finalPrice = sellerPaysShipping ? basePrice + embeddedShippingReserve : basePrice;
-  const finalCompareAtPrice = sellerPaysShipping && compareAtBasePrice > 0 ? compareAtBasePrice + embeddedShippingReserve : compareAtBasePrice;
   const parsedColors = (() => {
     if (Array.isArray(body.colors)) return body.colors;
     if (body.colors !== undefined) {
@@ -213,8 +210,8 @@ function productPayload(body, existing = {}, settings = {}) {
     },
     videoUrl: body.videoUrl ?? existing.videoUrl ?? "",
     gallery: Array.isArray(body.gallery) ? body.gallery : body.gallery !== undefined ? [body.image || existing.image, ...lines(body.gallery)].filter(Boolean) : existing.gallery || [body.image || existing.image].filter(Boolean),
-    price: Math.round(finalPrice * 100) / 100,
-    compareAtPrice: Math.round(finalCompareAtPrice * 100) / 100,
+    price: Math.round(basePrice * 100) / 100,
+    compareAtPrice: Math.round(compareAtBasePrice * 100) / 100,
     affiliateCommissionPercent: Math.max(0, Math.min(100, positiveDecimal(body.affiliateCommissionPercent, existing.affiliateCommissionPercent ?? 0))),
     createdAt: existing.createdAt || new Date().toISOString(),
     shipping: {
@@ -222,11 +219,7 @@ function productPayload(body, existing = {}, settings = {}) {
       widthCm: positiveDecimal(body.widthCm, existing.shipping?.widthCm ?? 12),
       heightCm: positiveDecimal(body.heightCm, existing.shipping?.heightCm ?? 8),
       lengthCm: positiveDecimal(body.lengthCm, existing.shipping?.lengthCm ?? 18),
-      sellerPaysShipping,
-      freeShippingMinQuantity: integer(body.freeShippingMinQuantity, existing.shipping?.freeShippingMinQuantity ?? 0),
-      basePrice: Math.round(basePrice * 100) / 100,
-      compareAtBasePrice: Math.round(compareAtBasePrice * 100) / 100,
-      embeddedShippingReserve: Math.round(embeddedShippingReserve * 100) / 100
+      sellerPaysShipping
     },
     stock: integer(body.stock, existing.stock ?? 0),
     status: body.status || existing.status || "active",
@@ -992,7 +985,6 @@ async function router(req, res) {
           ...db.settings,
           theme: body.theme || db.settings.theme || "atelier",
           originZipCode: body.originZipCode !== undefined ? String(body.originZipCode || "").replace(/\D/g, "") : db.settings.originZipCode,
-          shippingFlatRate: body.shippingFlatRate !== undefined ? positiveDecimal(body.shippingFlatRate, db.settings.shippingFlatRate || 0) : db.settings.shippingFlatRate,
           shippingProvider: body.shippingProvider || db.settings.shippingProvider || "melhor-envio",
           displaySalesCount: body.displaySalesCount !== undefined ? Boolean(body.displaySalesCount) : Boolean(db.settings.displaySalesCount),
           displayFavoriteCount: body.displayFavoriteCount !== undefined ? Boolean(body.displayFavoriteCount) : Boolean(db.settings.displayFavoriteCount),

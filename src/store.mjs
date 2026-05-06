@@ -1,4 +1,4 @@
-import { promises as fs } from "node:fs";
+﻿import { promises as fs } from "node:fs";
 import path from "node:path";
 
 const dbPath = path.resolve("data", "db.json");
@@ -284,27 +284,6 @@ export function couponEligibility({ coupon, itemCount, subtotal }) {
   return { eligible: true, reason: "coupon" };
 }
 
-function dynamicComboRequirement({ subtotal, itemCount, shipping }) {
-  if (!subtotal || !itemCount || !shipping) {
-    return { ready: false, remaining: 0, required: 0, averageUnitPrice: 0, shippingContributionRate: 0.2, shippingContributionPerItem: 0 };
-  }
-  const averageUnitPrice = subtotal / itemCount;
-  const shippingContributionRate = 0.2;
-  const shippingContributionPerItem = averageUnitPrice * shippingContributionRate;
-  if (!shippingContributionPerItem) {
-    return { ready: false, remaining: 0, required: 0, averageUnitPrice: 0, shippingContributionRate, shippingContributionPerItem: 0 };
-  }
-  const required = Math.max(2, Math.ceil(shipping / shippingContributionPerItem) + 1);
-  return {
-    ready: itemCount >= required,
-    remaining: Math.max(0, required - itemCount),
-    required,
-    averageUnitPrice: Math.round(averageUnitPrice * 100) / 100,
-    shippingContributionRate,
-    shippingContributionPerItem: Math.round(shippingContributionPerItem * 100) / 100
-  };
-}
-
 export function orderFromCart({ db, customer, items, shippingOption, coupon }) {
   const productsById = new Map(db.products.map((product) => [product.id, product]));
   const lines = items.map((item) => {
@@ -336,22 +315,19 @@ export function orderFromCart({ db, customer, items, shippingOption, coupon }) {
   const subtotal = Math.round(lines.reduce((sum, line) => sum + line.total, 0) * 100) / 100;
   const itemCount = lines.reduce((sum, line) => sum + line.quantity, 0);
   const allItemsFreeShipping = lines.every((line) => productsById.get(line.productId)?.shipping?.sellerPaysShipping);
-  const productQuantityFreeShipping = lines.some((line) => {
-    const minQuantity = Number(productsById.get(line.productId)?.shipping?.freeShippingMinQuantity || 0);
-    return minQuantity > 0 && line.quantity >= minQuantity;
-  });
   const normalizedCoupon = String(coupon || "").trim().toUpperCase();
   const couponRecord = findCoupon(db, normalizedCoupon);
   const couponStatus = couponEligibility({ coupon: couponRecord, itemCount, subtotal });
   const freeShippingByCoupon = couponStatus.eligible && couponRecord?.type === "free_shipping";
-  const baseShipping = shippingOption ? Math.max(0, Number(shippingOption.price || 0)) : db.settings.shippingFlatRate;
-  const comboRequirement = dynamicComboRequirement({ subtotal, itemCount, shipping: baseShipping });
-  const freeShippingByCombo = comboRequirement.ready;
-  const shipping = freeShippingByCoupon || freeShippingByCombo || allItemsFreeShipping || productQuantityFreeShipping ? 0 : baseShipping;
+  if (!freeShippingByCoupon && !allItemsFreeShipping && !shippingOption) {
+    throw Object.assign(new Error("Calcule e selecione uma opcao de entrega para finalizar."), { status: 400 });
+  }
+  const baseShipping = shippingOption ? Math.max(0, Number(shippingOption.price || 0)) : 0;
+  const shipping = freeShippingByCoupon || allItemsFreeShipping ? 0 : baseShipping;
   const total = Math.round((subtotal + shipping) * 100) / 100;
   const seller = db.products.find((product) => product.id === lines[0].productId).seller;
-  const freeShipping = freeShippingByCoupon || freeShippingByCombo || allItemsFreeShipping || productQuantityFreeShipping;
-  const freeShippingReason = freeShippingByCoupon ? "coupon" : freeShippingByCombo ? "combo" : allItemsFreeShipping ? "seller_pays_shipping" : productQuantityFreeShipping ? "product_quantity" : null;
+  const freeShipping = freeShippingByCoupon || allItemsFreeShipping;
+  const freeShippingReason = freeShippingByCoupon ? "coupon" : allItemsFreeShipping ? "seller_pays_shipping" : null;
 
   return {
     id: `BASA-${Date.now()}`,
@@ -378,12 +354,9 @@ export function orderFromCart({ db, customer, items, shippingOption, coupon }) {
       reason: freeShippingReason,
       itemCount,
       subtotal,
-      combo: comboRequirement,
       message: freeShipping
         ? "Frete Grátis liberado."
-        : comboRequirement.required
-          ? `Leve mais ${comboRequirement.remaining} ${comboRequirement.remaining === 1 ? "item" : "itens"} para conseguir Frete Grátis.`
-          : "Calcule a entrega para ver o kit de Frete Grátis."
+        : "Frete calculado pela opcao de entrega selecionada."
     },
     promotion: {
       coupon: normalizedCoupon,

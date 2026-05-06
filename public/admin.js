@@ -504,7 +504,6 @@ function fillShippingSettings(settings) {
   const form = $("#shippingSettingsForm");
   const sender = settings.sender || {};
   form.elements.originZipCode.value = settings.originZipCode || "";
-  form.elements.shippingFlatRate.value = decimalValue(settings.shippingFlatRate).toFixed(2);
   form.elements.shippingProvider.value = settings.shippingProvider || "melhor-envio";
   form.elements.senderName.value = sender.name || settings.storeName || "";
   form.elements.senderEmail.value = sender.email || "";
@@ -1040,12 +1039,8 @@ function formatShipping(order) {
 function formatShippingBenefit(order) {
   const benefit = order.shippingBenefit;
   if (!benefit) return "Cálculo de benefício ainda não registrado neste pedido.";
-  const combo = benefit.combo || {};
   const zip = benefit.zipCode ? `CEP ${benefit.zipCode}` : "CEP não informado";
-  const requirement = combo.required
-    ? `${combo.ready ? "Kit liberado" : `faltavam ${combo.remaining} ${combo.remaining === 1 ? "item" : "itens"}`} de ${combo.required} unidade(s) calculadas`
-    : "kit não calculado";
-  return `${zip} | frete base ${money(benefit.baseShipping || 0)} | ${requirement}`;
+  return `${zip} | frete ${benefit.freeShipping ? "grátis" : money(benefit.shippingCharged || benefit.baseShipping || 0)} | ${benefit.message || ""}`;
 }
 
 function orderStatusLabel(status) {
@@ -1200,31 +1195,21 @@ function discountPercent(product) {
 }
 
 function productBasePrice(product) {
-  if (!product.shipping?.sellerPaysShipping) return Number(product.price || 0);
-  const reserve = Number(product.shipping?.embeddedShippingReserve || currentSettings?.shippingFlatRate || 0);
-  return Number(product.shipping?.basePrice ?? Math.max(0, Number(product.price || 0) - reserve));
+  return Number(product.price || 0);
 }
 
 function productBaseCompareAtPrice(product) {
-  if (!product.shipping?.sellerPaysShipping) return Number(product.compareAtPrice || 0);
-  const reserve = Number(product.shipping?.embeddedShippingReserve || currentSettings?.shippingFlatRate || 0);
-  return Number(product.shipping?.compareAtBasePrice ?? Math.max(0, Number(product.compareAtPrice || 0) - reserve));
+  return Number(product.compareAtPrice || 0);
 }
 
 function updateEmbeddedShippingPreview() {
   const preview = $("#embeddedShippingPreview");
   if (!preview) return;
   const form = $("#productForm");
-  const basePrice = decimalValue(form.elements.price.value);
-  const baseCompareAtPrice = decimalValue(form.elements.compareAtPrice.value);
-  const reserve = decimalValue(currentSettings?.shippingFlatRate);
   const sellerPaysShipping = form.elements.sellerPaysShipping.checked;
-  const finalPrice = sellerPaysShipping ? basePrice + reserve : basePrice;
-  const finalCompareAtPrice = sellerPaysShipping && baseCompareAtPrice > 0 ? baseCompareAtPrice + reserve : baseCompareAtPrice;
-
   preview.innerHTML = sellerPaysShipping
-    ? `Frete fixo reserva: <strong>${money(reserve)}</strong>. Preço publicado: <strong>${money(finalPrice)}</strong>${finalCompareAtPrice > 0 ? ` | Preço antigo publicado: <strong>${money(finalCompareAtPrice)}</strong>` : ""}.`
-    : "Ao marcar frete grátis, o frete fixo reserva será somado automaticamente ao preço publicado.";
+    ? "Marcado como frete grátis. O preço do produto não será alterado pelo sistema."
+    : "Cliente pagará o frete calculado no produto e no carrinho.";
 }
 
 function addHighlight(value = "") {
@@ -1282,7 +1267,6 @@ function resetProductForm() {
   form.elements.heightCm.value = "8";
   form.elements.lengthCm.value = "18";
   form.elements.sellerPaysShipping.checked = false;
-  form.elements.freeShippingMinQuantity.value = "";
   form.elements.imageFile.required = true;
   $("#colorsList").innerHTML = "";
   addColor({ name: "Branco", hex: "#ffffff" });
@@ -1461,7 +1445,6 @@ function editProduct(productId) {
   form.elements.heightCm.value = product.shipping?.heightCm || 8;
   form.elements.lengthCm.value = product.shipping?.lengthCm || 18;
   form.elements.sellerPaysShipping.checked = Boolean(product.shipping?.sellerPaysShipping);
-  form.elements.freeShippingMinQuantity.value = product.shipping?.freeShippingMinQuantity || "";
   form.elements.imageFile.value = "";
   form.elements.imageFile.required = false;
   form.elements.description.value = product.description || "";
@@ -1696,12 +1679,12 @@ function renderProductsTable() {
       <td><small>${product.sku || "-"}</small></td>
       <td><strong>${product.name}</strong></td>
       <td>${product.category}</td>
-      <td>${money(product.price)}${product.shipping?.sellerPaysShipping ? `<small class="table-note">Base ${money(productBasePrice(product))} + frete</small>` : ""}</td>
+      <td>${money(product.price)}</td>
       <td>${product.compareAtPrice ? money(product.compareAtPrice) : "-"}</td>
       <td>${discountPercent(product) ? `${discountPercent(product)}% OFF` : "-"}</td>
       <td>${Number(product.affiliateCommissionPercent || 0)}%</td>
       <td>${product.stock}</td>
-      <td>${product.status}${product.shipping?.sellerPaysShipping ? " / frete grátis" : ""}${product.shipping?.freeShippingMinQuantity ? ` / frete ${product.shipping.freeShippingMinQuantity}+ un.` : ""}</td>
+      <td>${product.status}${product.shipping?.sellerPaysShipping ? " / frete grátis" : " / frete cobrado"}</td>
       <td>
         <button class="ghost-button table-action" type="button" data-edit-product="${product.id}">Editar</button>
         <button class="ghost-button table-action danger-button" type="button" data-delete-product="${product.id}">Excluir</button>
@@ -2433,12 +2416,6 @@ $("#displaySettingsForm").addEventListener("submit", async (event) => {
 $("#shippingSettingsForm").addEventListener("submit", async (event) => {
   event.preventDefault();
   const body = Object.fromEntries(new FormData(event.currentTarget).entries());
-  const shippingFlatRate = decimalValue(body.shippingFlatRate, NaN);
-  if (!Number.isFinite(shippingFlatRate)) {
-    $("#shippingSettingsStatus").textContent = "Informe um frete valido. Use 24,90 ou 24.90.";
-    return;
-  }
-  body.shippingFlatRate = String(shippingFlatRate);
   try {
     const result = await patchAdminSettings(body, "#shippingSettingsStatus", "Salvando envio...", "Configurações de envio salvas.");
     if (!result) return;
