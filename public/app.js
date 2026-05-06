@@ -310,7 +310,7 @@ function applyCustomerSession(form) {
     input.readOnly = loggedIn;
   });
   $("#saveCustomerButton").hidden = loggedIn;
-  $("#debugCustomerButton").hidden = loggedIn;
+  if ($("#debugCustomerButton")) $("#debugCustomerButton").hidden = loggedIn;
   $("#logoutCustomerButton").hidden = !loggedIn;
   $("#checkoutSubmitButton").disabled = false;
   $("#customerLoginBox").classList.toggle("logged", loggedIn);
