@@ -14,10 +14,10 @@ from pathlib import Path
 from django.conf import settings
 from django.core.signing import BadSignature, TimestampSigner
 from django.core.mail import send_mail
-from django.http import FileResponse, Http404, JsonResponse
+from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
-from .store import BASE_DIR, read_db, write_db
+from .store import BASE_DIR, read_db, read_upload, save_upload, write_db
 
 PUBLIC_DIR = BASE_DIR / "public"
 ADMIN_USER = os.environ.get("ADMIN_USER", "admin@basa3d.com")
@@ -402,10 +402,14 @@ def _save_upload(file_obj, folder):
     extension = Path(file_obj.name).suffix.lower() or ".bin"
     name = f"{secrets.token_hex(12)}{extension}"
     target = upload_dir / name
+    chunks = []
     with target.open("wb") as handle:
         for chunk in file_obj.chunks():
+            chunks.append(chunk)
             handle.write(chunk)
-    return f"/uploads/{folder}/{name}"
+    upload_path = f"/uploads/{folder}/{name}"
+    save_upload(upload_path, b"".join(chunks), getattr(file_obj, "content_type", "") or mimetypes.guess_type(name)[0] or "application/octet-stream")
+    return upload_path
 
 
 def _social_post_payload(post, existing=None, photos=None, media=None):
@@ -448,10 +452,11 @@ def _product_post_payload(request, existing=None):
         body["videoUrl"] = video_url
     elif existing.get("videoUrl"):
         body["videoUrl"] = existing.get("videoUrl")
-    gallery = [body.get("image") or existing.get("image", "")]
-    gallery.extend([url for url in gallery_uploads if url])
-    if not gallery_uploads:
-        gallery = existing.get("gallery") or gallery
+    if image_url or gallery_uploads:
+        gallery = [body.get("image") or existing.get("image", "")]
+        gallery.extend([url for url in gallery_uploads if url])
+    else:
+        gallery = existing.get("gallery") or [body.get("image") or existing.get("image", "")]
     body["gallery"] = [url for url in gallery if url]
     return _product_payload(body, existing)
 
@@ -678,7 +683,14 @@ def public_asset(request, asset_path):
     public_root = PUBLIC_DIR.resolve()
     if public_root not in file_path.parents and file_path != public_root:
         raise Http404()
+    request_path = "/" + "/".join(safe_parts)
     if not file_path.exists() or not file_path.is_file():
+        if safe_parts and safe_parts[0] == "uploads":
+            upload = read_upload(request_path)
+            if upload:
+                return HttpResponse(upload["content"], content_type=upload["content_type"])
+            placeholder = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800"><rect width="800" height="800" fill="#f7faf7"/><rect x="72" y="72" width="656" height="656" rx="28" fill="#fff" stroke="#dfe8e2" stroke-width="8"/><path d="M210 560h380L478 408l-82 96-54-64-132 120Z" fill="#dfe8e2"/><circle cx="300" cy="292" r="54" fill="#dfe8e2"/><text x="400" y="666" text-anchor="middle" font-family="Arial, sans-serif" font-size="34" font-weight="700" fill="#63716c">Reenvie a imagem</text></svg>"""
+            return HttpResponse(placeholder, content_type="image/svg+xml; charset=utf-8")
         raise Http404()
     content_type = mimetypes.guess_type(file_path.name)[0] or "application/octet-stream"
     if file_path.suffix in {".css", ".js", ".json"}:
