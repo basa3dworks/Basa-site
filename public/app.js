@@ -295,6 +295,19 @@ function pendingPaymentOrders() {
   return state.pendingOrders.filter((order) => order.status === "awaiting_payment" && order.payment?.checkoutUrl);
 }
 
+function pendingPaymentDismissKey(orderId) {
+  return `basa_pending_payment_snooze_${orderId}`;
+}
+
+function pendingPaymentIsSnoozed(order) {
+  return Number(localStorage.getItem(pendingPaymentDismissKey(order.id)) || 0) > Date.now();
+}
+
+function snoozePendingPayment(orderId, hours = 6) {
+  localStorage.setItem(pendingPaymentDismissKey(orderId), String(Date.now() + hours * 3600000));
+  renderPendingPaymentBanner();
+}
+
 function paymentExpiryLabel(order) {
   if (!order.payment?.expiresAt) return "";
   const expiresAt = new Date(order.payment.expiresAt).getTime();
@@ -324,19 +337,28 @@ async function loadPendingOrders() {
 
 function renderPendingPaymentBanner() {
   document.querySelector(".pending-payment-banner")?.remove();
-  const [order] = pendingPaymentOrders();
+  const [order] = pendingPaymentOrders().filter((item) => !pendingPaymentIsSnoozed(item));
   if (!order) return;
   const banner = document.createElement("aside");
   banner.className = "pending-payment-banner";
   banner.innerHTML = `
-    <div>
+    <div class="pending-payment-copy">
       <strong>Você tem uma compra pendente</strong>
       <span>${order.id} | ${money(order.total)}${paymentExpiryLabel(order) ? ` | ${paymentExpiryLabel(order)}` : ""}</span>
     </div>
-    <a class="primary-button" href="${order.payment.checkoutUrl}">Concluir pagamento</a>
-    <a class="ghost-button" href="/conta.html#orders">Ver pedidos</a>
+    <div class="pending-payment-actions">
+      <a class="primary-button" href="${order.payment.checkoutUrl}">Concluir pagamento</a>
+      <a class="ghost-button" href="/conta.html#orders" data-pending-view-orders="${order.id}">Ver pedidos</a>
+      <button class="ghost-button" type="button" data-pending-snooze="${order.id}">Lembre-me mais tarde</button>
+      <button class="pending-payment-close" type="button" data-pending-close="${order.id}" aria-label="Fechar aviso">×</button>
+    </div>
   `;
   document.body.insertBefore(banner, document.querySelector("main"));
+  banner.querySelector("[data-pending-snooze]")?.addEventListener("click", () => snoozePendingPayment(order.id));
+  banner.querySelector("[data-pending-close]")?.addEventListener("click", () => snoozePendingPayment(order.id));
+  banner.querySelector("[data-pending-view-orders]")?.addEventListener("click", () => {
+    localStorage.setItem(pendingPaymentDismissKey(order.id), String(Date.now() + 6 * 3600000));
+  });
 }
 
 function customerFields(form) {
