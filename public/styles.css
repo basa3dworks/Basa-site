@@ -4537,10 +4537,15 @@ pre {
 
   .pending-payment-banner .primary-button,
   .pending-payment-banner .ghost-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     min-height: 40px;
     width: 100%;
     padding: 0 12px;
-    font-size: 0.92rem;
+    font-size: 0.9rem;
+    line-height: 1.1;
+    text-align: center;
   }
 
   .pending-payment-banner .primary-button {
