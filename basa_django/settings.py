@@ -69,3 +69,5 @@ EMAIL_USE_TLS = (os.environ.get("EMAIL_USE_TLS") or os.environ.get("SMTP_USE_TLS
 EMAIL_USE_SSL = (os.environ.get("EMAIL_USE_SSL") or os.environ.get("SMTP_USE_SSL", "")).lower() in {"1", "true", "yes"}
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL") or os.environ.get("SMTP_FROM", "Basa 3D Works <no-reply@basa3d.com>")
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend" if EMAIL_HOST else "django.core.mail.backends.console.EmailBackend"
+EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "6") or 6)
+EMAIL_SEND_ASYNC = (os.environ.get("EMAIL_SEND_ASYNC", "true")).lower() in {"1", "true", "yes"}

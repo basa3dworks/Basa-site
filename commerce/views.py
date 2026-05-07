@@ -5,6 +5,7 @@ import mimetypes
 import os
 import re
 import secrets
+import threading
 import unicodedata
 import urllib.error
 import urllib.parse
@@ -114,7 +115,7 @@ def _parse_dt(value):
         return None
 
 
-def _send_email(subject, message, recipient):
+def _send_email_sync(subject, message, recipient):
     if not recipient:
         return False
     try:
@@ -122,6 +123,16 @@ def _send_email(subject, message, recipient):
         return True
     except Exception:
         return False
+
+
+def _send_email(subject, message, recipient):
+    if not recipient:
+        return False
+    if getattr(settings, "EMAIL_SEND_ASYNC", True):
+        thread = threading.Thread(target=_send_email_sync, args=(subject, message, recipient), daemon=True)
+        thread.start()
+        return True
+    return _send_email_sync(subject, message, recipient)
 
 
 def _order_items_text(order):
