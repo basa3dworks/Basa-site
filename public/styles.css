@@ -4077,6 +4077,11 @@ label {
   min-height: 38px;
 }
 
+.account-store-link {
+  min-height: 38px;
+  white-space: nowrap;
+}
+
 .account-product-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
@@ -5463,6 +5468,19 @@ pre {
     padding: 0 16px 28px;
   }
 
+  .account-view {
+    padding: 18px;
+  }
+
+  .account-view .panel-head {
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .account-store-link {
+    width: 100%;
+  }
+
   .account-sidebar {
     position: static;
   }
@@ -5490,6 +5508,27 @@ pre {
 
   .account-logged .account-sidebar button::after {
     content: none;
+  }
+
+  .account-card {
+    padding: 18px;
+  }
+
+  .account-order-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .pending-account-card .primary-button,
+  .pending-account-card .ghost-button,
+  .account-order-actions .primary-button,
+  .account-order-actions .ghost-button {
+    width: 100%;
+    min-height: 46px;
+    padding: 0 12px;
+    line-height: 1.1;
+    text-align: center;
   }
 
   .story-form label:nth-child(2) {
