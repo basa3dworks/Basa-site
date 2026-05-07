@@ -114,8 +114,58 @@ def _parse_dt(value):
 def _send_email(subject, message, recipient):
     if not recipient:
         return False
-    send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [recipient], fail_silently=False)
-    return True
+    try:
+        send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [recipient], fail_silently=False)
+        return True
+    except Exception:
+        return False
+
+
+def _order_items_text(order):
+    return "\n".join(
+        f"- {item.get('quantity')}x {item.get('name')} - R$ {float(item.get('total') or 0):.2f}".replace(".", ",")
+        for item in order.get("items", [])
+    )
+
+
+def _send_order_email(order, subject, intro, include_payment=True):
+    customer = order.get("customer") or {}
+    payment_url = _order_payment_url(order)
+    lines = [
+        f"Ola, {customer.get('name') or 'cliente'}.",
+        "",
+        intro,
+        "",
+        f"Pedido: {order.get('id')}",
+        f"Status: {order.get('status')}",
+        f"Total: R$ {float(order.get('total') or 0):.2f}".replace(".", ","),
+        "",
+        "Itens:",
+        _order_items_text(order) or "- Itens do pedido",
+    ]
+    if include_payment and payment_url:
+        lines.extend(["", "Para concluir o pagamento, acesse:", payment_url])
+    if order.get("payment", {}).get("expiresAt"):
+        lines.extend(["", f"Link valido ate: {order['payment']['expiresAt']}"])
+    lines.extend(["", "Basa 3D Works"])
+    return _send_email(subject, "\n".join(lines), customer.get("email"))
+
+
+def _notify_admin_order(order, subject, intro):
+    recipient = os.environ.get("ADMIN_NOTIFY_EMAIL") or os.environ.get("EMAIL_HOST_USER") or os.environ.get("SMTP_USER")
+    customer = order.get("customer") or {}
+    lines = [
+        intro,
+        "",
+        f"Pedido: {order.get('id')}",
+        f"Cliente: {customer.get('name')} <{customer.get('email')}>",
+        f"Status: {order.get('status')}",
+        f"Total: R$ {float(order.get('total') or 0):.2f}".replace(".", ","),
+        "",
+        "Itens:",
+        _order_items_text(order),
+    ]
+    return _send_email(subject, "\n".join(lines), recipient)
 
 
 def _issue_email_verification(account, request):
@@ -892,6 +942,8 @@ def _expire_pending_orders(db):
             f"Pedido cancelado automaticamente apos {PAYMENT_PENDING_TTL_HOURS:g} horas sem confirmacao de pagamento.",
             previous_status,
         )
+        _send_order_email(order, f"Pedido cancelado - {order['id']}", "O prazo para pagamento expirou e o pedido foi cancelado.", include_payment=False)
+        _notify_admin_order(order, f"Pedido expirado {order['id']}", "Um pedido pendente expirou automaticamente.")
         changed = True
     return changed
 
@@ -1089,6 +1141,20 @@ def api_checkout(request):
     )
     db.setdefault("orders", []).insert(0, order)
     write_db(db)
+    if order["status"] == "awaiting_payment":
+        _send_order_email(
+            order,
+            f"Pedido {order['id']} aguardando pagamento",
+            "Recebemos seu pedido e ele esta aguardando pagamento.",
+        )
+    else:
+        _send_order_email(
+            order,
+            f"Pedido {order['id']} confirmado",
+            "Recebemos seu pedido e o pagamento ja aparece como confirmado.",
+            include_payment=False,
+        )
+    _notify_admin_order(order, f"Novo pedido {order['id']}", "Um novo pedido entrou na loja.")
     return JsonResponse({"order": order, "payment": order["payment"]}, status=201)
 
 
@@ -1131,6 +1197,7 @@ def api_mercado_pago_webhook(request):
         "updatedAt": _now(),
     }
     next_status = _order_status_from_payment_status(payment_status)
+    status_changed = next_status != previous_status
     if next_status != previous_status:
         order["status"] = next_status
     order["updatedAt"] = _now()
@@ -1144,6 +1211,12 @@ def api_mercado_pago_webhook(request):
         previous_status,
     )
     write_db(db)
+    if status_changed and order.get("status") == "paid":
+        _send_order_email(order, f"Pagamento confirmado - {order['id']}", "Seu pagamento foi confirmado. Vamos preparar seu pedido.", include_payment=False)
+        _notify_admin_order(order, f"Pagamento confirmado {order['id']}", "O Mercado Pago confirmou o pagamento deste pedido.")
+    elif status_changed and order.get("status") == "canceled":
+        _send_order_email(order, f"Pedido cancelado - {order['id']}", "O pagamento nao foi concluido e o pedido foi cancelado.", include_payment=False)
+        _notify_admin_order(order, f"Pedido cancelado {order['id']}", "O Mercado Pago marcou este pedido como cancelado/rejeitado.")
     return JsonResponse({"received": True, "orderUpdated": True, "orderId": order.get("id"), "status": order.get("status")})
 
 
@@ -1906,6 +1979,7 @@ def api_admin_order_detail(request, order_id):
         order.setdefault("payment", {})["lastReminderAt"] = _now()
         order["updatedAt"] = _now()
         _append_order_history(order, "payment", "admin", "awaiting_payment", body.get("note") or "Link de pagamento marcado para reenvio manual.")
+        _send_order_email(order, f"Link de pagamento - {order['id']}", "Seu pedido ainda esta aguardando pagamento. Use o link abaixo para concluir.", include_payment=True)
         write_db(db)
         return JsonResponse({"order": order, "checkoutUrl": _order_payment_url(order)})
     next_status = body.get("status") or order.get("status")
@@ -1920,6 +1994,16 @@ def api_admin_order_detail(request, order_id):
             "note": body.get("note", ""),
         })
         order["status"] = next_status
+        status_messages = {
+            "paid": ("Pagamento confirmado", "Seu pagamento foi confirmado. Vamos preparar seu pedido."),
+            "in_production": ("Pedido em producao", "Seu pedido entrou em producao."),
+            "shipped": ("Pedido enviado", "Seu pedido foi enviado."),
+            "completed": ("Pedido concluido", "Seu pedido foi concluido. Obrigado por comprar com a Basa 3D Works."),
+            "canceled": ("Pedido cancelado", "Seu pedido foi cancelado."),
+        }
+        if next_status in status_messages:
+            subject_prefix, intro = status_messages[next_status]
+            _send_order_email(order, f"{subject_prefix} - {order['id']}", intro, include_payment=next_status == "awaiting_payment")
     order["updatedAt"] = _now()
     write_db(db)
     return JsonResponse({"order": order})

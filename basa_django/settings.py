@@ -61,11 +61,11 @@ STORAGES = {
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend" if os.environ.get("SMTP_HOST") else "django.core.mail.backends.console.EmailBackend"
-EMAIL_HOST = os.environ.get("SMTP_HOST", "")
-EMAIL_PORT = int(os.environ.get("SMTP_PORT", "587"))
-EMAIL_HOST_USER = os.environ.get("SMTP_USER", "")
-EMAIL_HOST_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
-EMAIL_USE_TLS = os.environ.get("SMTP_USE_TLS", "true").lower() in {"1", "true", "yes"}
-EMAIL_USE_SSL = os.environ.get("SMTP_USE_SSL", "").lower() in {"1", "true", "yes"}
-DEFAULT_FROM_EMAIL = os.environ.get("SMTP_FROM", "Basa 3D Works <no-reply@basa3d.com>")
+EMAIL_HOST = os.environ.get("EMAIL_HOST") or os.environ.get("SMTP_HOST", "")
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT") or os.environ.get("SMTP_PORT", "587"))
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER") or os.environ.get("SMTP_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD") or os.environ.get("SMTP_PASSWORD", "")
+EMAIL_USE_TLS = (os.environ.get("EMAIL_USE_TLS") or os.environ.get("SMTP_USE_TLS", "true")).lower() in {"1", "true", "yes"}
+EMAIL_USE_SSL = (os.environ.get("EMAIL_USE_SSL") or os.environ.get("SMTP_USE_SSL", "")).lower() in {"1", "true", "yes"}
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL") or os.environ.get("SMTP_FROM", "Basa 3D Works <no-reply@basa3d.com>")
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend" if EMAIL_HOST else "django.core.mail.backends.console.EmailBackend"
