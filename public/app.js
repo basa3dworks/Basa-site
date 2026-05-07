@@ -377,8 +377,11 @@ function applyCustomerSession(form) {
   }
 
   const loggedIn = isCustomerLoggedIn();
-  [...customerFields(form), ...form.querySelectorAll("[data-auth-field]")].forEach((input) => {
+  form.querySelectorAll("[data-auth-field]").forEach((input) => {
     input.readOnly = loggedIn;
+  });
+  customerFields(form).forEach((input) => {
+    input.readOnly = false;
   });
   $("#saveCustomerButton").hidden = loggedIn;
   if ($("#debugCustomerButton")) $("#debugCustomerButton").hidden = loggedIn;
@@ -1044,6 +1047,9 @@ async function init() {
   applyTheme(data.settings.theme);
   renderHeroSlides();
   $("#tagline").textContent = data.settings.tagline;
+  document.querySelectorAll("[data-google-login]").forEach((link) => {
+    link.href = `/api/customer/google/start?next=${encodeURIComponent(location.pathname + location.search)}`;
+  });
 
   const categories = [...new Set(state.products.map((product) => product.category))];
   const categoryOptions = categories.map((category) => `<option value="${category}">${category}</option>`).join("");

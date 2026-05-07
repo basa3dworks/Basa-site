@@ -485,8 +485,11 @@ function applyCustomerSession(form) {
   }
 
   const loggedIn = isCustomerLoggedIn();
-  [...customerFields(form), ...form.querySelectorAll("[data-auth-field]")].forEach((input) => {
+  form.querySelectorAll("[data-auth-field]").forEach((input) => {
     input.readOnly = loggedIn;
+  });
+  customerFields(form).forEach((input) => {
+    input.readOnly = false;
   });
   $("#saveCustomerButton").hidden = loggedIn;
   $("#debugCustomerButton").hidden = loggedIn;
@@ -965,6 +968,9 @@ async function checkout(event) {
 
 async function init() {
   const slug = new URLSearchParams(location.search).get("slug");
+  document.querySelectorAll("[data-google-login]").forEach((link) => {
+    link.href = `/api/customer/google/start?next=${encodeURIComponent(location.pathname + location.search)}`;
+  });
   const response = await fetch("/api/products");
   const data = await response.json();
   state.products = data.products;

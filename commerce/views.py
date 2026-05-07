@@ -7,6 +7,7 @@ import re
 import secrets
 import unicodedata
 import urllib.error
+import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -33,6 +34,8 @@ MERCADO_PAGO_WEBHOOK_SECRET = os.environ.get("MERCADO_PAGO_WEBHOOK_SECRET", "").
 MERCADO_PAGO_MIN_ORDER_TOTAL = max(0.0, float(os.environ.get("MERCADO_PAGO_MIN_ORDER_TOTAL", "0") or 0))
 MERCADO_PAGO_USE_SANDBOX = os.environ.get("MERCADO_PAGO_USE_SANDBOX", "").strip().lower()
 PAYMENT_PENDING_TTL_HOURS = max(1.0, float(os.environ.get("PAYMENT_PENDING_TTL_HOURS", "48") or 48))
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "").strip()
 MELHOR_ENVIO_TOKEN = os.environ.get("MELHOR_ENVIO_TOKEN", "")
 MELHOR_ENVIO_API_BASE = os.environ.get("MELHOR_ENVIO_API_BASE", "https://melhorenvio.com.br")
 MELHOR_ENVIO_USER_AGENT = os.environ.get("MELHOR_ENVIO_USER_AGENT", "Basa 3D Works (contato@basa3d.com)")
@@ -216,6 +219,88 @@ def _verify_password(password, stored):
         return hmac.compare_digest(digest, expected)
     except ValueError:
         return False
+
+
+def _google_oauth_redirect_uri(request):
+    return f"{_public_base_url(request).rstrip()}/api/customer/google/callback"
+
+
+def _google_oauth_enabled():
+    return bool(GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET)
+
+
+def _google_state(next_url):
+    return signer.sign(json.dumps({
+        "next": next_url if str(next_url or "").startswith("/") else "/conta.html",
+        "nonce": secrets.token_urlsafe(12),
+        "createdAt": _now(),
+    }))
+
+
+def _google_state_payload(value):
+    try:
+        raw = signer.unsign(value, max_age=60 * 10)
+        return json.loads(raw)
+    except Exception:
+        return {"next": "/conta.html"}
+
+
+def _google_token(code, request):
+    payload = urllib.parse.urlencode({
+        "code": code,
+        "client_id": GOOGLE_CLIENT_ID,
+        "client_secret": GOOGLE_CLIENT_SECRET,
+        "redirect_uri": _google_oauth_redirect_uri(request),
+        "grant_type": "authorization_code",
+    }).encode("utf-8")
+    api_request = urllib.request.Request(
+        "https://oauth2.googleapis.com/token",
+        data=payload,
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        method="POST",
+    )
+    with urllib.request.urlopen(api_request, timeout=18) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+def _google_userinfo(access_token):
+    api_request = urllib.request.Request(
+        "https://www.googleapis.com/oauth2/v3/userinfo",
+        headers={"Authorization": f"Bearer {access_token}"},
+        method="GET",
+    )
+    with urllib.request.urlopen(api_request, timeout=18) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+def _upsert_google_customer(profile):
+    email = str(profile.get("email", "")).strip().lower()
+    if not email:
+        raise ValueError("Google nao retornou e-mail.")
+    db = read_db()
+    customers = db.setdefault("customers", [])
+    customer = next((item for item in customers if _customer_email(item) == email), None)
+    if not customer:
+        customer = _customer_payload({
+            "email": email,
+            "name": profile.get("name") or email.split("@")[0],
+            "username": email.split("@")[0],
+        })
+        customers.append(customer)
+    current = customer.setdefault("customer", {})
+    current["email"] = email
+    current["name"] = current.get("name") or profile.get("name") or email.split("@")[0]
+    customer["username"] = customer.get("username") or email.split("@")[0]
+    customer["emailVerified"] = bool(profile.get("email_verified", True))
+    customer["google"] = {
+        "sub": profile.get("sub"),
+        "picture": profile.get("picture", ""),
+        "linkedAt": customer.get("google", {}).get("linkedAt") or _now(),
+        "updatedAt": _now(),
+    }
+    customer["updatedAt"] = _now()
+    write_db(db)
+    return _safe_customer_account(customer)
 
 
 def _public_product(product, db):
@@ -1255,6 +1340,58 @@ def api_customer_access(request):
         "emailVerificationRequired": not account.get("emailVerified"),
         "verificationPreviewUrl": verification_link if settings.EMAIL_BACKEND.endswith("console.EmailBackend") else "",
     }, status=201 if created else 200)
+
+
+def api_customer_google_start(request):
+    if not _google_oauth_enabled():
+        return JsonResponse({"error": "Login com Google ainda nao configurado."}, status=503)
+    next_url = request.GET.get("next") or "/conta.html"
+    params = urllib.parse.urlencode({
+        "client_id": GOOGLE_CLIENT_ID,
+        "redirect_uri": _google_oauth_redirect_uri(request),
+        "response_type": "code",
+        "scope": "openid email profile",
+        "state": _google_state(next_url),
+        "access_type": "online",
+        "prompt": "select_account",
+    })
+    return HttpResponse(status=302, headers={"Location": f"https://accounts.google.com/o/oauth2/v2/auth?{params}"})
+
+
+def api_customer_google_callback(request):
+    code = request.GET.get("code", "")
+    state_payload = _google_state_payload(request.GET.get("state", ""))
+    next_url = state_payload.get("next") or "/conta.html"
+    if not code:
+        return HttpResponse(status=302, headers={"Location": f"{next_url}?google=error"})
+    try:
+        token = _google_token(code, request)
+        profile = _google_userinfo(token.get("access_token"))
+        account = _upsert_google_customer(profile)
+    except Exception:
+        return HttpResponse(status=302, headers={"Location": f"{next_url}?google=error"})
+    session = {
+        "loggedIn": True,
+        "username": account.get("username"),
+        "customer": account.get("customer"),
+        "emailVerified": bool(account.get("emailVerified")),
+        "provider": "google",
+        "updatedAt": _now(),
+    }
+    target = json.dumps(next_url)
+    session_json = json.dumps(session, ensure_ascii=False)
+    return HttpResponse(f"""
+<!doctype html>
+<html lang="pt-BR">
+  <head><meta charset="utf-8"><title>Entrando...</title></head>
+  <body>
+    <script>
+      localStorage.setItem("basa_customer_session", {json.dumps(session_json)});
+      location.replace({target});
+    </script>
+  </body>
+</html>
+""", content_type="text/html; charset=utf-8")
 
 
 @csrf_exempt

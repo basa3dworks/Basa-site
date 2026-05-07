@@ -615,6 +615,38 @@ body.story-open {
   background: #eef3ef;
 }
 
+.google-login-button {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 14px;
+  color: var(--ink);
+  background: #fff;
+  font-weight: 800;
+}
+
+.google-login-button::before {
+  content: "G";
+  width: 24px;
+  height: 24px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: #4285f4;
+  font-family: Arial, sans-serif;
+  font-weight: 900;
+}
+
+.google-login-button.compact {
+  min-height: 42px;
+  padding: 0 12px;
+}
+
 .pending-payment-banner {
   position: sticky;
   top: 0;

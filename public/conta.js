@@ -54,6 +54,10 @@ function setSession(account) {
   localStorage.setItem("basa_customer_session", JSON.stringify(state.session));
 }
 
+function googleLoginUrl() {
+  return `/api/customer/google/start?next=${encodeURIComponent(location.pathname + location.search + location.hash)}`;
+}
+
 function isLoggedIn() {
   return Boolean(state.session?.loggedIn && state.session?.customer?.email);
 }
@@ -370,6 +374,12 @@ function logout() {
 }
 
 async function init() {
+  document.querySelectorAll(".google-login-button").forEach((link) => {
+    link.href = googleLoginUrl();
+  });
+  if (new URLSearchParams(location.search).get("google") === "error") {
+    $("#loginStatus").textContent = "Nao foi possivel entrar com Google. Tente novamente.";
+  }
   document.querySelectorAll("[data-account-view]").forEach((button) => {
     button.addEventListener("click", () => showView(button.dataset.accountView));
   });

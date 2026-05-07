@@ -15,6 +15,8 @@ urlpatterns = [
     path("api/checkout", views.api_checkout),
     path("api/webhooks/mercado-pago", views.api_mercado_pago_webhook),
     path("api/customer/access", views.api_customer_access),
+    path("api/customer/google/start", views.api_customer_google_start),
+    path("api/customer/google/callback", views.api_customer_google_callback),
     path("api/customer/orders", views.api_customer_orders),
     path("api/customer/resend-verification", views.api_customer_resend_verification),
     path("api/customer/verify-email", views.api_customer_verify_email),

@@ -55,6 +55,7 @@
             <form id="loginForm" class="stack-form account-form">
               <label>Email<input name="email" type="email" required autocomplete="email"></label>
               <label>Senha<input name="customerPassword" type="password" required minlength="6" autocomplete="current-password"></label>
+              <a class="google-login-button" href="/api/customer/google/start?next=/conta.html">Entrar com Google</a>
               <button class="primary-button" type="submit">Entrar</button>
               <button class="ghost-button" type="button" data-account-view="reset">Esqueci minha senha</button>
               <p class="form-status" id="loginStatus"></p>
@@ -103,6 +104,7 @@
                 <label>Cidade<input name="city" required autocomplete="address-level2"></label>
                 <label>Estado<input name="state" required maxlength="2" autocomplete="address-level1"></label>
               </div>
+              <a class="google-login-button" href="/api/customer/google/start?next=/conta.html">Criar/entrar com Google</a>
               <button class="primary-button" type="submit">Criar conta</button>
               <p class="form-status" id="registerStatus"></p>
             </form>
