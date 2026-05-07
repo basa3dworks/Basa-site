@@ -137,7 +137,10 @@ function renderAccount() {
       <article class="account-card pending-account-card">
         <strong>Compra pendente</strong>
         <span>${pendingOrders[0].id} | ${money(pendingOrders[0].total)}${paymentExpiryLabel(pendingOrders[0]) ? ` | ${paymentExpiryLabel(pendingOrders[0])}` : ""}</span>
-        <a class="primary-button" href="${pendingOrders[0].payment.checkoutUrl}">Concluir pagamento</a>
+        <div class="account-order-actions">
+          <a class="primary-button" href="${pendingOrders[0].payment.checkoutUrl}">Concluir pagamento</a>
+          <button class="ghost-button danger-button" type="button" data-cancel-order="${pendingOrders[0].id}">Desistir da compra</button>
+        </div>
       </article>
     ` : ""}
     ${state.session.emailVerified === false ? `
@@ -180,10 +183,46 @@ function renderOrders() {
       <b>${money(order.total)}</b>
       ${order.status === "awaiting_payment" && order.payment?.checkoutUrl ? `
         <span>${paymentExpiryLabel(order) || "Aguardando confirmação do pagamento"}</span>
-        <a class="primary-button" href="${order.payment.checkoutUrl}">Concluir pagamento</a>
+        <div class="account-order-actions">
+          <a class="primary-button" href="${order.payment.checkoutUrl}">Concluir pagamento</a>
+          <button class="ghost-button danger-button" type="button" data-cancel-order="${order.id}">Desistir da compra</button>
+        </div>
       ` : ""}
     </article>
   `).join("") : "<p>Nenhum pedido encontrado.</p>";
+  document.querySelectorAll("[data-cancel-order]").forEach((button) => {
+    button.addEventListener("click", () => cancelPendingOrder(button.dataset.cancelOrder, button));
+  });
+}
+
+async function cancelPendingOrder(orderId, button) {
+  if (!isLoggedIn() || !orderId) return;
+  if (!confirm("Deseja cancelar este pedido pendente?")) return;
+  const originalText = button?.textContent || "Desistir da compra";
+  if (button) {
+    button.disabled = true;
+    button.textContent = "Cancelando...";
+  }
+  try {
+    const response = await fetch(`/api/customer/orders/${encodeURIComponent(orderId)}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        email: state.session.customer.email,
+        action: "cancel_payment"
+      })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || "Nao foi possivel cancelar este pedido.");
+    state.orders = state.orders.map((order) => order.id === orderId ? data.order : order);
+    renderAccount();
+  } catch (error) {
+    alert(error.message || "Nao foi possivel cancelar este pedido.");
+    if (button) {
+      button.disabled = false;
+      button.textContent = originalText;
+    }
+  }
 }
 
 function renderFavorites() {

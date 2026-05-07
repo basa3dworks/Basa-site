@@ -9,6 +9,7 @@
   shippingQuotes: [],
   selectedShipping: null,
   shippingBenefit: null,
+  checkoutSubmitting: false,
   catalogFeed: "for-you",
   catalogCategory: "all"
 };
@@ -975,6 +976,7 @@ function renderCart() {
 async function checkout(event) {
   event.preventDefault();
   if (!state.cart.length) return;
+  if (state.checkoutSubmitting) return;
   if (!isCustomerLoggedIn()) {
     openCheckoutDetails();
     $("#checkoutStatus").textContent = "Entre ou crie sua conta antes de finalizar a compra.";
@@ -987,27 +989,45 @@ async function checkout(event) {
     $("#checkoutStatus").textContent = "Calcule e selecione uma op\u00e7\u00e3o de entrega.";
     return;
   }
-  $("#checkoutStatus").textContent = "Criando pedido...";
-  const response = await fetch("/api/checkout", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      items: state.cart,
-      customer: readCustomer(event.currentTarget),
-      customerLoggedIn: true,
-      shippingOption: state.selectedShipping,
-      zipCode: event.currentTarget.elements.zipCode?.value || "",
-      coupon: event.currentTarget.elements.coupon?.value || ""
-    })
-  });
-  const data = await response.json();
-  if (!response.ok) {
-    $("#checkoutStatus").textContent = data.error || "N\u00e3o foi poss\u00edvel criar o pedido.";
-    return;
+  state.checkoutSubmitting = true;
+  const submitButton = $("#checkoutSubmitButton");
+  const originalButtonText = submitButton?.textContent || "Finalizar pedido";
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.textContent = "Processando...";
   }
-  state.cart = [];
-  saveCart();
-  location.href = data.payment.checkoutUrl || `/obrigado.html?pedido=${data.order.id}`;
+  $("#checkoutStatus").textContent = "Criando pedido...";
+  let redirecting = false;
+  try {
+    const response = await fetch("/api/checkout", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        items: state.cart,
+        customer: readCustomer(event.currentTarget),
+        customerLoggedIn: true,
+        shippingOption: state.selectedShipping,
+        zipCode: event.currentTarget.elements.zipCode?.value || "",
+        coupon: event.currentTarget.elements.coupon?.value || ""
+      })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || "N\u00e3o foi poss\u00edvel criar o pedido.");
+    state.cart = [];
+    saveCart();
+    redirecting = true;
+    location.href = data.payment.checkoutUrl || `/obrigado.html?pedido=${data.order.id}`;
+  } catch (error) {
+    $("#checkoutStatus").textContent = error.message || "N\u00e3o foi poss\u00edvel criar o pedido.";
+  } finally {
+    if (!redirecting) {
+      state.checkoutSubmitting = false;
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.textContent = originalButtonText;
+      }
+    }
+  }
 }
 
 async function submitCustomRequest(event) {

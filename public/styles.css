@@ -4060,8 +4060,21 @@ label {
 }
 
 .pending-account-card .primary-button,
+.pending-account-card .ghost-button,
 .account-warning-card .ghost-button {
   width: fit-content;
+}
+
+.account-order-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.account-order-actions .primary-button,
+.account-order-actions .ghost-button {
+  min-height: 38px;
 }
 
 .account-product-grid {

@@ -997,6 +997,38 @@ def _order_payment_url(order):
     return payment.get("checkoutUrl") or payment.get("initPoint") or payment.get("sandboxInitPoint") or ""
 
 
+def _order_cart_signature(items):
+    signature = []
+    for item in items or []:
+        signature.append((
+            str(item.get("productId") or item.get("id") or ""),
+            str(item.get("color") or ""),
+            json.dumps(item.get("variant") or {}, sort_keys=True, ensure_ascii=True),
+            int(item.get("quantity") or 0),
+        ))
+    return sorted(signature)
+
+
+def _recent_pending_checkout(db, email, lines, total):
+    if not email:
+        return None
+    cutoff = datetime.now(timezone.utc) - timedelta(minutes=3)
+    signature = _order_cart_signature(lines)
+    for order in db.get("orders", []):
+        if order.get("status") != "awaiting_payment" or not _order_payment_url(order):
+            continue
+        if str(order.get("customer", {}).get("email", "")).strip().lower() != email:
+            continue
+        created_at = _parse_dt(order.get("createdAt"))
+        if not created_at or created_at < cutoff:
+            continue
+        if abs(float(order.get("total") or 0) - float(total or 0)) > 0.01:
+            continue
+        if _order_cart_signature(order.get("items", [])) == signature:
+            return order
+    return None
+
+
 def _expire_pending_orders(db):
     changed = False
     now = datetime.now(timezone.utc)
@@ -1177,6 +1209,8 @@ def api_checkout(request):
     if not body.get("customerLoggedIn"):
         return JsonResponse({"error": "Cliente precisa estar logado para finalizar a compra."}, status=401)
     db = read_db()
+    if _expire_pending_orders(db):
+        write_db(db)
     coupon = None
     coupon_code = body.get("coupon", {}).get("code") if isinstance(body.get("coupon"), dict) else body.get("coupon")
     if coupon_code:
@@ -1193,6 +1227,11 @@ def api_checkout(request):
         return JsonResponse({"error": "Carrinho vazio."}, status=400)
     if shipping > 0 and not shipping_option:
         return JsonResponse({"error": "Calcule e selecione uma opcao de entrega antes de finalizar o pedido."}, status=400)
+    customer_email = str(body.get("customer", {}).get("email", "")).strip().lower()
+    recent_order = _recent_pending_checkout(db, customer_email, lines, total)
+    if recent_order:
+        public_order = _public_order(recent_order)
+        return JsonResponse({"order": public_order, "payment": public_order.get("payment"), "reused": True})
     order = {
         "id": f"PED-{int(datetime.now().timestamp() * 1000)}",
         "createdAt": _now(),
@@ -1480,6 +1519,34 @@ def api_customer_orders(request):
         write_db(db)
     orders = [order for order in db.get("orders", []) if str(order.get("customer", {}).get("email", "")).lower() == email]
     return JsonResponse({"orders": [_public_order(order) for order in orders]})
+
+
+@csrf_exempt
+def api_customer_order_detail(request, order_id):
+    body = _json_body(request)
+    email = str(body.get("email") or request.GET.get("email", "")).strip().lower()
+    db = read_db()
+    if _expire_pending_orders(db):
+        write_db(db)
+    order = next((item for item in db.get("orders", []) if item.get("id") == order_id and str(item.get("customer", {}).get("email", "")).lower() == email), None)
+    if not order:
+        return JsonResponse({"error": "Pedido nao encontrado."}, status=404)
+    if request.method != "PATCH":
+        return JsonResponse({"order": _public_order(order)})
+    if body.get("action") != "cancel_payment":
+        return JsonResponse({"error": "Acao invalida."}, status=400)
+    if order.get("status") != "awaiting_payment":
+        return JsonResponse({"error": "Este pedido nao pode mais ser cancelado por aqui."}, status=400)
+    previous_status = order.get("status")
+    order["status"] = "canceled"
+    order.setdefault("payment", {})["status"] = "canceled_by_customer"
+    order["payment"]["updatedAt"] = _now()
+    order["updatedAt"] = _now()
+    _append_order_history(order, "payment", "customer", "canceled", "Cliente desistiu da compra antes do pagamento.", previous_status)
+    write_db(db)
+    _send_order_email(order, f"Pedido cancelado - {order['id']}", "Voce cancelou este pedido antes do pagamento.", include_payment=False)
+    _notify_admin_order(order, f"Cliente cancelou {order['id']}", "O cliente cancelou um pedido antes do pagamento.")
+    return JsonResponse({"order": _public_order(order)})
 
 
 @csrf_exempt
