@@ -1211,7 +1211,25 @@ def api_shipping_quote(request):
     lines, subtotal, _discount, _shipping, _total, free_shipping, shipping_benefit = _cart_totals(db, items, None, zip_code=zip_code)
     if not lines:
         return JsonResponse({"quotes": [], "error": "Adicione produtos ao carrinho."}, status=400)
+    for line in lines:
+        line["zipCode"] = zip_code
     if free_shipping:
+        try:
+            quotes = _quote_melhor_envio(db, lines)
+        except ValueError:
+            quotes = []
+        if quotes:
+            free_quotes = [
+                {
+                    **quote,
+                    "price": 0,
+                    "originalPrice": quote.get("price"),
+                    "freeShipping": True,
+                    "note": "Frete gratis aplicado. Prazo calculado pelo Melhor Envio.",
+                }
+                for quote in quotes
+            ]
+            return JsonResponse({"quotes": free_quotes, "subtotal": subtotal, "shippingBenefit": shipping_benefit})
         return JsonResponse({
             "quotes": [{"id": "free-shipping", "provider": "basa", "carrier": "Basa 3D Works", "service": "Frete Grátis", "price": 0, "deliveryDays": 0}],
             "subtotal": subtotal,

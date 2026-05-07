@@ -643,11 +643,6 @@ function renderShippingOptions() {
   }
 
   const promo = freeShippingPromo($("#checkoutForm"));
-  if (promo.reason === "produto") {
-    $("#shippingOptions").innerHTML = `<p class="promo-note">Frete gr\u00e1tis neste pedido. A forma de envio ser\u00e1 definida pela Basa 3D Works.</p>`;
-    clearDeliverySelectionWarning();
-    return;
-  }
   $("#shippingOptions").innerHTML = `
     <p class="${promo.eligible ? "promo-note" : "combo-note"}">${promo.eligible ? `Frete gr\u00e1tis liberado por ${promo.reason}.` : comboProgressMessage()}</p>
     ${state.shippingQuotes.map((quote) => `
