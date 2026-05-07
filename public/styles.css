@@ -4036,6 +4036,77 @@ label {
   gap: 8px;
 }
 
+.order-account-card {
+  gap: 14px;
+}
+
+.order-account-main {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+}
+
+.order-account-main img {
+  width: 76px;
+  height: 76px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  object-fit: cover;
+  background: #fff;
+}
+
+.order-account-main strong,
+.order-account-main span,
+.order-account-main small {
+  display: block;
+}
+
+.order-account-main strong {
+  overflow-wrap: anywhere;
+}
+
+.order-account-main b {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.order-account-facts,
+.order-account-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.order-account-facts span,
+.order-account-detail-grid span {
+  padding: 10px;
+  border-radius: 8px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.order-account-facts b,
+.order-account-detail-grid b {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--muted);
+  font-size: 0.74rem;
+  text-transform: uppercase;
+}
+
+.order-account-details summary {
+  width: fit-content;
+  cursor: pointer;
+  color: var(--brand);
+  font-weight: 900;
+}
+
+.order-account-detail-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 10px;
+}
+
 .account-card strong,
 .account-card span,
 .account-card small,
@@ -5512,6 +5583,26 @@ pre {
 
   .account-card {
     padding: 18px;
+  }
+
+  .order-account-main {
+    grid-template-columns: 64px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .order-account-main img {
+    width: 64px;
+    height: 64px;
+  }
+
+  .order-account-main b {
+    grid-column: 2;
+    text-align: left;
+  }
+
+  .order-account-facts,
+  .order-account-detail-grid {
+    grid-template-columns: 1fr;
   }
 
   .account-order-actions {

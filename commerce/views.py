@@ -636,6 +636,26 @@ def _coupon_eligibility(coupon, item_count, subtotal):
     return True, ""
 
 
+def _production_days_from_product(product):
+    candidates = [
+        product.get("productionDays"),
+        product.get("leadTimeDays"),
+        product.get("shipping", {}).get("productionDays"),
+    ]
+    specs = product.get("specs") or {}
+    if isinstance(specs, dict):
+        for key, value in specs.items():
+            if "prazo" in str(key).lower() or "produc" in str(key).lower():
+                candidates.append(value)
+    for candidate in candidates:
+        if candidate in {None, ""}:
+            continue
+        numbers = re.findall(r"\d+", str(candidate))
+        if numbers:
+            return max(0, max(int(number) for number in numbers))
+    return int(float(os.environ.get("DEFAULT_PRODUCTION_DAYS", "3") or 3))
+
+
 def _cart_totals(db, items, shipping_option=None, coupon=None, zip_code=""):
     products = {product.get("id"): product for product in db.get("products", [])}
     lines = []
@@ -655,11 +675,15 @@ def _cart_totals(db, items, shipping_option=None, coupon=None, zip_code=""):
         all_items_seller_paid = all_items_seller_paid and bool(product_shipping.get("sellerPaysShipping"))
         lines.append({
             "productId": product.get("id"),
+            "slug": product.get("slug"),
             "name": product.get("name"),
+            "image": product.get("image") or (product.get("gallery") or [""])[0],
+            "category": product.get("category"),
             "quantity": quantity,
             "unitPrice": unit_price,
             "total": total,
             "variant": item.get("variant") or {},
+            "productionDays": _production_days_from_product(product),
         })
     subtotal = round(subtotal, 2)
     all_items_seller_paid = bool(lines) and all_items_seller_paid
@@ -1083,6 +1107,8 @@ def _public_order(order):
         "payment": {
             "provider": payment.get("provider"),
             "status": payment.get("status"),
+            "method": payment.get("method"),
+            "type": payment.get("type"),
             "checkoutUrl": _order_payment_url(order),
             "expiresAt": payment.get("expiresAt"),
             "environment": payment.get("environment"),
@@ -1329,6 +1355,8 @@ def api_mercado_pago_webhook(request):
         "paymentId": data_id or order.get("payment", {}).get("paymentId"),
         "status": payment_status,
         "statusDetail": (payment_data or {}).get("status_detail") or body.get("statusDetail") or "",
+        "method": (payment_data or {}).get("payment_method_id") or order.get("payment", {}).get("method") or "",
+        "type": (payment_data or {}).get("payment_type_id") or order.get("payment", {}).get("type") or "",
         "updatedAt": _now(),
     }
     next_status = _order_status_from_payment_status(payment_status)

@@ -116,6 +116,71 @@ function paymentExpiryLabel(order) {
   return hours >= 24 ? `expira em ${Math.ceil(hours / 24)} dia(s)` : `expira em ${hours}h`;
 }
 
+function productById(productId) {
+  return state.products.find((product) => product.id === productId) || {};
+}
+
+function orderItemImage(item) {
+  const product = productById(item.productId);
+  return item.image || product.image || product.gallery?.[0] || "/uploads/products/placeholder.svg";
+}
+
+function orderPrimaryItem(order) {
+  return (order.items || [])[0] || {};
+}
+
+function orderItemLabel(item) {
+  const variant = item.variant && Object.values(item.variant).filter(Boolean).join(" / ");
+  return `${item.quantity || 1}x ${item.name || "Produto"}${variant ? ` - ${variant}` : ""}`;
+}
+
+function paymentLabel(order) {
+  const payment = order.payment || {};
+  const provider = {
+    "mercado-pago": "Mercado Pago",
+    mercado_pago: "Mercado Pago",
+    mock: "Pagamento manual"
+  }[payment.provider] || payment.provider || "Pagamento";
+  const method = {
+    pix: "Pix",
+    account_money: "Saldo Mercado Pago",
+    credit_card: "Cartão de crédito",
+    debit_card: "Cartão de débito",
+    ticket: "Boleto"
+  }[payment.method || payment.type] || payment.method || payment.type || "";
+  return method ? `${provider} - ${method}` : provider;
+}
+
+function shippingLabel(order) {
+  const option = order.shippingOption || {};
+  if (option.carrier || option.service) {
+    const price = Number(order.shipping || option.price || 0);
+    return `${option.carrier || "Entrega"}${option.service ? ` - ${option.service}` : ""} | ${price > 0 ? money(price) : "Frete grátis"}`;
+  }
+  if (Number(order.shipping || 0) === 0) return "Frete grátis";
+  return `Frete ${money(order.shipping || 0)}`;
+}
+
+function productionDays(order) {
+  const days = (order.items || []).map((item) => Number(item.productionDays || productById(item.productId).productionDays || productById(item.productId).shipping?.productionDays || 0));
+  const maxDays = Math.max(0, ...days.filter(Number.isFinite));
+  return maxDays || 3;
+}
+
+function carrierDays(order) {
+  return Number(order.shippingOption?.deliveryDays || 0);
+}
+
+function deliveryWindowLabel(order) {
+  const production = productionDays(order);
+  const carrier = carrierDays(order);
+  if (!carrier && Number(order.shipping || 0) === 0) {
+    return `${production} dia(s) úteis de produção + envio a combinar`;
+  }
+  if (!carrier) return `${production} dia(s) úteis de produção + prazo do envio`;
+  return `${production + carrier} dia(s) úteis (${production} produção + ${carrier} transporte)`;
+}
+
 function requestStatusLabel(status) {
   return {
     new: "Nova",
@@ -174,13 +239,21 @@ function renderOrders() {
     return;
   }
   list.innerHTML = state.orders.length ? state.orders.map((order) => `
-    <article class="account-card ${order.status === "awaiting_payment" ? "pending-account-card" : ""}">
-      <div>
-        <strong>${order.id}</strong>
-        <span>${orderStatusLabel(order.status)} | ${new Date(order.createdAt).toLocaleString("pt-BR")}</span>
+    <article class="account-card order-account-card ${order.status === "awaiting_payment" ? "pending-account-card" : ""}">
+      <div class="order-account-main">
+        <img src="${orderItemImage(orderPrimaryItem(order))}" alt="${orderPrimaryItem(order).name || "Produto"}">
+        <div>
+          <strong>${orderPrimaryItem(order).name || order.id}</strong>
+          <span>${order.id}</span>
+          <small>${orderStatusLabel(order.status)} | ${new Date(order.createdAt).toLocaleString("pt-BR")}</small>
+        </div>
+        <b>${money(order.total)}</b>
       </div>
-      <small>${(order.items || []).map((item) => `${item.quantity}x ${item.name}`).join(", ")}</small>
-      <b>${money(order.total)}</b>
+      <div class="order-account-facts">
+        <span><b>Pagamento</b>${paymentLabel(order)}</span>
+        <span><b>Frete</b>${shippingLabel(order)}</span>
+        <span><b>Prazo estimado</b>${deliveryWindowLabel(order)}</span>
+      </div>
       ${order.status === "awaiting_payment" && order.payment?.checkoutUrl ? `
         <span>${paymentExpiryLabel(order) || "Aguardando confirmação do pagamento"}</span>
         <div class="account-order-actions">
@@ -188,6 +261,17 @@ function renderOrders() {
           <button class="ghost-button danger-button" type="button" data-cancel-order="${order.id}">Desistir da compra</button>
         </div>
       ` : ""}
+      <details class="order-account-details">
+        <summary>Ver detalhes</summary>
+        <div class="order-account-detail-grid">
+          <span><b>Itens</b>${(order.items || []).map(orderItemLabel).join("<br>")}</span>
+          <span><b>Subtotal</b>${money(order.subtotal)}</span>
+          <span><b>Desconto</b>${money(order.discount)}</span>
+          <span><b>Entrega</b>${money(order.shipping)}</span>
+          <span><b>Total</b>${money(order.total)}</span>
+          <span><b>Criado em</b>${new Date(order.createdAt).toLocaleString("pt-BR")}</span>
+        </div>
+      </details>
     </article>
   `).join("") : "<p>Nenhum pedido encontrado.</p>";
   document.querySelectorAll("[data-cancel-order]").forEach((button) => {
