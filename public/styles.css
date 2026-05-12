@@ -1811,11 +1811,13 @@ textarea {
 
 .product-sticky-nav {
   position: sticky;
-  top: 56px;
+  top: 76px;
   z-index: 18;
+  width: calc(100% + 16px);
+  box-sizing: border-box;
   display: grid;
   gap: 0;
-  margin: -16px -8px 12px;
+  margin: 0 -8px 12px;
   border-bottom: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 10px 26px rgba(11, 24, 20, 0.08);
@@ -1823,6 +1825,30 @@ textarea {
   pointer-events: none;
   transform: translateY(-10px);
   transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+body.store-body:not(.admin-body) .product-sticky-nav {
+  top: 70px;
+}
+
+body.store-body:not(.admin-body) .product-sticky-row {
+  display: none;
+}
+
+body.store-body:not(.admin-body) .product-sticky-tabs {
+  min-height: 43px;
+  align-items: end;
+  padding: 0 8px;
+}
+
+body.store-body:not(.admin-body) .product-sticky-tabs button {
+  min-height: 43px;
+  display: grid;
+  place-items: center;
+  padding: 0 2px 8px;
+  font-size: 0.78rem;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .product-sticky-nav.is-visible {
@@ -1862,6 +1888,8 @@ textarea {
 }
 
 .product-sticky-tabs {
+  width: 100%;
+  box-sizing: border-box;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   padding: 0 6px;
@@ -6535,5 +6563,26 @@ pre {
 
   .repeatable-head {
     display: grid;
+  }
+}
+
+@media (max-width: 760px) {
+  body.store-body:not(.admin-body) .product-sticky-nav {
+    grid-column: auto;
+    width: calc(100% + 16px);
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  body.store-body:not(.admin-body) .product-sticky-tabs {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  body.store-body:not(.admin-body) .product-sticky-tabs button {
+    width: 100%;
+    min-width: 0;
   }
 }
