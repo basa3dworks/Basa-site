@@ -1151,7 +1151,7 @@ async function init() {
   $("#closeCart").addEventListener("click", () => $("#cartPanel").classList.remove("open"));
   $("#customerButton")?.addEventListener("click", () => openCustomerPanel());
   $("#mobileCustomerButton")?.addEventListener("click", () => { window.location.href = "/conta.html"; });
-  $("#mobileMenuButton")?.addEventListener("click", () => { window.location.href = "/conta.html"; });
+  $("#mobileMenuButton")?.addEventListener("click", () => openCustomerPanel());
   $("#closeCustomerPanel").addEventListener("click", closeCustomerPanel);
   $("#closeQuotePanel").addEventListener("click", closeQuotePanel);
   $("#customerPanel").addEventListener("click", (event) => {
