@@ -127,35 +127,52 @@
           <button class="ghost-button" id="closeCustomerPanel">Fechar</button>
         </div>
         <section class="customer-menu-view" id="customerMenuView">
+          <article class="customer-access-card" id="customerAccessCard">
+            <div>
+              <strong>Entre para comprar mais rapido</strong>
+              <small>Use Google ou e-mail para acompanhar pedidos, compras pendentes e favoritos.</small>
+            </div>
+            <div class="customer-access-actions">
+              <a class="google-login-button" href="/api/customer/google/start?next=/" data-google-login>Entrar com Google</a>
+              <a class="primary-button" href="/conta.html#login">Entrar com e-mail</a>
+            </div>
+          </article>
+          <article class="customer-access-card logged-card" id="customerSessionCard" hidden>
+            <div>
+              <strong id="customerSessionName">Minha conta</strong>
+              <small id="customerSessionEmail">Acompanhe pedidos, favoritos e orcamentos.</small>
+            </div>
+            <a class="primary-button" href="/conta.html#orders">Ver meus pedidos</a>
+          </article>
           <div class="customer-menu-list">
-            <button class="customer-menu-item" type="button">
+            <a class="customer-menu-item" href="/conta.html#profile">
               <span>
                 <strong>Meus dados</strong>
                 <small>Cadastro, endereço e informações para compra.</small>
               </span>
               <b>›</b>
-            </button>
-            <button class="customer-menu-item" type="button">
+            </a>
+            <a class="customer-menu-item" href="/conta.html#orders">
               <span>
                 <strong>Notificações</strong>
                 <small>Avisos sobre pedidos, novidades e respostas da Basa.</small>
               </span>
               <b>›</b>
-            </button>
-            <button class="customer-menu-item" type="button">
+            </a>
+            <a class="customer-menu-item" href="/conta.html#quotes">
               <span>
                 <strong>Convidar amigos</strong>
                 <small>No futuro, indicações poderão gerar cupons e benefícios.</small>
               </span>
               <b>›</b>
-            </button>
-            <button class="customer-menu-item" type="button">
+            </a>
+            <a class="customer-menu-item" href="/conta.html#favorites">
               <span>
                 <strong>Benefícios e cupons</strong>
                 <small>Campanhas, prêmios e vantagens da conta.</small>
               </span>
               <b>›</b>
-            </button>
+            </a>
           </div>
         </section>
 

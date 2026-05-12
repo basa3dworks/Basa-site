@@ -515,7 +515,11 @@ async function init() {
   await loadProducts();
   await refreshPrivateData();
   const hashView = location.hash.replace("#", "");
-  showView(isLoggedIn() ? (hashView === "orders" ? "orders" : "profile") : "login");
+  const allowedPrivateViews = ["profile", "orders", "favorites", "quotes"];
+  const allowedGuestViews = ["login", "register", "reset"];
+  showView(isLoggedIn()
+    ? (allowedPrivateViews.includes(hashView) ? hashView : "profile")
+    : (allowedGuestViews.includes(hashView) ? hashView : "login"));
 }
 
 init();

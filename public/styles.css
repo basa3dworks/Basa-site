@@ -2773,6 +2773,32 @@ label {
   gap: 10px;
 }
 
+.customer-access-card {
+  display: grid;
+  gap: 14px;
+  border: 1px solid #bfe8d4;
+  border-radius: 8px;
+  padding: 16px;
+  background: #f1fbf5;
+}
+
+.customer-access-card strong,
+.customer-access-card small {
+  display: block;
+}
+
+.customer-access-card small {
+  margin-top: 4px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.customer-access-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
 .customer-menu-item {
   width: 100%;
   display: flex;
@@ -2786,6 +2812,7 @@ label {
   background: #fff;
   text-align: left;
   cursor: pointer;
+  text-decoration: none;
 }
 
 .customer-menu-item span {
@@ -6203,6 +6230,7 @@ pre {
   .repeatable-row,
   .repeatable-row.spec-row,
   .checkout-grid,
+  .customer-access-actions,
   .customer-login-actions,
   .shipping-dimensions-grid,
   .shipping-option,

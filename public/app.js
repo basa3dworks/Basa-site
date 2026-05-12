@@ -213,7 +213,21 @@ function saveCart() {
   renderCart();
 }
 
+function updateCustomerPanelSession() {
+  const loggedIn = isCustomerLoggedIn();
+  const accessCard = $("#customerAccessCard");
+  const sessionCard = $("#customerSessionCard");
+  if (accessCard) accessCard.hidden = loggedIn;
+  if (sessionCard) sessionCard.hidden = !loggedIn;
+  if (loggedIn) {
+    const customer = state.customerSession.customer;
+    if ($("#customerSessionName")) $("#customerSessionName").textContent = customer.name || state.customerSession.username || "Minha conta";
+    if ($("#customerSessionEmail")) $("#customerSessionEmail").textContent = customer.email || "Acompanhe seus pedidos.";
+  }
+}
+
 function openCustomerPanel() {
+  updateCustomerPanelSession();
   $("#customerPanel").classList.add("open");
   $("#customerPanel").setAttribute("aria-hidden", "false");
 }
