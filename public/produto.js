@@ -11,7 +11,11 @@
   checkoutSubmitting: false,
   lightboxMediaItems: [],
   lightboxProduct: null,
-  lightboxReady: false
+  lightboxReady: false,
+  relatedProducts: [],
+  relatedVisible: 8,
+  relatedObserver: null,
+  productNavObserver: null
 };
 
 const debugCustomer = {
@@ -32,6 +36,7 @@ const debugCustomer = {
 
 const $ = (selector) => document.querySelector(selector);
 const FREE_SHIPPING_MIN_SUBTOTAL = 100;
+const RELATED_ORIGIN_KEY = "basa_related_origin";
 const money = (value) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: state.settings?.currency || "BRL" }).format(value);
 const shippingQuoteId = (quote) => String(quote?.id ?? `${quote?.carrier || ""}-${quote?.service || ""}`);
 const moneyParts = (value) => {
@@ -72,6 +77,10 @@ function productShippingLabel(product) {
   return product.shipping?.sellerPaysShipping ? "Frete Gr\u00e1tis" : "";
 }
 
+function productImage(product) {
+  return product.image || (product.gallery || [])[0] || "";
+}
+
 function ratingMarkup(product) {
   if (!state.settings?.displayRating) return "";
   const average = Number(product.rating?.average || 0);
@@ -86,7 +95,6 @@ function ratingMarkup(product) {
 
 function socialReviewsSection(product) {
   const reviews = product.publicReviews || [];
-  if (!reviews.length) return "";
   const isVideoMedia = (url) => /\.(mp4|webm|mov|m4v)$/i.test(String(url || "").split("?")[0]);
   const renderMedia = (review) => {
     const media = review.media || review.photos || [];
@@ -99,15 +107,16 @@ function socialReviewsSection(product) {
     }).join("")}</div>` : "";
   };
   return `
-    <section class="panel product-reviews-panel">
+    <section class="panel product-reviews-panel" id="productCommentsSection" data-product-section="comments">
       <div class="panel-head">
         <div>
-          <p class="eyebrow">Reviews</p>
+          <p class="eyebrow">Coment\u00e1rios</p>
           <h2>Quem comprou conta</h2>
         </div>
       </div>
-      <div class="product-review-list">
-        ${reviews.slice(0, 8).map((review) => `
+      ${reviews.length ? `
+        <div class="product-review-list">
+          ${reviews.slice(0, 8).map((review) => `
           <article class="product-review-card">
             <div class="product-review-head">
               <strong>${escapeHtml(review.customerName || "Cliente Basa")}</strong>
@@ -116,10 +125,184 @@ function socialReviewsSection(product) {
             ${review.comment ? `<p>${escapeHtml(review.comment)}</p>` : ""}
             ${renderMedia(review)}
           </article>
-        `).join("")}
-      </div>
+          `).join("")}
+        </div>
+      ` : `<p class="product-empty-note">Ainda n\u00e3o h\u00e1 coment\u00e1rios deste produto.</p>`}
     </section>
   `;
+}
+
+function normalizeTerm(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function productTerms(product) {
+  const specs = product.specs || {};
+  const values = [
+    product.category,
+    product.name,
+    product.description,
+    product.longDescription,
+    ...(product.tags || []),
+    ...(product.highlights || []),
+    ...Object.keys(specs),
+    ...Object.values(specs)
+  ];
+  return new Set(normalizeTerm(values.join(" "))
+    .split(/[^a-z0-9]+/)
+    .filter((term) => term.length > 2 && !["para", "com", "uma", "das", "dos", "que", "por", "sem", "produto", "produtos"].includes(term)));
+}
+
+function relatedScore(baseProduct, candidate) {
+  if (!candidate || candidate.id === baseProduct.id) return -1;
+  let score = 0;
+  if (normalizeTerm(candidate.category) === normalizeTerm(baseProduct.category)) score += 60;
+  const baseTags = new Set((baseProduct.tags || []).map(normalizeTerm).filter(Boolean));
+  (candidate.tags || []).forEach((tag) => {
+    if (baseTags.has(normalizeTerm(tag))) score += 28;
+  });
+  const baseTerms = productTerms(baseProduct);
+  productTerms(candidate).forEach((term) => {
+    if (baseTerms.has(term)) score += 4;
+  });
+  score += Math.min(16, Number(candidate.soldCount || 0) / 3);
+  score += Math.min(10, Number(candidate.favoriteCount || 0));
+  score += Number(candidate.rating?.average || 0) * 2;
+  return score;
+}
+
+function relatedProducts(product) {
+  const ranked = state.products
+    .filter((candidate) => candidate.id !== product.id && candidate.status !== "inactive")
+    .map((candidate) => ({ product: candidate, score: relatedScore(product, candidate) }))
+    .sort((a, b) => b.score - a.score || Number(b.product.soldCount || 0) - Number(a.product.soldCount || 0));
+  const relevant = ranked.filter((item) => item.score > 0).map((item) => item.product);
+  const fallback = ranked.filter((item) => item.score <= 0).map((item) => item.product);
+  return [...relevant, ...fallback];
+}
+
+function relatedProductCard(product) {
+  const url = `/produto.html?slug=${encodeURIComponent(product.slug || product.id)}`;
+  return `
+    <article class="related-product-card">
+      <a href="${url}" data-related-link>
+        <img src="${productImage(product)}" alt="${escapeHtml(product.name)}">
+        <span class="related-product-category">${escapeHtml(product.category || "Produto")}</span>
+        <strong>${escapeHtml(product.name)}</strong>
+        <span class="related-product-price">${money(product.price)}</span>
+        ${productShippingLabel(product) ? `<em>${productShippingLabel(product)}</em>` : ""}
+      </a>
+    </article>
+  `;
+}
+
+function relatedProductsSection(product) {
+  state.relatedProducts = relatedProducts(product);
+  state.relatedVisible = Math.min(8, Math.max(0, state.relatedProducts.length));
+  return `
+    <section class="panel product-related-panel" id="productRelatedSection" data-product-section="related">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">Relacionados</p>
+          <h2>Continue surfando</h2>
+        </div>
+      </div>
+      <div class="related-product-grid" id="relatedProductGrid"></div>
+      <div class="related-sentinel" id="relatedSentinel" aria-hidden="true"></div>
+    </section>
+  `;
+}
+
+function renderRelatedProducts() {
+  const grid = $("#relatedProductGrid");
+  if (!grid) return;
+  const products = state.relatedProducts.slice(0, state.relatedVisible);
+  grid.innerHTML = products.length
+    ? products.map(relatedProductCard).join("")
+    : `<p class="product-empty-note">Ainda n\u00e3o h\u00e1 produtos relacionados cadastrados.</p>`;
+}
+
+function setupRelatedInfiniteScroll() {
+  state.relatedObserver?.disconnect();
+  const sentinel = $("#relatedSentinel");
+  if (!sentinel || state.relatedProducts.length <= state.relatedVisible) return;
+  state.relatedObserver = new IntersectionObserver((entries) => {
+    if (!entries.some((entry) => entry.isIntersecting)) return;
+    state.relatedVisible = Math.min(state.relatedVisible + 8, state.relatedProducts.length);
+    renderRelatedProducts();
+    if (state.relatedVisible >= state.relatedProducts.length) state.relatedObserver?.disconnect();
+  }, { rootMargin: "420px 0px" });
+  state.relatedObserver.observe(sentinel);
+}
+
+function productStickyNav(product) {
+  const origin = JSON.parse(sessionStorage.getItem(RELATED_ORIGIN_KEY) || "null");
+  const backHref = origin?.slug && origin.slug !== product.slug ? `/produto.html?slug=${encodeURIComponent(origin.slug)}` : "/#produtos";
+  const backLabel = origin?.slug && origin.slug !== product.slug ? "Voltar ao produto inicial" : "Voltar para a loja";
+  return `
+    <nav class="product-sticky-nav" id="productStickyNav" aria-label="Navega\u00e7\u00e3o do produto">
+      <div class="product-sticky-row">
+        <a class="product-sticky-icon" href="${backHref}" aria-label="${backLabel}">&#8249;</a>
+        <strong>${escapeHtml(product.name)}</strong>
+        <button class="product-sticky-icon" type="button" data-share-product aria-label="Compartilhar produto">&#8599;</button>
+      </div>
+      <div class="product-sticky-tabs">
+        <button type="button" class="active" data-product-tab="intro">Introdu\u00e7\u00e3o</button>
+        <button type="button" data-product-tab="comments">Coment\u00e1rios</button>
+        <button type="button" data-product-tab="related">Relacionados</button>
+      </div>
+    </nav>
+  `;
+}
+
+function setProductTab(tab) {
+  document.querySelectorAll("[data-product-tab]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.productTab === tab);
+  });
+}
+
+function setupProductStickyNav(product) {
+  state.productNavObserver?.disconnect();
+  const nav = $("#productStickyNav");
+  const intro = $("#productIntroSection");
+  if (!nav || !intro) return;
+  const updateNavVisibility = () => {
+    const introBottom = intro.getBoundingClientRect().bottom;
+    nav.classList.toggle("is-visible", introBottom <= 68);
+  };
+  updateNavVisibility();
+  window.addEventListener("scroll", updateNavVisibility, { passive: true });
+  state.productNavObserver = new IntersectionObserver((entries) => {
+    const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+    if (visible?.target?.dataset.productSection) setProductTab(visible.target.dataset.productSection);
+  }, { rootMargin: "-120px 0px -55% 0px", threshold: [0.05, 0.2, 0.55] });
+  document.querySelectorAll("[data-product-section]").forEach((section) => state.productNavObserver.observe(section));
+  document.querySelectorAll("[data-product-tab]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const section = $(`[data-product-section="${button.dataset.productTab}"]`);
+      section?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
+  document.querySelectorAll("[data-related-link]").forEach((link) => {
+    link.addEventListener("click", () => {
+      const currentOrigin = JSON.parse(sessionStorage.getItem(RELATED_ORIGIN_KEY) || "null");
+      if (!currentOrigin?.slug) {
+        sessionStorage.setItem(RELATED_ORIGIN_KEY, JSON.stringify({ slug: product.slug || product.id, name: product.name }));
+      }
+    });
+  });
+  nav.querySelector("[data-share-product]")?.addEventListener("click", async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: product.name, text: product.description || product.name, url: productShareUrl(product) });
+        return;
+      } catch {}
+    }
+    navigator.clipboard?.writeText(productShareUrl(product));
+  });
 }
 
 function campaignIsRunning(campaign) {
@@ -746,7 +929,7 @@ function renderProduct() {
   document.title = `${product.name} | Basa 3D Works`;
 
   $("#productPage").innerHTML = `
-    <section class="product-detail-hero">
+    <section class="product-detail-hero" id="productIntroSection" data-product-section="intro">
       <div class="product-gallery">
         <div class="product-main-media" id="productMainMedia">
           ${renderMainMediaFrame(firstMedia, product)}
@@ -821,6 +1004,7 @@ function renderProduct() {
         </div>
       </div>
     </section>
+    ${productStickyNav(product)}
 
     <section class="product-info-grid">
       <article class="panel">
@@ -848,6 +1032,7 @@ function renderProduct() {
       </article>
     </section>
     ${socialReviewsSection(product)}
+    ${relatedProductsSection(product)}
     ${mediaLightboxMarkup(mediaItems, product)}
   `;
 
@@ -864,6 +1049,9 @@ function renderProduct() {
   });
   document.querySelector("[data-media-index]")?.classList.add("active");
   setupMediaLightbox(mediaItems, product);
+  renderRelatedProducts();
+  setupRelatedInfiniteScroll();
+  setupProductStickyNav(product);
 }
 
 function renderCart() {

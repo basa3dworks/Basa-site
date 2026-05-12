@@ -735,6 +735,11 @@ def _product_payload(body, existing=None):
     name = body.get("name") or existing.get("name") or "Produto"
     price = round(float(body.get("price") or existing.get("price") or 0), 2)
     sku = _product_sku(name, body.get("sku") or existing.get("sku"))
+    raw_tags = body.get("tags", existing.get("tags", []))
+    if isinstance(raw_tags, list):
+        tags = [str(tag).strip() for tag in raw_tags if str(tag).strip()]
+    else:
+        tags = [tag.strip() for tag in re.split(r"[,;\n]+", str(raw_tags or "")) if tag.strip()]
     return {
         **existing,
         "id": existing.get("id") or f"prod-{secrets.token_hex(6)}",
@@ -744,6 +749,7 @@ def _product_payload(body, existing=None):
         "slug": body.get("slug") or existing.get("slug") or _slug(name),
         "description": body.get("description", existing.get("description", "")),
         "longDescription": body.get("longDescription") or body.get("description") or existing.get("longDescription", ""),
+        "tags": tags,
         "highlights": body.get("highlights") if isinstance(body.get("highlights"), list) else (json.loads(body.get("highlights")) if str(body.get("highlights", "")).strip().startswith("[") else _lines(body.get("highlights", "\n".join(existing.get("highlights", []))))),
         "specs": body.get("specs") if isinstance(body.get("specs"), dict) else (json.loads(body.get("specs")) if str(body.get("specs", "")).strip().startswith("{") else existing.get("specs", {})),
         "variants": {

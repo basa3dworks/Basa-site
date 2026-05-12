@@ -1242,6 +1242,7 @@ function resetProductForm() {
   form.reset();
   form.elements.productId.value = "";
   form.elements.sku.value = "";
+  form.elements.tags.value = "";
   form.elements.affiliateCommissionPercent.value = "0";
   form.elements.weightKg.value = "0.30";
   form.elements.widthCm.value = "12";
@@ -1412,6 +1413,7 @@ function editProduct(productId) {
   form.elements.sku.value = product.sku || "";
   form.elements.name.value = product.name || "";
   form.elements.category.value = product.category || "";
+  form.elements.tags.value = (product.tags || []).join(", ");
   form.elements.price.value = productBasePrice(product);
   form.elements.compareAtPrice.value = productBaseCompareAtPrice(product) || "";
   form.elements.stock.value = product.stock || 0;
@@ -1644,6 +1646,7 @@ function renderProductsTable() {
     product.name,
     product.sku,
     product.category,
+    ...(product.tags || []),
     product.status,
     isRecentlyPosted(product) ? "novo" : "",
     dynamicSoldCount(product) ? `${dynamicSoldCount(product)} vendidos` : "",
