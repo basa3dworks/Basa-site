@@ -503,9 +503,13 @@ nav {
   }
 
   body.store-body:not(.admin-body) .hero {
-    min-height: 235px;
-    padding: 36px 14px 20px;
+    min-height: 0;
+    aspect-ratio: 16 / 9;
+    padding: 0;
     border-bottom: 1px solid #e3e5e8;
+    background:
+      linear-gradient(180deg, rgba(8, 24, 22, 0.04), rgba(8, 24, 22, 0.04)),
+      var(--hero-image) center/cover;
   }
 
   body.store-body:not(.admin-body) .hero h1 {
@@ -849,9 +853,9 @@ nav {
 }
 
 .hero {
-  --hero-image: url("https://images.unsplash.com/photo-1581093458791-9d42ccacbd64?auto=format&fit=crop&w=1800&q=82");
+  --hero-image: none;
   min-height: calc(100vh - 70px);
-  display: flex;
+  display: none;
   align-items: end;
   padding: 88px clamp(16px, 5vw, 72px) 64px;
   color: #fff;
@@ -860,6 +864,14 @@ nav {
     var(--hero-image) center/cover;
   position: relative;
   overflow: hidden;
+}
+
+.hero.has-slides {
+  display: flex;
+}
+
+.hero[hidden] {
+  display: none !important;
 }
 
 body[data-theme="graphite"] .hero {
@@ -878,6 +890,14 @@ body[data-theme="terra"] .hero {
   background:
     linear-gradient(90deg, rgba(53, 30, 22, 0.92) 0%, rgba(53, 30, 22, 0.65) 45%, rgba(53, 30, 22, 0.16) 100%),
     var(--hero-image) center/cover;
+}
+
+.hero.has-slides::after {
+  display: none;
+}
+
+.hero.has-slides .hero-copy {
+  display: none;
 }
 
 .hero::after {

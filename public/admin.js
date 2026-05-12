@@ -2103,7 +2103,7 @@ function renderHeroSlideList() {
       </div>
       <button class="ghost-button" type="button" data-delete-hero-slide="${slide.id}">Remover</button>
     </article>
-  `).join("") : "<p>Nenhuma imagem cadastrada. A loja usa a imagem padrão.</p>";
+  `).join("") : "<p>Nenhuma imagem cadastrada. O banner inicial fica oculto ate voce enviar uma imagem.</p>";
 
   document.querySelectorAll("[data-delete-hero-slide]").forEach((button) => {
     button.addEventListener("click", () => deleteHeroSlide(button.dataset.deleteHeroSlide));

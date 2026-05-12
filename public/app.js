@@ -197,14 +197,22 @@ function applyTheme(theme) {
 function renderHeroSlides() {
   const hero = document.querySelector(".hero");
   const slides = state.settings?.heroSlides || [];
-  if (!hero || !slides.length) return;
+  if (!hero) return;
+  if (heroSlideTimer) clearInterval(heroSlideTimer);
+  heroSlideTimer = null;
+  if (!slides.length) {
+    hero.classList.remove("has-slides");
+    hero.hidden = true;
+    return;
+  }
+  hero.hidden = false;
+  hero.classList.add("has-slides");
   let index = 0;
   const showSlide = () => {
     hero.style.setProperty("--hero-image", `url("${slides[index].imageUrl}")`);
     index = (index + 1) % slides.length;
   };
   showSlide();
-  if (heroSlideTimer) clearInterval(heroSlideTimer);
   if (slides.length > 1) heroSlideTimer = setInterval(showSlide, 5200);
 }
 
