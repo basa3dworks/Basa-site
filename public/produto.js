@@ -269,21 +269,36 @@ function setupProductStickyNav(product) {
   const nav = $("#productStickyNav");
   const intro = $("#productIntroSection");
   if (!nav || !intro) return;
+  const stickyOffset = () => {
+    const topbarHeight = document.querySelector(".topbar")?.getBoundingClientRect().height || 0;
+    const navHeight = nav.getBoundingClientRect().height || 44;
+    return Math.max(86, topbarHeight + navHeight + 10);
+  };
   const updateNavVisibility = () => {
     const introBottom = intro.getBoundingClientRect().bottom;
-    nav.classList.toggle("is-visible", introBottom <= 68);
+    nav.classList.toggle("is-visible", introBottom <= stickyOffset() - 20);
   };
-  updateNavVisibility();
-  window.addEventListener("scroll", updateNavVisibility, { passive: true });
-  state.productNavObserver = new IntersectionObserver((entries) => {
-    const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-    if (visible?.target?.dataset.productSection) setProductTab(visible.target.dataset.productSection);
-  }, { rootMargin: "-120px 0px -55% 0px", threshold: [0.05, 0.2, 0.55] });
-  document.querySelectorAll("[data-product-section]").forEach((section) => state.productNavObserver.observe(section));
+  const updateActiveTab = () => {
+    const marker = stickyOffset() + 20;
+    let active = "intro";
+    document.querySelectorAll("[data-product-section]").forEach((section) => {
+      if (section.getBoundingClientRect().top <= marker) active = section.dataset.productSection;
+    });
+    setProductTab(active);
+  };
+  const updateNavState = () => {
+    updateNavVisibility();
+    updateActiveTab();
+  };
+  updateNavState();
+  window.addEventListener("scroll", updateNavState, { passive: true });
   document.querySelectorAll("[data-product-tab]").forEach((button) => {
     button.addEventListener("click", () => {
       const section = $(`[data-product-section="${button.dataset.productTab}"]`);
-      section?.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (!section) return;
+      setProductTab(button.dataset.productTab);
+      const targetTop = window.scrollY + section.getBoundingClientRect().top - stickyOffset();
+      window.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
     });
   });
   document.querySelectorAll("[data-related-link]").forEach((link) => {
