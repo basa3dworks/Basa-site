@@ -789,6 +789,11 @@ nav {
     max-width: var(--public-app-width);
   }
 
+  body.store-body:not(.admin-body) .quote-panel .customer-drawer {
+    width: var(--public-app-width);
+    max-width: var(--public-app-width);
+  }
+
   body.store-body:not(.admin-body) .media-lightbox {
     grid-template-columns: 1fr;
     grid-template-rows: 1fr auto;
@@ -2893,6 +2898,42 @@ label {
   padding: 18px;
   background: var(--surface);
   box-shadow: var(--shadow);
+}
+
+.quote-panel .customer-drawer {
+  width: min(520px, 100%);
+}
+
+.quote-panel-content {
+  display: grid;
+  gap: 16px;
+}
+
+.quote-panel .panel {
+  width: 100%;
+  min-width: 0;
+}
+
+.quote-panel .stack-form {
+  display: grid;
+  gap: 12px;
+}
+
+.quote-panel .stack-form label,
+.quote-panel .stack-form input,
+.quote-panel .stack-form textarea {
+  min-width: 0;
+  width: 100%;
+}
+
+.quote-panel .stack-form input,
+.quote-panel .stack-form textarea {
+  font-size: 1rem;
+}
+
+.quote-panel .stack-form textarea {
+  min-height: 130px;
+  resize: vertical;
 }
 
 .profile-grid {
