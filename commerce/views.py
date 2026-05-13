@@ -1188,18 +1188,20 @@ def api_products(request):
     return JsonResponse({"settings": db.get("settings", {}), "products": products, "stories": stories, "coupons": db.get("coupons", [])})
 
 
-def api_cep(request, cep):
-    digits = re.sub(r"\D", "", cep)
-    if len(digits) != 8:
-        return JsonResponse({"error": "CEP invalido."}, status=400)
-    try:
-        with urllib.request.urlopen(f"https://viacep.com.br/ws/{digits}/json/", timeout=8) as response:
-            data = json.loads(response.read().decode("utf-8"))
-    except Exception:
-        return JsonResponse({"error": "Nao foi possivel consultar o CEP."}, status=502)
+def _fetch_cep_json(url):
+    request = urllib.request.Request(url, headers={
+        "Accept": "application/json",
+        "User-Agent": "Basa3DWorks/1.0",
+    })
+    with urllib.request.urlopen(request, timeout=8) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+def _cep_payload_from_viacep(digits):
+    data = _fetch_cep_json(f"https://viacep.com.br/ws/{digits}/json/")
     if data.get("erro"):
-        return JsonResponse({"error": "CEP nao encontrado."}, status=404)
-    return JsonResponse({
+        return None
+    return {
         "cep": digits,
         "zipCode": digits,
         "street": data.get("logradouro", ""),
@@ -1207,7 +1209,43 @@ def api_cep(request, cep):
         "city": data.get("localidade", ""),
         "state": data.get("uf", ""),
         "ibge": data.get("ibge", ""),
-    })
+    }
+
+
+def _cep_payload_from_brasilapi(digits):
+    data = _fetch_cep_json(f"https://brasilapi.com.br/api/cep/v2/{digits}")
+    return {
+        "cep": digits,
+        "zipCode": re.sub(r"\D", "", str(data.get("cep") or digits)),
+        "street": data.get("street", ""),
+        "neighborhood": data.get("neighborhood", ""),
+        "city": data.get("city", ""),
+        "state": data.get("state", ""),
+        "ibge": str(data.get("city_ibge") or data.get("ibge") or ""),
+    }
+
+
+def api_cep(request, cep):
+    digits = re.sub(r"\D", "", cep)
+    if len(digits) != 8:
+        return JsonResponse({"error": "CEP invalido."}, status=400)
+    errors = []
+    for lookup in (_cep_payload_from_viacep, _cep_payload_from_brasilapi):
+        try:
+            payload = lookup(digits)
+            if payload:
+                return JsonResponse(payload)
+        except urllib.error.HTTPError as error:
+            if error.code == 404:
+                errors.append("not_found")
+            else:
+                errors.append(str(error))
+        except Exception as error:
+            errors.append(str(error))
+    if "not_found" in errors:
+        return JsonResponse({"error": "CEP nao encontrado."}, status=404)
+    return JsonResponse({"error": "Nao foi possivel consultar o CEP."}, status=502)
+
 
 
 @csrf_exempt
