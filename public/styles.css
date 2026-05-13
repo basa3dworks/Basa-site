@@ -190,6 +190,7 @@ nav {
 
   body.store-body:not(.admin-body) > main.product-page {
     padding: 16px 8px 32px;
+    overflow: visible;
   }
 
   body.store-body:not(.admin-body) .topbar {
@@ -253,7 +254,7 @@ nav {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
   }
 
-  body.store-body:not(.admin-body) nav {
+  body.store-body:not(.admin-body) .topbar nav {
     grid-column: 3;
     display: grid;
     grid-template-columns: 44px;
@@ -265,12 +266,12 @@ nav {
     box-shadow: none;
   }
 
-  body.store-body:not(.admin-body) nav a,
-  body.store-body:not(.admin-body) nav .nav-button {
+  body.store-body:not(.admin-body) .topbar nav a,
+  body.store-body:not(.admin-body) .topbar nav .nav-button {
     display: none;
   }
 
-  body.store-body:not(.admin-body) nav button {
+  body.store-body:not(.admin-body) .topbar nav button {
     min-height: 34px;
     display: grid;
     place-items: center;
@@ -1659,7 +1660,7 @@ textarea {
 
 .favorite-button.active {
   color: var(--brand);
-  background: rgba(255, 255, 255, 0.96);
+  background: #fff;
 }
 
 .favorite-button.active small {
@@ -5760,7 +5761,7 @@ pre {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
   }
 
-  nav {
+  .topbar nav {
     grid-column: 3;
     display: grid;
     grid-template-columns: 44px;
