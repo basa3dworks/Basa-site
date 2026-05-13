@@ -539,8 +539,8 @@ nav {
     font-size: 0.98rem;
   }
 
-  body.store-body:not(.admin-body) .hero-actions,
-  body.store-body:not(.admin-body) .hero-metrics,
+  body.store-body:not(.admin-body) .hero > .hero-copy > .hero-actions,
+  body.store-body:not(.admin-body) .hero > .hero-copy > .hero-metrics,
   body.store-body:not(.admin-body) .trust-band,
   body.store-body:not(.admin-body) .process-section {
     display: none;
@@ -6113,8 +6113,8 @@ pre {
     font-size: 0.98rem;
   }
 
-  .hero-actions,
-  .hero-metrics {
+  .hero > .hero-copy > .hero-actions,
+  .hero > .hero-copy > .hero-metrics {
     display: none;
   }
 
