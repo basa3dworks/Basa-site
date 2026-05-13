@@ -560,26 +560,42 @@ function comboProgressMessage() {
 function setupCepLookup(form) {
   const zipInput = form.elements.zipCode;
   if (!zipInput) return;
+  let lastCep = "";
 
-  zipInput.addEventListener("blur", async () => {
+  const setAddressField = (name, value) => {
+    const field = form.elements[name];
+    if (field) field.value = value || "";
+  };
+
+  const lookup = async () => {
     const cep = zipInput.value.replace(/\D/g, "");
     if (cep.length !== 8) return;
+    if (cep === lastCep) return;
+    lastCep = cep;
     $("#checkoutStatus").textContent = "Buscando CEP...";
 
     try {
       const response = await fetch(`/api/cep/${cep}`);
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "CEP n\u00e3o encontrado.");
-      form.elements.street.value = data.street || "";
-      form.elements.neighborhood.value = data.neighborhood || "";
-      form.elements.city.value = data.city || "";
-      form.elements.state.value = data.state || "";
+      zipInput.value = data.zipCode || data.cep || cep;
+      setAddressField("street", data.street);
+      setAddressField("neighborhood", data.neighborhood);
+      setAddressField("city", data.city);
+      setAddressField("state", data.state);
       form.dataset.ibge = data.ibge || "";
       $("#checkoutStatus").textContent = "";
       quoteShipping();
     } catch (error) {
+      lastCep = "";
       $("#checkoutStatus").textContent = error.message;
     }
+  };
+
+  zipInput.addEventListener("blur", lookup);
+  zipInput.addEventListener("change", lookup);
+  zipInput.addEventListener("input", () => {
+    if (zipInput.value.replace(/\D/g, "").length === 8) lookup();
   });
 }
 

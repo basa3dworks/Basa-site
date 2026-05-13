@@ -29,9 +29,52 @@ function customerFromForm(form) {
     complement: form.elements.complement?.value || "",
     city: form.elements.city?.value || "",
     state: form.elements.state?.value || "",
+    ibge: form.dataset.ibge || "",
     customerUsername: form.elements.customerUsername?.value || form.elements.email?.value?.split("@")[0] || "",
     customerPassword: form.elements.customerPassword?.value || ""
   };
+}
+
+function setupCepLookup(form, statusSelector) {
+  const zipInput = form?.elements.zipCode;
+  if (!zipInput) return;
+  let lastCep = "";
+  const status = statusSelector ? $(statusSelector) : null;
+
+  const setAddressField = (name, value) => {
+    const field = form.elements[name];
+    if (field) field.value = value || "";
+  };
+
+  const lookup = async () => {
+    const cep = zipInput.value.replace(/\D/g, "");
+    if (cep.length !== 8) return;
+    if (cep === lastCep) return;
+    lastCep = cep;
+    if (status) status.textContent = "Buscando CEP...";
+
+    try {
+      const response = await fetch(`/api/cep/${cep}`);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "CEP nao encontrado.");
+      zipInput.value = data.zipCode || data.cep || cep;
+      setAddressField("street", data.street);
+      setAddressField("neighborhood", data.neighborhood);
+      setAddressField("city", data.city);
+      setAddressField("state", data.state);
+      form.dataset.ibge = data.ibge || "";
+      if (status) status.textContent = "";
+    } catch (error) {
+      lastCep = "";
+      if (status) status.textContent = error.message;
+    }
+  };
+
+  zipInput.addEventListener("blur", lookup);
+  zipInput.addEventListener("change", lookup);
+  zipInput.addEventListener("input", () => {
+    if (zipInput.value.replace(/\D/g, "").length === 8) lookup();
+  });
 }
 
 function normalizeAccount(account) {
@@ -507,7 +550,9 @@ async function init() {
     button.addEventListener("click", () => showView(button.dataset.accountView));
   });
   $("#loginForm").addEventListener("submit", login);
-  $("#registerForm").addEventListener("submit", register);
+  const registerForm = $("#registerForm");
+  setupCepLookup(registerForm, "#registerStatus");
+  registerForm.addEventListener("submit", register);
   $("#resetRequestForm").addEventListener("submit", requestPasswordReset);
   $("#accountQuoteForm").addEventListener("submit", sendQuote);
   $("#logoutAccountButton").addEventListener("click", logout);

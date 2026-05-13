@@ -416,8 +416,10 @@ def _customer_payload(body, existing=None):
         "street": body.get("street", current.get("street", "")),
         "number": body.get("number", current.get("number", "")),
         "neighborhood": body.get("neighborhood", current.get("neighborhood", "")),
+        "complement": body.get("complement", current.get("complement", "")),
         "city": body.get("city", current.get("city", "")),
         "state": str(body.get("state", current.get("state", ""))).upper()[:2],
+        "ibge": re.sub(r"\D", "", str(body.get("ibge", current.get("ibge", "")))),
     }
     account = {
         **existing,
@@ -1199,10 +1201,12 @@ def api_cep(request, cep):
         return JsonResponse({"error": "CEP nao encontrado."}, status=404)
     return JsonResponse({
         "cep": digits,
+        "zipCode": digits,
         "street": data.get("logradouro", ""),
         "neighborhood": data.get("bairro", ""),
         "city": data.get("localidade", ""),
         "state": data.get("uf", ""),
+        "ibge": data.get("ibge", ""),
     })
 
 
