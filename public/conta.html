@@ -4,6 +4,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Minha Conta | Basa 3D Works</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,500,0,0&family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/styles.css">
   </head>
   <body>
@@ -24,22 +27,23 @@
         <a class="account-back-link" href="/#produtos" aria-label="Voltar para loja">&larr;</a>
         <p class="eyebrow">Conta do cliente</p>
         <h1>Minha Basa</h1>
-        <p>Acompanhe seus dados, pedidos, favoritos e orçamentos quando estiver logado.</p>
+        <p>Acesse sua conta, pedidos e encomendas em um lugar simples.</p>
       </section>
 
       <section class="account-shell">
         <aside class="account-sidebar" aria-label="Menu da conta">
           <div class="account-menu-group" data-account-auth-menu>
-            <span>Acesso</span>
+            <span>Menu</span>
             <button class="active" type="button" data-account-view="login">Entrar</button>
             <button type="button" data-account-view="register">Criar conta</button>
+            <button type="button" data-account-view="reset">Senha</button>
+            <button type="button" data-account-view="orders">Pedidos</button>
+            <button type="button" data-account-view="quotes">Encomendas</button>
           </div>
           <div class="account-menu-group" data-account-private-menu hidden>
             <span>Minha Basa</span>
-            <button type="button" data-account-view="profile">Minha conta</button>
             <button type="button" data-account-view="orders">Meus pedidos</button>
-            <button type="button" data-account-view="favorites">Favoritos</button>
-            <button type="button" data-account-view="quotes">Orçamentos</button>
+            <button type="button" data-account-view="quotes">Encomendas</button>
             <button class="account-logout-button" id="logoutSidebarButton" type="button">Sair</button>
           </div>
         </aside>
@@ -55,7 +59,7 @@
             <form id="loginForm" class="stack-form account-form">
               <label>Email<input name="email" type="email" required autocomplete="email"></label>
               <label>Senha<input name="customerPassword" type="password" required minlength="6" autocomplete="current-password"></label>
-              <a class="google-login-button" href="/api/customer/google/start?next=/conta.html">Entrar com Google</a>
+              <a class="google-login-button" href="/api/customer/google/start?next=/conta.html">Login com Google</a>
               <button class="primary-button" type="submit">Entrar</button>
               <button class="ghost-button" type="button" data-account-view="reset">Esqueci minha senha</button>
               <p class="form-status" id="loginStatus"></p>
@@ -104,7 +108,7 @@
                 <label>Cidade<input name="city" required autocomplete="address-level2"></label>
                 <label>Estado<input name="state" required maxlength="2" autocomplete="address-level1"></label>
               </div>
-              <a class="google-login-button" href="/api/customer/google/start?next=/conta.html">Criar/entrar com Google</a>
+              <a class="google-login-button" href="/api/customer/google/start?next=/conta.html">Login com Google</a>
               <button class="primary-button" type="submit">Criar conta</button>
               <p class="form-status" id="registerStatus"></p>
             </form>

@@ -4,11 +4,14 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Basa 3D Works</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,500,0,0&family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/styles.css">
   </head>
   <body class="store-body">
     <header class="topbar">
-        <button class="menu-button" id="mobileMenuButton" type="button" aria-label="Abrir menu">☰</button>
+        <button class="menu-button" id="mobileMenuButton" type="button" aria-label="Abrir menu"><span class="material-symbols-rounded" aria-hidden="true">menu</span></button>
         <a class="brand" href="/">
           <span class="brand-mark">B3D</span>
           <span>Basa 3D Works</span>
@@ -29,7 +32,7 @@
       <button class="mobile-feed-tab active" type="button" data-feed="for-you">Para você</button>
       <button class="mobile-feed-tab" type="button" data-feed="trending">Tendência</button>
       <div class="mobile-category-tabs" id="mobileCategoryTabs"></div>
-      <button class="mobile-more-button" id="mobileCategoryMore" type="button" aria-label="Abrir categorias" aria-expanded="false">⌄</button>
+      <button class="mobile-more-button" id="mobileCategoryMore" type="button" aria-label="Abrir categorias" aria-expanded="false"><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button>
     </div>
     <div class="mobile-category-panel" id="mobileCategoryPanel" hidden></div>
 
@@ -133,7 +136,7 @@
               <small>Use Google ou e-mail para acompanhar pedidos, compras pendentes e favoritos.</small>
             </div>
             <div class="customer-access-actions">
-              <a class="google-login-button" href="/api/customer/google/start?next=/" data-google-login>Entrar com Google</a>
+              <a class="google-login-button" href="/api/customer/google/start?next=/" data-google-login>Login com Google</a>
               <a class="primary-button" href="/conta.html#login">Entrar com e-mail</a>
             </div>
           </article>
@@ -145,33 +148,45 @@
             <a class="primary-button" href="/conta.html#orders">Ver meus pedidos</a>
           </article>
           <div class="customer-menu-list">
-            <a class="customer-menu-item" href="/conta.html#profile">
+            <a class="customer-menu-item" href="/conta.html#login">
+              <span class="material-symbols-rounded" aria-hidden="true">login</span>
               <span>
-                <strong>Meus dados</strong>
-                <small>Cadastro, endereço e informações para compra.</small>
+                <strong>Login</strong>
+                <small>Entrar na sua conta Basa.</small>
               </span>
-              <b>›</b>
+              <b><span class="material-symbols-rounded" aria-hidden="true">chevron_right</span></b>
+            </a>
+            <a class="customer-menu-item" href="/conta.html#register">
+              <span class="material-symbols-rounded" aria-hidden="true">person_add</span>
+              <span>
+                <strong>Cadastro</strong>
+                <small>Criar conta para comprar mais rapido.</small>
+              </span>
+              <b><span class="material-symbols-rounded" aria-hidden="true">chevron_right</span></b>
+            </a>
+            <a class="customer-menu-item" href="/conta.html#reset">
+              <span class="material-symbols-rounded" aria-hidden="true">lock_reset</span>
+              <span>
+                <strong>Senha</strong>
+                <small>Recuperar ou redefinir acesso.</small>
+              </span>
+              <b><span class="material-symbols-rounded" aria-hidden="true">chevron_right</span></b>
             </a>
             <a class="customer-menu-item" href="/conta.html#orders">
+              <span class="material-symbols-rounded" aria-hidden="true">receipt_long</span>
               <span>
-                <strong>Notificações</strong>
-                <small>Avisos sobre pedidos, novidades e respostas da Basa.</small>
+                <strong>Pedidos</strong>
+                <small>Acompanhar compras e pagamentos.</small>
               </span>
-              <b>›</b>
+              <b><span class="material-symbols-rounded" aria-hidden="true">chevron_right</span></b>
             </a>
             <a class="customer-menu-item" href="/conta.html#quotes">
+              <span class="material-symbols-rounded" aria-hidden="true">inventory_2</span>
               <span>
-                <strong>Convidar amigos</strong>
-                <small>No futuro, indicações poderão gerar cupons e benefícios.</small>
+                <strong>Encomendas</strong>
+                <small>Pedidos sob medida e solicitacoes.</small>
               </span>
-              <b>›</b>
-            </a>
-            <a class="customer-menu-item" href="/conta.html#favorites">
-              <span>
-                <strong>Benefícios e cupons</strong>
-                <small>Campanhas, prêmios e vantagens da conta.</small>
-              </span>
-              <b>›</b>
+              <b><span class="material-symbols-rounded" aria-hidden="true">chevron_right</span></b>
             </a>
           </div>
         </section>
