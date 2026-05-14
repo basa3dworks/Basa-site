@@ -228,6 +228,9 @@ function updateCustomerPanelSession() {
   const sessionCard = $("#customerSessionCard");
   if (accessCard) accessCard.hidden = loggedIn;
   if (sessionCard) sessionCard.hidden = !loggedIn;
+  document.querySelectorAll("[data-customer-auth-only]").forEach((item) => {
+    item.hidden = loggedIn;
+  });
   if (loggedIn) {
     const customer = state.customerSession.customer;
     if ($("#customerSessionName")) $("#customerSessionName").textContent = customer.name || state.customerSession.username || "Minha conta";
