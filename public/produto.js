@@ -1117,7 +1117,6 @@ function renderProduct() {
         </div>
         <div class="hero-actions">
           <button class="primary-button" data-add="${product.id}">Adicionar ao carrinho</button>
-          <a class="secondary-link" href="/#produtos">Continuar comprando</a>
         </div>
         <div class="payment-info">
           <strong>Pagamento seguro via Mercado Pago</strong>
