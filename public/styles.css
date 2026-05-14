@@ -275,8 +275,8 @@ nav {
   body.store-body:not(.admin-body) .topbar nav {
     grid-column: 3;
     display: grid;
-    grid-template-columns: 44px;
-    gap: 0;
+    grid-template-columns: repeat(2, 36px);
+    gap: 6px;
     padding: 0;
     border: 0;
     color: #5f6870;
@@ -300,8 +300,8 @@ nav {
 
   body.store-body:not(.admin-body) .topbar nav .icon-button {
     position: relative;
-    width: 44px;
-    min-width: 44px;
+    width: 36px;
+    min-width: 36px;
     height: 34px;
     min-height: 34px;
     overflow: visible;
@@ -311,7 +311,7 @@ nav {
     font-size: 0;
   }
 
-  body.store-body:not(.admin-body) .topbar nav .icon-button::before {
+  body.store-body:not(.admin-body) .topbar nav .cart-button::before {
     content: "";
     position: absolute;
     left: 50%;
@@ -323,7 +323,7 @@ nav {
     transform: translateX(-50%);
   }
 
-  body.store-body:not(.admin-body) .topbar nav .icon-button::after {
+  body.store-body:not(.admin-body) .topbar nav .cart-button::after {
     content: "";
     position: absolute;
     left: 50%;
@@ -335,6 +335,15 @@ nav {
     border-radius: 999px 999px 0 0;
     background: transparent;
     transform: translateX(-50%);
+  }
+
+  body.store-body:not(.admin-body) .topbar nav .chat-button {
+    color: var(--brand);
+    font-size: 1.22rem;
+  }
+
+  body.store-body:not(.admin-body) .topbar nav .chat-button .material-symbols-rounded {
+    font-size: 1.18rem;
   }
 
   body.store-body:not(.admin-body) .icon-button strong {
@@ -790,6 +799,11 @@ nav {
   }
 
   body.store-body:not(.admin-body) .quote-panel .customer-drawer {
+    width: var(--public-app-width);
+    max-width: var(--public-app-width);
+  }
+
+  body.store-body:not(.admin-body) .support-panel .customer-drawer {
     width: var(--public-app-width);
     max-width: var(--public-app-width);
   }
@@ -2934,6 +2948,24 @@ label {
 .quote-panel .stack-form textarea {
   min-height: 130px;
   resize: vertical;
+}
+
+.support-panel .customer-drawer {
+  width: min(430px, 100%);
+}
+
+.support-panel .panel {
+  width: 100%;
+  min-width: 0;
+}
+
+.support-panel .stack-form textarea {
+  min-height: 140px;
+  resize: vertical;
+}
+
+.support-panel .form-status {
+  color: var(--brand);
 }
 
 .profile-grid {
@@ -5892,8 +5924,8 @@ pre {
   .topbar nav {
     grid-column: 3;
     display: grid;
-    grid-template-columns: 44px;
-    gap: 0;
+    grid-template-columns: repeat(2, 36px);
+    gap: 6px;
     padding: 0;
     border: 0;
     color: #5f6870;
@@ -5919,8 +5951,8 @@ pre {
 
   .topbar nav .icon-button {
     position: relative;
-    width: 44px;
-    min-width: 44px;
+    width: 36px;
+    min-width: 36px;
     height: 34px;
     min-height: 34px;
     overflow: visible;
@@ -5930,7 +5962,7 @@ pre {
     font-size: 0;
   }
 
-  .topbar nav .icon-button::before {
+  .topbar nav .cart-button::before {
     content: "";
     position: absolute;
     left: 50%;
@@ -5942,7 +5974,7 @@ pre {
     transform: translateX(-50%);
   }
 
-  .topbar nav .icon-button::after {
+  .topbar nav .cart-button::after {
     content: "";
     position: absolute;
     left: 50%;
@@ -5954,6 +5986,15 @@ pre {
     border-radius: 999px 999px 0 0;
     background: transparent;
     transform: translateX(-50%);
+  }
+
+  .topbar nav .chat-button {
+    color: var(--brand);
+    font-size: 1.22rem;
+  }
+
+  .topbar nav .chat-button .material-symbols-rounded {
+    font-size: 1.18rem;
   }
 
   .mobile-tabbar {

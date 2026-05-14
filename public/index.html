@@ -24,7 +24,8 @@
         <a href="#produtos">Produtos</a>
         <a class="ghost-button nav-button" href="/conta.html">Minha conta</a>
         <a href="/admin.html">Admin</a>
-        <button class="icon-button" id="cartButton" aria-label="Abrir carrinho">Carrinho <strong id="cartCount">0</strong></button>
+        <button class="icon-button chat-button" id="supportChatButton" type="button" aria-label="Falar conosco"><span class="material-symbols-rounded" aria-hidden="true">chat_bubble</span></button>
+        <button class="icon-button cart-button" id="cartButton" aria-label="Abrir carrinho">Carrinho <strong id="cartCount">0</strong></button>
       </nav>
     </header>
     <div class="mobile-tabbar" aria-label="Navegação do catálogo">
@@ -230,6 +231,27 @@
             </div>
           </div>
           <div class="request-list" id="customerRequestList"></div>
+        </article>
+      </div>
+    </aside>
+
+    <aside class="customer-panel support-panel" id="supportPanel" aria-hidden="true">
+      <div class="customer-drawer">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Atendimento</p>
+            <h2>Fale conosco</h2>
+          </div>
+          <button class="ghost-button" id="closeSupportPanel" type="button">Fechar</button>
+        </div>
+        <article class="panel">
+          <form id="supportChatForm" class="stack-form">
+            <label>Nome<input name="name" autocomplete="name" placeholder="Seu nome"></label>
+            <label>Email<input name="email" type="email" autocomplete="email" placeholder="voce@email.com"></label>
+            <label>Mensagem<textarea name="message" rows="5" required placeholder="Conte como podemos ajudar."></textarea></label>
+            <button class="primary-button" type="submit">Enviar mensagem</button>
+            <p class="form-status" id="supportChatStatus"></p>
+          </form>
         </article>
       </div>
     </aside>

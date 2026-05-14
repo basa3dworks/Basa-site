@@ -255,6 +255,23 @@ function closeQuotePanel() {
   $("#quotePanel").setAttribute("aria-hidden", "true");
 }
 
+function openSupportPanel() {
+  const panel = $("#supportPanel");
+  const form = $("#supportChatForm");
+  const customer = state.customerSession?.customer;
+  if (form && customer) {
+    form.elements.name.value = customer.name || "";
+    form.elements.email.value = customer.email || "";
+  }
+  panel.classList.add("open");
+  panel.setAttribute("aria-hidden", "false");
+}
+
+function closeSupportPanel() {
+  $("#supportPanel").classList.remove("open");
+  $("#supportPanel").setAttribute("aria-hidden", "true");
+}
+
 function resetShippingCalculation() {
   state.selectedShipping = null;
   state.shippingQuotes = [];
@@ -1091,6 +1108,43 @@ async function submitCustomRequest(event) {
   $("#customRequestStatus").textContent = "Ideia enviada. Vamos responder por aqui.";
 }
 
+async function submitSupportChat(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const customer = state.customerSession?.customer || {};
+  const name = form.elements.name.value.trim() || customer.name || "Cliente Basa";
+  const email = (form.elements.email.value.trim() || customer.email || "").toLowerCase();
+  const message = form.elements.message.value.trim();
+  const status = $("#supportChatStatus");
+  if (!email) {
+    status.textContent = "Informe seu e-mail para respondermos.";
+    return;
+  }
+  if (!message) {
+    status.textContent = "Escreva sua mensagem.";
+    return;
+  }
+  status.textContent = "Enviando mensagem...";
+  const response = await fetch("/api/custom-requests", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      title: "Atendimento pelo chat",
+      idea: message,
+      customer: { ...customer, name, email }
+    })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    status.textContent = data.error || "Nao foi possivel enviar.";
+    return;
+  }
+  form.elements.message.value = "";
+  state.customRequests = [data.request, ...state.customRequests];
+  renderCustomerRequests();
+  status.textContent = "Mensagem enviada. Vamos responder pelo seu e-mail.";
+}
+
 async function init() {
   const response = await fetch("/api/products");
   const data = await response.json();
@@ -1182,6 +1236,7 @@ async function init() {
     $("#cartPanel").classList.add("open");
     autoQuoteShippingIfPossible();
   });
+  $("#supportChatButton")?.addEventListener("click", openSupportPanel);
   $("#mobileCartButton")?.addEventListener("click", () => {
     $("#cartPanel").classList.add("open");
     autoQuoteShippingIfPossible();
@@ -1192,15 +1247,20 @@ async function init() {
   $("#mobileMenuButton")?.addEventListener("click", () => openCustomerPanel());
   $("#closeCustomerPanel").addEventListener("click", closeCustomerPanel);
   $("#closeQuotePanel").addEventListener("click", closeQuotePanel);
+  $("#closeSupportPanel")?.addEventListener("click", closeSupportPanel);
   $("#customerPanel").addEventListener("click", (event) => {
     if (event.target.id === "customerPanel") closeCustomerPanel();
   });
   $("#quotePanel").addEventListener("click", (event) => {
     if (event.target.id === "quotePanel") closeQuotePanel();
   });
+  $("#supportPanel")?.addEventListener("click", (event) => {
+    if (event.target.id === "supportPanel") closeSupportPanel();
+  });
   $("#checkoutForm").addEventListener("submit", checkout);
   setupCheckoutDetails($("#checkoutForm"));
   $("#customRequestForm").addEventListener("submit", submitCustomRequest);
+  $("#supportChatForm")?.addEventListener("submit", submitSupportChat);
   $("#saveCustomerButton").addEventListener("click", () => { window.location.href = "/conta.html"; });
   $("#debugCustomerButton")?.addEventListener("click", () => useDebugCustomer($("#checkoutForm")));
   $("#logoutCustomerButton").addEventListener("click", () => logoutCustomer($("#checkoutForm")));
