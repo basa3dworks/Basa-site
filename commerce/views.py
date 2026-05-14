@@ -523,8 +523,12 @@ def _product_colors(value, existing=None):
     return colors
 
 
-def _request_status(value):
-    return value if value in {"new", "in_review", "quoted", "approved", "in_production", "shipped", "completed", "canceled"} else "new"
+def _request_status(value, kind="custom"):
+    custom_statuses = {"new", "in_review", "quoted", "approved", "in_production", "shipped", "completed", "canceled"}
+    chat_statuses = {"waiting_admin", "answered", "waiting_customer", "closed"}
+    if kind == "chat":
+        return value if value in chat_statuses else "waiting_admin"
+    return value if value in custom_statuses else "new"
 
 
 UPLOAD_LIMITS = {
@@ -1680,11 +1684,13 @@ def api_custom_requests(request):
     idea = str(body.get("idea", "")).strip()
     if not idea:
         return JsonResponse({"error": "Descreva sua ideia para pedirmos orcamento."}, status=400)
+    kind = "chat" if body.get("kind") == "chat" or str(body.get("title", "")).startswith("Atendimento") else "custom"
     item = {
         "id": f"ENC-{int(datetime.now().timestamp() * 1000)}",
         "createdAt": _now(),
         "updatedAt": _now(),
-        "status": "new",
+        "kind": kind,
+        "status": _request_status(body.get("status"), kind),
         "title": body.get("title") or "Encomenda sob medida",
         "idea": idea,
         "budget": body.get("budget", ""),
@@ -1710,6 +1716,8 @@ def api_custom_request_messages(request, request_id):
     if not item:
         return JsonResponse({"error": "Encomenda nao encontrada."}, status=404)
     item.setdefault("messages", []).append({"id": f"msg-{secrets.token_hex(6)}", "author": "customer", "text": text, "createdAt": _now()})
+    if item.get("kind") == "chat":
+        item["status"] = "waiting_admin"
     item["updatedAt"] = _now()
     write_db(db)
     return JsonResponse({"request": item})
@@ -2328,10 +2336,14 @@ def api_admin_custom_request_detail(request, request_id):
     item = next((request_item for request_item in db.get("customRequests", []) if request_item.get("id") == request_id), None)
     if not item:
         return JsonResponse({"error": "Encomenda nao encontrada."}, status=404)
-    item["status"] = _request_status(body.get("status") or item.get("status"))
+    kind = item.get("kind") or ("chat" if str(item.get("title", "")).startswith("Atendimento") else "custom")
+    item["kind"] = kind
+    item["status"] = _request_status(body.get("status") or item.get("status"), kind)
     item["updatedAt"] = _now()
     message = str(body.get("message", "")).strip()
     if message:
         item.setdefault("messages", []).append({"id": f"msg-{secrets.token_hex(6)}", "author": "admin", "text": message, "createdAt": _now()})
+        if kind == "chat" and not body.get("status"):
+            item["status"] = "answered"
     write_db(db)
     return JsonResponse({"request": item, "customRequests": db.get("customRequests", [])})

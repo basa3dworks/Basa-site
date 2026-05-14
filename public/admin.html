@@ -467,10 +467,24 @@
 
         <section class="panel" data-admin-panel="requests" hidden>
           <div class="section-head compact">
-            <h2>Encomendas sob medida</h2>
-            <label class="admin-search">Pesquisar encomendas
-              <input id="requestSearchInput" type="search" placeholder="Cliente, ideia ou status">
+            <h2>Atendimento e encomendas</h2>
+            <label class="admin-search">Pesquisar
+              <input id="requestSearchInput" type="search" placeholder="Cliente, mensagem, ideia ou status">
             </label>
+          </div>
+          <div class="panel-head compact">
+            <div>
+              <p class="eyebrow">Chat</p>
+              <h3>Conversas com clientes</h3>
+            </div>
+          </div>
+          <div class="request-list" id="adminChatList"></div>
+          <div class="panel-divider"></div>
+          <div class="panel-head compact">
+            <div>
+              <p class="eyebrow">Sob medida</p>
+              <h3>Encomendas sob medida</h3>
+            </div>
           </div>
           <div class="request-list" id="adminRequestList"></div>
         </section>

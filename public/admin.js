@@ -1854,8 +1854,56 @@ function requestStatusLabel(status) {
     in_production: "Em produção",
     shipped: "Enviada",
     completed: "Concluída",
-    canceled: "Cancelada"
+    canceled: "Cancelada",
+    waiting_admin: "Aguardando Basa",
+    answered: "Respondida",
+    waiting_customer: "Aguardando cliente",
+    closed: "Encerrada"
   }[status] || status;
+}
+
+function requestKind(request) {
+  return request.kind || (String(request.title || "").startsWith("Atendimento") ? "chat" : "custom");
+}
+
+function requestStatusOptions(request) {
+  const statuses = requestKind(request) === "chat"
+    ? ["waiting_admin", "answered", "waiting_customer", "closed"]
+    : ["new", "in_review", "quoted", "approved", "in_production", "shipped", "completed", "canceled"];
+  return statuses.map((status) => `<option value="${status}" ${request.status === status ? "selected" : ""}>${requestStatusLabel(status)}</option>`).join("");
+}
+
+function requestCard(request) {
+  const isChat = requestKind(request) === "chat";
+  return `
+    <article class="request-card ${isChat ? "chat-request-card" : ""}">
+      <div class="request-card-head">
+        <div>
+          <strong>${request.title}</strong>
+          <span>${request.id} | ${request.customer?.name || "Cliente"} | ${request.customer?.email || ""}</span>
+        </div>
+        <small>${requestStatusLabel(request.status)}</small>
+      </div>
+      <p>${request.idea}</p>
+      ${request.attachment?.url ? `<a class="request-attachment" href="${request.attachment.url}" target="_blank" rel="noreferrer">Ver imagem de referência</a>` : ""}
+      ${isChat ? "" : `
+        <div class="request-meta">
+          <span>Orçamento: ${request.budget || "Nao informado"}</span>
+          <span>Prazo: ${request.deadline || "Nao informado"}</span>
+        </div>
+      `}
+      <div class="request-messages">
+        ${(request.messages || []).map((message) => `<span class="${message.author === "admin" ? "admin-message" : ""}"><b>${message.author === "admin" ? "Basa" : "Cliente"}:</b> ${message.text}</span>`).join("")}
+      </div>
+      <form class="admin-request-form" data-admin-request="${request.id}">
+        <select name="status">
+          ${requestStatusOptions(request)}
+        </select>
+        <input name="message" placeholder="${isChat ? "Responder no chat do cliente" : "Mensagem para o cliente"}">
+        <button class="primary-button" type="submit">${isChat ? "Responder" : "Atualizar"}</button>
+      </form>
+    </article>
+  `;
 }
 
 function renderAdminRequests() {
@@ -1869,34 +1917,11 @@ function renderAdminRequests() {
     request.customer?.email,
     request.customer?.phone
   ].join(" "), query));
+  const chats = requests.filter((request) => requestKind(request) === "chat");
+  const customRequests = requests.filter((request) => requestKind(request) !== "chat");
 
-  $("#adminRequestList").innerHTML = requests.length ? requests.map((request) => `
-    <article class="request-card">
-      <div class="request-card-head">
-        <div>
-          <strong>${request.title}</strong>
-          <span>${request.id} | ${request.customer?.name || "Cliente"} | ${request.customer?.email || ""}</span>
-        </div>
-        <small>${requestStatusLabel(request.status)}</small>
-      </div>
-      <p>${request.idea}</p>
-      ${request.attachment?.url ? `<a class="request-attachment" href="${request.attachment.url}" target="_blank" rel="noreferrer">Ver imagem de referência</a>` : ""}
-      <div class="request-meta">
-        <span>Orçamento: ${request.budget || "Nao informado"}</span>
-        <span>Prazo: ${request.deadline || "Nao informado"}</span>
-      </div>
-      <div class="request-messages">
-        ${(request.messages || []).map((message) => `<span class="${message.author === "admin" ? "admin-message" : ""}"><b>${message.author === "admin" ? "Basa" : "Cliente"}:</b> ${message.text}</span>`).join("")}
-      </div>
-      <form class="admin-request-form" data-admin-request="${request.id}">
-        <select name="status">
-          ${["new", "in_review", "quoted", "approved", "in_production", "shipped", "completed", "canceled"].map((status) => `<option value="${status}" ${request.status === status ? "selected" : ""}>${requestStatusLabel(status)}</option>`).join("")}
-        </select>
-        <input name="message" placeholder="Mensagem para o cliente">
-        <button class="primary-button" type="submit">Atualizar</button>
-      </form>
-    </article>
-  `).join("") : "<p>Nenhuma encomenda encontrada.</p>";
+  $("#adminChatList").innerHTML = chats.length ? chats.map(requestCard).join("") : "<p>Nenhuma conversa de chat encontrada.</p>";
+  $("#adminRequestList").innerHTML = customRequests.length ? customRequests.map(requestCard).join("") : "<p>Nenhuma encomenda encontrada.</p>";
 
   document.querySelectorAll("[data-admin-request]").forEach((form) => {
     form.addEventListener("submit", updateCustomRequest);

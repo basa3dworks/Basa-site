@@ -260,10 +260,14 @@ async function openSupportPanel() {
   const panel = $("#supportPanel");
   const form = $("#supportChatForm");
   const customer = state.customerSession?.customer;
+  const chat = supportChatState();
   if (form && customer) {
     form.elements.name.value = customer.name || "";
     form.elements.email.value = customer.email || "";
+  } else if (form && chat?.email) {
+    form.elements.email.value = chat.email;
   }
+  updateSupportIdentityFields();
   panel.classList.add("open");
   panel.setAttribute("aria-hidden", "false");
   await refreshSupportChat(true);
@@ -280,6 +284,13 @@ function supportChatState() {
 
 function saveSupportChatState(chat) {
   localStorage.setItem(SUPPORT_CHAT_KEY, JSON.stringify(chat));
+}
+
+function updateSupportIdentityFields() {
+  const known = Boolean(state.customerSession?.customer?.email || supportChatState()?.email);
+  document.querySelectorAll("[data-support-identity]").forEach((field) => {
+    field.hidden = known;
+  });
 }
 
 function supportRequestFromList(requests, chat) {
@@ -1199,6 +1210,7 @@ async function submitSupportChat(event) {
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
       title: "Atendimento pelo chat",
+      kind: "chat",
       idea: message,
       customer: { ...customer, name, email }
     })
@@ -1210,6 +1222,7 @@ async function submitSupportChat(event) {
   }
   form.elements.message.value = "";
   saveSupportChatState({ id: data.request.id, email, seenAdminCount: (data.request.messages || []).filter((item) => item.author === "admin").length });
+  updateSupportIdentityFields();
   state.customRequests = request
     ? state.customRequests.map((item) => item.id === data.request.id ? data.request : item)
     : [data.request, ...state.customRequests];

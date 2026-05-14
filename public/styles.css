@@ -3144,6 +3144,11 @@ label {
   background: #fff;
 }
 
+.chat-request-card {
+  border-color: #bfe8d4;
+  background: #f8fcf9;
+}
+
 .favorite-item {
   display: grid;
   grid-template-columns: 64px minmax(0, 1fr) auto;
