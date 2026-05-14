@@ -40,6 +40,7 @@ GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "").strip()
 MELHOR_ENVIO_TOKEN = os.environ.get("MELHOR_ENVIO_TOKEN", "")
 MELHOR_ENVIO_API_BASE = os.environ.get("MELHOR_ENVIO_API_BASE", "https://melhorenvio.com.br")
 MELHOR_ENVIO_USER_AGENT = os.environ.get("MELHOR_ENVIO_USER_AGENT", "Basa 3D Works (contato@basa3d.com)")
+CHAT_INACTIVE_CLOSE_HOURS = max(1.0, float(os.environ.get("CHAT_INACTIVE_CLOSE_HOURS", "24") or 24))
 signer = TimestampSigner(key=SESSION_SECRET, salt="basa-admin")
 
 
@@ -529,6 +530,36 @@ def _request_status(value, kind="custom"):
     if kind == "chat":
         return value if value in chat_statuses else "waiting_admin"
     return value if value in custom_statuses else "new"
+
+
+def _append_chat_closed_message(item, reason="manual"):
+    text = (
+        "Conversa encerrada por inatividade. Se precisar de ajuda novamente, envie uma nova mensagem por aqui."
+        if reason == "inactive"
+        else "Conversa encerrada. Se precisar de ajuda novamente, envie uma nova mensagem por aqui."
+    )
+    messages = item.setdefault("messages", [])
+    if any(message.get("author") == "admin" and message.get("text") == text for message in messages):
+        return False
+    messages.append({"id": f"msg-{secrets.token_hex(6)}", "author": "admin", "text": text, "createdAt": _now()})
+    return True
+
+
+def _close_inactive_chats(db):
+    changed = False
+    threshold = datetime.now(timezone.utc) - timedelta(hours=CHAT_INACTIVE_CLOSE_HOURS)
+    for item in db.get("customRequests", []):
+        kind = item.get("kind") or ("chat" if str(item.get("title", "")).startswith("Atendimento") else "custom")
+        if kind != "chat" or item.get("status") == "closed":
+            continue
+        last_update = _parse_dt(item.get("updatedAt") or item.get("createdAt"))
+        if last_update and last_update < threshold:
+            item["kind"] = "chat"
+            item["status"] = "closed"
+            _append_chat_closed_message(item, "inactive")
+            item["updatedAt"] = _now()
+            changed = True
+    return changed
 
 
 UPLOAD_LIMITS = {
@@ -1661,6 +1692,8 @@ def api_customer_order_detail(request, order_id):
 @csrf_exempt
 def api_custom_requests(request):
     db = read_db()
+    if _close_inactive_chats(db):
+        write_db(db)
     if request.method == "GET":
         email = str(request.GET.get("email", "")).strip().lower()
         requests = db.get("customRequests", [])
@@ -1728,7 +1761,7 @@ def api_admin_dashboard(request):
     if error:
         return error
     db = read_db()
-    if _expire_pending_orders(db):
+    if _expire_pending_orders(db) or _close_inactive_chats(db):
         write_db(db)
     revenue = round(sum(float(order.get("total") or 0) for order in db.get("orders", [])), 2)
     customers = [_safe_customer_account(customer) for customer in db.get("customers", [])]
@@ -2338,6 +2371,7 @@ def api_admin_custom_request_detail(request, request_id):
         return JsonResponse({"error": "Encomenda nao encontrada."}, status=404)
     kind = item.get("kind") or ("chat" if str(item.get("title", "")).startswith("Atendimento") else "custom")
     item["kind"] = kind
+    previous_status = item.get("status")
     item["status"] = _request_status(body.get("status") or item.get("status"), kind)
     item["updatedAt"] = _now()
     message = str(body.get("message", "")).strip()
@@ -2345,5 +2379,7 @@ def api_admin_custom_request_detail(request, request_id):
         item.setdefault("messages", []).append({"id": f"msg-{secrets.token_hex(6)}", "author": "admin", "text": message, "createdAt": _now()})
         if kind == "chat" and not body.get("status"):
             item["status"] = "answered"
+    if kind == "chat" and item.get("status") == "closed" and previous_status != "closed":
+        _append_chat_closed_message(item, "manual")
     write_db(db)
     return JsonResponse({"request": item, "customRequests": db.get("customRequests", [])})
