@@ -956,7 +956,8 @@ function renderAdminDashboard() {
   const activeProducts = currentProducts.filter((product) => product.status !== "inactive");
   const activeStories = currentStories.filter((story) => story.active !== false);
   const newOrders = currentOrders.filter((order) => ["created", "awaiting_payment"].includes(order.status));
-  const openRequests = currentRequests.filter((request) => !["completed", "canceled"].includes(request.status));
+  const customRequests = currentRequests.filter((request) => requestKind(request) !== "chat");
+  const openRequests = customRequests.filter((request) => !["completed", "canceled"].includes(request.status));
   const paidLast30 = paidOrders("30");
   const revenue30 = paidLast30.reduce((sum, order) => sum + Number(order.total || 0), 0);
 
@@ -977,8 +978,8 @@ function renderAdminDashboard() {
     `).join("")
     : `<div class="dashboard-empty"><strong>Nenhum pedido ainda.</strong><span>Os pedidos novos aparecerão aqui.</span></div>`;
 
-  $("#dashboardRequestsList").innerHTML = currentRequests.slice(0, 4).length
-    ? currentRequests.slice(0, 4).map((request) => `
+  $("#dashboardRequestsList").innerHTML = customRequests.slice(0, 4).length
+    ? customRequests.slice(0, 4).map((request) => `
       <article>
         <div><strong>${request.customer?.name || request.name || "Cliente"}</strong><span>${requestStatusLabel(request.status)} | ${request.idea || "Orçamento sob medida"}</span></div>
         <b>${new Date(request.createdAt || Date.now()).toLocaleDateString("pt-BR")}</b>
@@ -1906,22 +1907,31 @@ function requestCard(request) {
   `;
 }
 
-function renderAdminRequests() {
-  const query = $("#requestSearchInput")?.value || "";
-  const requests = currentRequests.filter((request) => matchesSearch([
+function requestMatchesQuery(request, query) {
+  return matchesSearch([
     request.id,
     request.title,
     request.idea,
     request.status,
     request.customer?.name,
     request.customer?.email,
-    request.customer?.phone
-  ].join(" "), query));
-  const chats = requests.filter((request) => requestKind(request) === "chat");
-  const customRequests = requests.filter((request) => requestKind(request) !== "chat");
+    request.customer?.phone,
+    request.budget,
+    request.deadline,
+    ...(request.messages || []).map((message) => message.text)
+  ].join(" "), query);
+}
 
-  $("#adminChatList").innerHTML = chats.length ? chats.map(requestCard).join("") : "<p>Nenhuma conversa de chat encontrada.</p>";
-  $("#adminRequestList").innerHTML = customRequests.length ? customRequests.map(requestCard).join("") : "<p>Nenhuma encomenda encontrada.</p>";
+function renderAdminRequests() {
+  const chatQuery = $("#chatSearchInput")?.value || "";
+  const requestQuery = $("#requestSearchInput")?.value || "";
+  const chats = currentRequests.filter((request) => requestKind(request) === "chat" && requestMatchesQuery(request, chatQuery));
+  const customRequests = currentRequests.filter((request) => requestKind(request) !== "chat" && requestMatchesQuery(request, requestQuery));
+
+  const chatList = $("#adminChatList");
+  const requestList = $("#adminRequestList");
+  if (chatList) chatList.innerHTML = chats.length ? chats.map(requestCard).join("") : "<p>Nenhuma conversa de chat encontrada.</p>";
+  if (requestList) requestList.innerHTML = customRequests.length ? customRequests.map(requestCard).join("") : "<p>Nenhuma encomenda encontrada.</p>";
 
   document.querySelectorAll("[data-admin-request]").forEach((form) => {
     form.addEventListener("submit", updateCustomRequest);
@@ -2258,6 +2268,7 @@ $("#campaignForm").addEventListener("input", (event) => {
   fillCampaignFormFromSelected();
 });
 $("#orderSearchInput").addEventListener("input", renderOrdersList);
+$("#chatSearchInput")?.addEventListener("input", renderAdminRequests);
 $("#requestSearchInput").addEventListener("input", renderAdminRequests);
 $("#peopleSearchInput").addEventListener("input", renderPeopleLists);
 $("#customerAdminForm")?.addEventListener("submit", saveCustomerAdmin);

@@ -58,6 +58,7 @@
           <button class="admin-tab" type="button" data-admin-tab="settings"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 6h14v12H5zM8 10h8m-8 4h5"/></svg></span>Hero / Banner</button>
           <span class="admin-nav-label">Pedidos</span>
           <button class="admin-tab" type="button" data-admin-tab="orders"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-2-1-2 1-2-1-2 1-2-1-2 1V3Zm3 5h6m-6 4h6m-6 4h4"/></svg></span>Pedidos</button>
+          <button class="admin-tab" type="button" data-admin-tab="chat"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 5h11v8H8l-3 3V5Zm7 5h7v8l-3-3h-4v-5Z"/></svg></span>Chat</button>
           <button class="admin-tab" type="button" data-admin-tab="requests"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 5h14v10H8l-3 3V5Zm4 4h6m-6 3h4"/></svg></span>Encomendas</button>
           <span class="admin-nav-label">Pessoas</span>
           <button class="admin-tab" type="button" data-admin-tab="people"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M10 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-6 7a6 6 0 0 1 12 0m2-7 3 3m0-3-3 3"/></svg></span>Afiliados</button>
@@ -465,25 +466,39 @@
           </div>
         </section>
 
-        <section class="panel" data-admin-panel="requests" hidden>
+        <section class="panel" data-admin-panel="chat" hidden>
           <div class="section-head compact">
-            <h2>Atendimento e encomendas</h2>
-            <label class="admin-search">Pesquisar
-              <input id="requestSearchInput" type="search" placeholder="Cliente, mensagem, ideia ou status">
+            <div>
+              <p class="eyebrow">Atendimento</p>
+              <h2>Chat</h2>
+            </div>
+            <label class="admin-search">Pesquisar conversas
+              <input id="chatSearchInput" type="search" placeholder="Cliente, mensagem ou status">
             </label>
           </div>
           <div class="panel-head compact">
             <div>
-              <p class="eyebrow">Chat</p>
               <h3>Conversas com clientes</h3>
+              <p>Responda mensagens do chat da loja e acompanhe o status de cada conversa.</p>
             </div>
           </div>
           <div class="request-list" id="adminChatList"></div>
-          <div class="panel-divider"></div>
-          <div class="panel-head compact">
+        </section>
+
+        <section class="panel" data-admin-panel="requests" hidden>
+          <div class="section-head compact">
             <div>
               <p class="eyebrow">Sob medida</p>
+              <h2>Encomendas</h2>
+            </div>
+            <label class="admin-search">Pesquisar encomendas
+              <input id="requestSearchInput" type="search" placeholder="Cliente, ideia, prazo ou status">
+            </label>
+          </div>
+          <div class="panel-head compact">
+            <div>
               <h3>Encomendas sob medida</h3>
+              <p>Pedidos de orçamento para impressão 3D personalizada ficam separados do chat.</p>
             </div>
           </div>
           <div class="request-list" id="adminRequestList"></div>
