@@ -2,7 +2,8 @@ const state = {
   products: [],
   orders: [],
   requests: [],
-  session: JSON.parse(localStorage.getItem("basa_customer_session") || "null")
+  session: JSON.parse(localStorage.getItem("basa_customer_session") || "null"),
+  privateLoading: false
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -281,6 +282,10 @@ function renderOrders() {
     list.innerHTML = "<p>Entre para ver seus pedidos.</p>";
     return;
   }
+  if (state.privateLoading) {
+    list.innerHTML = "<p>Carregando seus pedidos...</p>";
+    return;
+  }
   list.innerHTML = state.orders.length ? state.orders.map((order) => `
     <article class="account-card order-account-card ${order.status === "awaiting_payment" ? "pending-account-card" : ""}">
       <div class="order-account-main">
@@ -370,6 +375,10 @@ function renderRequests() {
   const list = $("#accountQuotes");
   if (!isLoggedIn()) {
     list.innerHTML = "<p>Entre para acompanhar seus orçamentos.</p>";
+    return;
+  }
+  if (state.privateLoading) {
+    list.innerHTML = "<p>Carregando suas encomendas...</p>";
     return;
   }
   list.innerHTML = state.requests.length ? state.requests.map((request) => `
@@ -525,7 +534,9 @@ async function sendQuote(event) {
 }
 
 async function refreshPrivateData() {
+  state.privateLoading = isLoggedIn();
   await Promise.all([loadOrders(), loadRequests()]);
+  state.privateLoading = false;
   renderAccount();
 }
 
@@ -557,14 +568,18 @@ async function init() {
   $("#accountQuoteForm").addEventListener("submit", sendQuote);
   $("#logoutAccountButton").addEventListener("click", logout);
   $("#logoutSidebarButton")?.addEventListener("click", logout);
-  await loadProducts();
-  await refreshPrivateData();
   const hashView = location.hash.replace("#", "");
   const allowedPrivateViews = ["profile", "orders", "favorites", "quotes"];
   const allowedGuestViews = ["login", "register", "reset"];
-  showView(isLoggedIn()
+  const initialView = isLoggedIn()
     ? (allowedPrivateViews.includes(hashView) ? hashView : "profile")
-    : (allowedGuestViews.includes(hashView) ? hashView : "login"));
+    : (allowedGuestViews.includes(hashView) ? hashView : "login");
+  state.privateLoading = isLoggedIn();
+  showView(initialView);
+  document.body.classList.remove("account-loading");
+  document.body.classList.add("account-ready");
+  await loadProducts();
+  await refreshPrivateData();
 }
 
 init();

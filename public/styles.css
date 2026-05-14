@@ -5029,6 +5029,10 @@ label {
   gap: 18px;
 }
 
+.account-loading .account-shell {
+  visibility: hidden;
+}
+
 .account-single-shell {
   grid-template-columns: minmax(0, 680px);
 }
