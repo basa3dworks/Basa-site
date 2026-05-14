@@ -231,6 +231,9 @@ function updateCustomerPanelSession() {
   document.querySelectorAll("[data-customer-auth-only]").forEach((item) => {
     item.hidden = loggedIn;
   });
+  document.querySelectorAll("[data-customer-logged-only]").forEach((item) => {
+    item.hidden = !loggedIn;
+  });
   if (loggedIn) {
     const customer = state.customerSession.customer;
     if ($("#customerSessionName")) $("#customerSessionName").textContent = customer.name || state.customerSession.username || "Minha conta";
@@ -559,6 +562,7 @@ function logoutCustomer(form) {
     input.value = "";
   });
   applyCustomerSession(form);
+  updateCustomerPanelSession();
   renderPendingPaymentBanner();
   renderCustomerRequests();
   $("#checkoutStatus").textContent = "Dados liberados para alteracao. Salve novamente antes de comprar.";
@@ -1335,6 +1339,7 @@ async function init() {
   $("#mobileCustomerButton")?.addEventListener("click", () => { window.location.href = "/conta.html"; });
   $("#mobileMenuButton")?.addEventListener("click", () => openCustomerPanel());
   $("#closeCustomerPanel").addEventListener("click", closeCustomerPanel);
+  $("#customerPanelLogoutButton")?.addEventListener("click", () => logoutCustomer($("#checkoutForm")));
   $("#closeQuotePanel").addEventListener("click", closeQuotePanel);
   $("#closeSupportPanel")?.addEventListener("click", closeSupportPanel);
   $("#customerPanel").addEventListener("click", (event) => {

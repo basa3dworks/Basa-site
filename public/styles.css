@@ -3125,6 +3125,16 @@ label {
   font-size: 1.25rem;
 }
 
+.customer-menu-logout {
+  color: #9e2f27;
+  background: #fff7f5;
+}
+
+.customer-menu-logout > .material-symbols-rounded {
+  color: #9e2f27;
+  background: #ffe4e0;
+}
+
 .customer-back-button {
   width: fit-content;
 }
