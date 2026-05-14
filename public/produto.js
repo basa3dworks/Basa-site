@@ -37,6 +37,7 @@ const debugCustomer = {
 const $ = (selector) => document.querySelector(selector);
 const FREE_SHIPPING_MIN_SUBTOTAL = 100;
 const RELATED_ORIGIN_KEY = "basa_related_origin";
+const SUPPORT_CHAT_KEY = "basa_support_chat";
 const money = (value) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: state.settings?.currency || "BRL" }).format(value);
 const shippingQuoteId = (quote) => String(quote?.id ?? `${quote?.carrier || ""}-${quote?.service || ""}`);
 const moneyParts = (value) => {
@@ -548,7 +549,7 @@ function resetShippingCalculation() {
   state.shippingBenefit = null;
 }
 
-function openSupportPanel() {
+async function openSupportPanel() {
   const panel = $("#supportPanel");
   const form = $("#supportChatForm");
   const customer = state.customerSession?.customer;
@@ -558,11 +559,73 @@ function openSupportPanel() {
   }
   panel.classList.add("open");
   panel.setAttribute("aria-hidden", "false");
+  await refreshSupportChat(true);
 }
 
 function closeSupportPanel() {
   $("#supportPanel").classList.remove("open");
   $("#supportPanel").setAttribute("aria-hidden", "true");
+}
+
+function supportChatState() {
+  return JSON.parse(localStorage.getItem(SUPPORT_CHAT_KEY) || "null");
+}
+
+function saveSupportChatState(chat) {
+  localStorage.setItem(SUPPORT_CHAT_KEY, JSON.stringify(chat));
+}
+
+function supportRequestFromList(requests, chat) {
+  if (!chat?.email) return null;
+  return requests.find((request) => request.id === chat.id)
+    || requests.find((request) => String(request.title || "").startsWith("Atendimento"));
+}
+
+function renderSupportChat(request, markSeen = false) {
+  const thread = $("#supportChatThread");
+  const badge = $("#supportChatBadge");
+  const chat = supportChatState() || {};
+  if (!thread || !badge) return;
+  if (!request) {
+    thread.hidden = true;
+    badge.hidden = true;
+    badge.textContent = "0";
+    return;
+  }
+  const messages = request.messages || [];
+  thread.hidden = false;
+  thread.innerHTML = messages.map((message) => `
+    <div class="support-chat-message ${message.author === "admin" ? "from-admin" : "from-customer"}">
+      <span>${message.text}</span>
+      <small>${message.author === "admin" ? "Basa" : "Voce"}</small>
+    </div>
+  `).join("");
+  thread.scrollTop = thread.scrollHeight;
+  const adminCount = messages.filter((message) => message.author === "admin").length;
+  const seenAdminCount = Number(chat.seenAdminCount || 0);
+  const unread = Math.max(0, adminCount - seenAdminCount);
+  if (markSeen) {
+    saveSupportChatState({ ...chat, id: request.id, email: request.customer?.email || chat.email, seenAdminCount: adminCount });
+    badge.hidden = true;
+    badge.textContent = "0";
+    return;
+  }
+  badge.hidden = unread <= 0;
+  badge.textContent = String(Math.min(unread, 9));
+}
+
+async function refreshSupportChat(markSeen = false) {
+  const chat = supportChatState();
+  if (!chat?.email) return null;
+  const response = await fetch(`/api/custom-requests?email=${encodeURIComponent(chat.email)}`);
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) return null;
+  const request = supportRequestFromList(data.requests || [], chat);
+  if (request) {
+    saveSupportChatState({ ...chat, id: request.id, email: request.customer?.email || chat.email, seenAdminCount: chat.seenAdminCount || 0 });
+    renderSupportChat(request, markSeen);
+  }
+  return request;
 }
 
 function addToCart(productId) {
@@ -1221,8 +1284,9 @@ async function submitSupportChat(event) {
   event.preventDefault();
   const form = event.currentTarget;
   const customer = state.customerSession?.customer || {};
+  const chat = supportChatState();
   const name = form.elements.name.value.trim() || customer.name || "Cliente Basa";
-  const email = (form.elements.email.value.trim() || customer.email || "").toLowerCase();
+  const email = (form.elements.email.value.trim() || customer.email || chat?.email || "").toLowerCase();
   const message = form.elements.message.value.trim();
   const status = $("#supportChatStatus");
   if (!email) {
@@ -1234,7 +1298,12 @@ async function submitSupportChat(event) {
     return;
   }
   status.textContent = "Enviando mensagem...";
-  const response = await fetch("/api/custom-requests", {
+  const request = await refreshSupportChat(false);
+  const response = request ? await fetch(`/api/custom-requests/${encodeURIComponent(request.id)}/messages`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email, text: message })
+  }) : await fetch("/api/custom-requests", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
@@ -1249,7 +1318,9 @@ async function submitSupportChat(event) {
     return;
   }
   form.elements.message.value = "";
-  status.textContent = "Mensagem enviada. Vamos responder pelo seu e-mail.";
+  saveSupportChatState({ id: data.request.id, email, seenAdminCount: (data.request.messages || []).filter((item) => item.author === "admin").length });
+  renderSupportChat(data.request, true);
+  status.textContent = "Mensagem enviada. A resposta aparece aqui no chat.";
 }
 
 async function init() {
@@ -1276,6 +1347,8 @@ async function init() {
   });
   $("#checkoutForm").addEventListener("submit", checkout);
   $("#supportChatForm")?.addEventListener("submit", submitSupportChat);
+  refreshSupportChat(false);
+  setInterval(() => refreshSupportChat(false), 60000);
   setupCheckoutDetails($("#checkoutForm"));
   $("#saveCustomerButton").addEventListener("click", () => saveCustomerSession($("#checkoutForm")));
   $("#debugCustomerButton").addEventListener("click", () => useDebugCustomer($("#checkoutForm")));

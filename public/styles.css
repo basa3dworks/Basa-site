@@ -343,7 +343,31 @@ nav {
   }
 
   body.store-body:not(.admin-body) .topbar nav .chat-button .material-symbols-rounded {
-    font-size: 1.18rem;
+    display: none;
+  }
+
+  body.store-body:not(.admin-body) .topbar nav .chat-button::before,
+  body.store-body:not(.admin-body) .topbar nav .chat-button::after {
+    content: "";
+    position: absolute;
+    border: 2px solid var(--brand);
+    background: #fff;
+  }
+
+  body.store-body:not(.admin-body) .topbar nav .chat-button::before {
+    left: 8px;
+    top: 10px;
+    width: 15px;
+    height: 11px;
+    border-radius: 8px 8px 8px 2px;
+  }
+
+  body.store-body:not(.admin-body) .topbar nav .chat-button::after {
+    left: 16px;
+    top: 7px;
+    width: 13px;
+    height: 10px;
+    border-radius: 8px 8px 2px 8px;
   }
 
   body.store-body:not(.admin-body) .icon-button strong {
@@ -358,6 +382,10 @@ nav {
     color: #fff;
     background: var(--brand);
     font-size: 0.72rem;
+  }
+
+  body.store-body:not(.admin-body) .chat-button strong {
+    background: var(--accent);
   }
 
   body.store-body:not(.admin-body) .mobile-tabbar {
@@ -2966,6 +2994,43 @@ label {
 
 .support-panel .form-status {
   color: var(--brand);
+}
+
+.support-chat-thread {
+  max-height: 260px;
+  display: grid;
+  gap: 8px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 10px;
+  background: #f8faf8;
+}
+
+.support-chat-message {
+  width: fit-content;
+  max-width: 88%;
+  display: grid;
+  gap: 3px;
+  border-radius: 14px;
+  padding: 9px 11px;
+  color: var(--ink);
+  background: #fff;
+  font-size: 0.92rem;
+  line-height: 1.35;
+}
+
+.support-chat-message.from-customer {
+  justify-self: end;
+  color: #fff;
+  background: var(--brand);
+}
+
+.support-chat-message small {
+  color: inherit;
+  opacity: 0.72;
+  font-size: 0.72rem;
+  font-weight: 700;
 }
 
 .profile-grid {
@@ -5994,7 +6059,31 @@ pre {
   }
 
   .topbar nav .chat-button .material-symbols-rounded {
-    font-size: 1.18rem;
+    display: none;
+  }
+
+  .topbar nav .chat-button::before,
+  .topbar nav .chat-button::after {
+    content: "";
+    position: absolute;
+    border: 2px solid var(--brand);
+    background: #fff;
+  }
+
+  .topbar nav .chat-button::before {
+    left: 8px;
+    top: 10px;
+    width: 15px;
+    height: 11px;
+    border-radius: 8px 8px 8px 2px;
+  }
+
+  .topbar nav .chat-button::after {
+    left: 16px;
+    top: 7px;
+    width: 13px;
+    height: 10px;
+    border-radius: 8px 8px 2px 8px;
   }
 
   .mobile-tabbar {

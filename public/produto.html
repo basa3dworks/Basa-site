@@ -26,7 +26,7 @@
         <a href="/#produtos">Produtos</a>
         <a href="/conta.html">Minha conta</a>
         <a href="/admin.html">Admin</a>
-        <button class="icon-button chat-button" id="supportChatButton" type="button" aria-label="Falar conosco"><span class="material-symbols-rounded" aria-hidden="true">chat_bubble</span></button>
+        <button class="icon-button chat-button" id="supportChatButton" type="button" aria-label="Falar conosco"><span class="material-symbols-rounded" aria-hidden="true">chat_bubble</span><strong id="supportChatBadge" hidden>0</strong></button>
         <button class="icon-button cart-button" id="cartButton" aria-label="Abrir carrinho">Carrinho <strong id="cartCount">0</strong></button>
       </nav>
     </header>
@@ -51,6 +51,7 @@
           <form id="supportChatForm" class="stack-form">
             <label>Nome<input name="name" autocomplete="name" placeholder="Seu nome"></label>
             <label>Email<input name="email" type="email" autocomplete="email" placeholder="voce@email.com"></label>
+            <div class="support-chat-thread" id="supportChatThread" hidden></div>
             <label>Mensagem<textarea name="message" rows="5" required placeholder="Conte como podemos ajudar."></textarea></label>
             <button class="primary-button" type="submit">Enviar mensagem</button>
             <p class="form-status" id="supportChatStatus"></p>
