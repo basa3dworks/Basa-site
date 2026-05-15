@@ -83,7 +83,6 @@ function productImage(product) {
 }
 
 function ratingMarkup(product) {
-  if (!state.settings?.displayRating) return "";
   const average = Number(product.rating?.average || 0);
   const count = Number(product.rating?.count || 0);
   if (!average || !count) return "";
@@ -193,6 +192,7 @@ function relatedProductCard(product) {
         <img src="${productImage(product)}" alt="${escapeHtml(product.name)}">
         <span class="related-product-category">${escapeHtml(product.category || "Produto")}</span>
         <strong>${escapeHtml(product.name)}</strong>
+        ${ratingMarkup(product)}
         <span class="related-product-price">${money(product.price)}</span>
         ${productShippingLabel(product) ? `<em>${productShippingLabel(product)}</em>` : ""}
       </a>

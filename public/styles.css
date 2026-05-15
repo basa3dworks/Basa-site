@@ -1629,9 +1629,10 @@ textarea {
   display: flex;
   align-items: center;
   gap: 5px;
-  color: var(--muted);
+  color: #6f5a1d;
   font-size: 0.88rem;
   line-height: 1.2;
+  font-weight: 900;
 }
 
 .flash-offer-card {
@@ -1656,13 +1657,13 @@ textarea {
 .stars {
   display: inline-flex;
   gap: 1px;
-  color: #cbd5e1;
+  color: #e5e7eb;
   letter-spacing: 0;
 }
 
 .stars .star {
   color: transparent;
-  background: linear-gradient(90deg, #3483fa var(--fill), #cbd5e1 var(--fill));
+  background: linear-gradient(90deg, #f5b301 var(--fill), #e5e7eb var(--fill));
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -4885,7 +4886,7 @@ label {
 }
 
 .product-review-head span {
-  color: #2878ff;
+  color: #f5b301;
   font-weight: 900;
 }
 
