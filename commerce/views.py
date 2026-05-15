@@ -1640,6 +1640,10 @@ def api_customer_profile(request):
         current_display_name = _profile_display_name(account.get("username") or display_name)
     name_changed = display_name != current_display_name
     if name_changed:
+        if bool(customer.get("profileVerified", False)):
+            return JsonResponse({
+                "error": "Perfil verificado nao pode alterar o nome. Fale com o admin para solicitar a troca.",
+            }, status=403)
         changed_at = _parse_dt(customer.get("profileNameChangedAt"))
         if changed_at:
             next_allowed = changed_at + timedelta(days=PROFILE_NAME_COOLDOWN_DAYS)

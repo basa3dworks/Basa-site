@@ -342,8 +342,8 @@ function renderAccount() {
     </article>
     <form class="account-card account-profile-form" id="accountProfileForm" enctype="multipart/form-data">
       <strong>Editar perfil público</strong>
-      <label>Nome do perfil<input name="displayName" maxlength="15" value="${escapeHtml(profileInputName(customer))}" placeholder="Ex: fernanda.landimm" required></label>
-      <small>Prefira usar seu @ do Instagram.</small>
+      <label>Nome do perfil<input name="displayName" maxlength="15" value="${escapeHtml(profileInputName(customer))}" placeholder="Ex: fernanda.landimm" ${customer.profileVerified ? "readonly" : ""} required></label>
+      <small>${customer.profileVerified ? "Perfil verificado: somente o admin pode alterar este nome." : "Prefira usar seu @ do Instagram."}</small>
       <label>Foto de perfil<input name="avatar" type="file" accept="image/*"></label>
       <button class="ghost-button" type="submit">Salvar perfil</button>
       <p class="form-status" id="accountProfileStatus"></p>
@@ -401,6 +401,11 @@ async function saveProfile(event) {
     return;
   }
   const currentName = normalizeProfileName(state.session.customer?.displayName || state.session.username || "");
+  if (state.session.customer?.profileVerified && normalizedName !== currentName) {
+    if (input) input.value = currentName;
+    if (status) status.textContent = "Perfil verificado: somente o admin pode alterar este nome.";
+    return;
+  }
   if (normalizedName !== currentName && !state.session.customer?.profileNameChangedAt) {
     const confirmed = window.confirm("Voce pode trocar o nome de perfil agora. Depois desta troca, a proxima so podera ser feita em 30 dias. Tem certeza?");
     if (!confirmed) return;
