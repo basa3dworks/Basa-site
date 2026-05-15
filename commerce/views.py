@@ -1143,6 +1143,43 @@ def _expire_pending_orders(db):
     return changed
 
 
+def _apply_paid_order_stock(db, order, source="system"):
+    paid_statuses = {"paid", "in_production", "shipped", "completed"}
+    if order.get("status") not in paid_statuses:
+        return False
+    inventory = order.setdefault("inventory", {})
+    if inventory.get("stockAppliedAt"):
+        return False
+    products = db.setdefault("products", [])
+    products_by_id = {product.get("id"): product for product in products}
+    movements = []
+    for item in order.get("items", []):
+        product = products_by_id.get(item.get("productId"))
+        quantity = max(0, int(float(item.get("quantity") or 0)))
+        if not product or not quantity:
+            continue
+        before = max(0, int(float(product.get("stock") or 0)))
+        after = max(0, before - quantity)
+        product["stock"] = after
+        product["updatedAt"] = _now()
+        movements.append({
+            "productId": product.get("id"),
+            "name": item.get("name") or product.get("name"),
+            "quantity": quantity,
+            "before": before,
+            "after": after,
+        })
+    if not movements:
+        return False
+    inventory.update({
+        "stockAppliedAt": _now(),
+        "source": source,
+        "movements": movements,
+    })
+    _append_order_history(order, "inventory", source, order.get("status"), "Estoque baixado automaticamente apos confirmacao de pagamento.")
+    return True
+
+
 def _public_order(order):
     payment = order.get("payment") or {}
     return {
@@ -1401,6 +1438,7 @@ def api_checkout(request):
         order["status"],
         "Pagamento aprovado na criacao do pedido." if order["status"] == "paid" else "Pedido aguardando confirmacao automatica do pagamento.",
     )
+    _apply_paid_order_stock(db, order, payment.get("provider") or PAYMENT_PROVIDER)
     db.setdefault("orders", []).insert(0, order)
     write_db(db)
     if order["status"] == "awaiting_payment":
@@ -1474,6 +1512,7 @@ def api_mercado_pago_webhook(request):
         f"Pagamento Mercado Pago: {order['payment'].get('status')}{status_detail_note}.",
         previous_status,
     )
+    _apply_paid_order_stock(db, order, "mercado-pago")
     write_db(db)
     if status_changed and order.get("status") == "paid":
         _send_order_email(order, f"Pagamento confirmado - {order['id']}", "Seu pagamento foi confirmado. Vamos preparar seu pedido.", include_payment=False)
@@ -2413,6 +2452,7 @@ def api_admin_order_detail(request, order_id):
         if next_status in status_messages:
             subject_prefix, intro = status_messages[next_status]
             _send_order_email(order, f"{subject_prefix} - {order['id']}", intro, include_payment=next_status == "awaiting_payment")
+        _apply_paid_order_stock(db, order, "admin")
     order["updatedAt"] = _now()
     write_db(db)
     return JsonResponse({"order": order})
