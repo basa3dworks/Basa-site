@@ -79,6 +79,12 @@ body.account-body:not(.admin-body) {
   overflow-x: hidden;
 }
 
+html:has(> body.store-body:not(.admin-body)),
+html:has(> body.account-body:not(.admin-body)) {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 .material-symbols-rounded {
   font-family: "Material Symbols Rounded";
   font-size: 1.25em;
@@ -1956,11 +1962,11 @@ textarea {
   position: sticky;
   top: 76px;
   z-index: 18;
-  width: calc(100% + 16px);
+  width: 100%;
   box-sizing: border-box;
   display: grid;
   gap: 0;
-  margin: 0 -8px 12px;
+  margin: 0 0 12px;
   border-bottom: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 10px 26px rgba(11, 24, 20, 0.08);
@@ -1972,9 +1978,10 @@ textarea {
 
 body.store-body:not(.admin-body) .product-sticky-nav {
   top: 56px;
-  width: calc(100% + 24px);
-  margin-left: -12px;
-  margin-right: -12px;
+  width: 100%;
+  max-width: 100%;
+  margin-left: 0;
+  margin-right: 0;
 }
 
 body.store-body:not(.admin-body) .product-sticky-row {
@@ -7130,9 +7137,10 @@ pre {
 @media (max-width: 760px) {
   body.store-body:not(.admin-body) .product-sticky-nav {
     grid-column: auto;
-    width: calc(100% + 24px);
-    margin-left: -12px;
-    margin-right: -12px;
+    width: 100%;
+    max-width: 100%;
+    margin-left: 0;
+    margin-right: 0;
     display: grid;
     grid-template-columns: 1fr;
     gap: 0;
