@@ -19,6 +19,7 @@ urlpatterns = [
     path("api/customer/google/callback", views.api_customer_google_callback),
     path("api/customer/orders", views.api_customer_orders),
     path("api/customer/orders/<str:order_id>", views.api_customer_order_detail),
+    path("api/customer/products/<str:product_id>/reviews", views.api_customer_product_reviews),
     path("api/customer/resend-verification", views.api_customer_resend_verification),
     path("api/customer/verify-email", views.api_customer_verify_email),
     path("api/customer/password-reset/request", views.api_customer_password_reset_request),

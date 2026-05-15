@@ -178,6 +178,36 @@ function orderItemLabel(item) {
   return `${item.quantity || 1}x ${item.name || "Produto"}${variant ? ` - ${variant}` : ""}`;
 }
 
+function canReviewOrder(order) {
+  return ["paid", "in_production", "shipped", "completed"].includes(order.status);
+}
+
+function reviewFormMarkup(order, item) {
+  if (!canReviewOrder(order) || !item.productId) return "";
+  return `
+    <form class="account-review-form" data-review-product="${item.productId}" data-review-order="${order.id}" enctype="multipart/form-data">
+      <strong>Avaliar ${item.name || "produto"}</strong>
+      <label>Nota
+        <select name="rating" required>
+          <option value="5">5 estrelas</option>
+          <option value="4">4 estrelas</option>
+          <option value="3">3 estrelas</option>
+          <option value="2">2 estrelas</option>
+          <option value="1">1 estrela</option>
+        </select>
+      </label>
+      <label>Comentário
+        <textarea name="comment" rows="3" placeholder="Conte como foi sua experiência com o produto."></textarea>
+      </label>
+      <label>Fotos ou vídeos
+        <input name="mediaFiles" type="file" accept="image/*,video/*" multiple>
+      </label>
+      <button class="ghost-button" type="submit">Enviar avaliação</button>
+      <p class="form-status"></p>
+    </form>
+  `;
+}
+
 function paymentLabel(order) {
   const payment = order.payment || {};
   const provider = {
@@ -319,12 +349,43 @@ function renderOrders() {
           <span><b>Total</b>${money(order.total)}</span>
           <span><b>Criado em</b>${new Date(order.createdAt).toLocaleString("pt-BR")}</span>
         </div>
+        ${canReviewOrder(order) ? `<div class="account-review-list">${(order.items || []).map((item) => reviewFormMarkup(order, item)).join("")}</div>` : ""}
       </details>
     </article>
   `).join("") : "<p>Nenhum pedido encontrado.</p>";
   document.querySelectorAll("[data-cancel-order]").forEach((button) => {
     button.addEventListener("click", () => cancelPendingOrder(button.dataset.cancelOrder, button));
   });
+  document.querySelectorAll("[data-review-product]").forEach((form) => {
+    form.addEventListener("submit", submitProductReview);
+  });
+}
+
+async function submitProductReview(event) {
+  event.preventDefault();
+  if (!isLoggedIn()) return;
+  const form = event.currentTarget;
+  const status = form.querySelector(".form-status");
+  const button = form.querySelector("button[type='submit']");
+  const body = new FormData(form);
+  body.set("email", state.session.customer.email);
+  body.set("orderId", form.dataset.reviewOrder);
+  if (button) button.disabled = true;
+  if (status) status.textContent = "Enviando avaliação...";
+  try {
+    const response = await fetch(`/api/customer/products/${encodeURIComponent(form.dataset.reviewProduct)}/reviews`, {
+      method: "POST",
+      body
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || "Nao foi possivel enviar a avaliação.");
+    form.reset();
+    if (status) status.textContent = "Avaliação publicada no produto.";
+  } catch (error) {
+    if (status) status.textContent = error.message || "Nao foi possivel enviar a avaliação.";
+  } finally {
+    if (button) button.disabled = false;
+  }
 }
 
 async function cancelPendingOrder(orderId, button) {

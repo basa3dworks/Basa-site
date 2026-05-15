@@ -1690,6 +1690,65 @@ def api_customer_order_detail(request, order_id):
 
 
 @csrf_exempt
+def api_customer_product_reviews(request, product_id):
+    if request.method != "POST":
+        return JsonResponse({"error": "Metodo nao permitido."}, status=405)
+    email = str(request.POST.get("email", "")).strip().lower()
+    order_id = str(request.POST.get("orderId", "")).strip()
+    if not email or not order_id:
+        return JsonResponse({"error": "Cliente e pedido sao obrigatorios."}, status=400)
+    db = read_db()
+    product = next((item for item in db.get("products", []) if item.get("id") == product_id), None)
+    if not product:
+        return JsonResponse({"error": "Produto nao encontrado."}, status=404)
+    paid_statuses = {"paid", "in_production", "shipped", "completed"}
+    order = next((
+        item for item in db.get("orders", [])
+        if item.get("id") == order_id
+        and str(item.get("customer", {}).get("email", "")).lower() == email
+        and item.get("status") in paid_statuses
+        and any(line.get("productId") == product_id for line in item.get("items", []))
+    ), None)
+    if not order:
+        return JsonResponse({"error": "Avaliacao disponivel apenas para produto comprado e pago."}, status=403)
+
+    upload_files = request.FILES.getlist("mediaFiles") or request.FILES.getlist("photos")
+    try:
+        saved_media = [_save_upload(file_obj, "reviews") for file_obj in upload_files]
+    except ValueError as error:
+        return JsonResponse({"error": str(error)}, status=400)
+    media = [item for item in saved_media if item]
+    photos = [
+        url for url, file_obj in zip(media, upload_files)
+        if str(getattr(file_obj, "content_type", "")).startswith("image/")
+    ]
+    reviews = product.setdefault("reviews", [])
+    existing = next((
+        item for item in reviews
+        if item.get("source") == "customer"
+        and item.get("orderId") == order_id
+        and item.get("productId") == product_id
+        and str(item.get("customerEmail", "")).lower() == email
+    ), None)
+    next_media = [*(existing or {}).get("media", []), *media] if existing else media
+    next_photos = [*(existing or {}).get("photos", []), *photos] if existing else photos
+    payload = request.POST.copy()
+    payload["customerName"] = order.get("customer", {}).get("name") or "Cliente Basa"
+    payload["approved"] = "true"
+    review = _social_post_payload(payload, existing, next_photos, next_media)
+    review.update({
+        "source": "customer",
+        "orderId": order_id,
+        "productId": product_id,
+        "customerEmail": email,
+    })
+    if not existing:
+        reviews.insert(0, review)
+    write_db(db)
+    return JsonResponse({"review": review, "product": _public_product(product, db)}, status=201)
+
+
+@csrf_exempt
 def api_custom_requests(request):
     db = read_db()
     if _close_inactive_chats(db):

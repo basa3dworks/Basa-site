@@ -5318,6 +5318,34 @@ label {
   min-height: 38px;
 }
 
+.account-review-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.account-review-form {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #dbe8df;
+  border-radius: 10px;
+  background: #fbfefc;
+}
+
+.account-review-form strong {
+  font-size: 0.98rem;
+}
+
+.account-review-form textarea {
+  min-height: 84px;
+}
+
+.account-review-form .ghost-button {
+  width: fit-content;
+  min-height: 38px;
+}
+
 .account-store-link {
   min-height: 38px;
   white-space: nowrap;
