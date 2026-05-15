@@ -5156,6 +5156,10 @@ label {
   content: "lock_reset";
 }
 
+.account-sidebar button[data-account-view="profile"]::before {
+  content: "manage_accounts";
+}
+
 .account-sidebar button[data-account-view="orders"]::before {
   content: "receipt_long";
 }

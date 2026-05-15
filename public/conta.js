@@ -348,6 +348,27 @@ function renderAccount() {
       <button class="ghost-button" type="submit">Salvar perfil</button>
       <p class="form-status" id="accountProfileStatus"></p>
     </form>
+    <form class="account-card account-profile-form" id="accountDataForm">
+      <strong>Editar dados de compra</strong>
+      <label>Nome completo<input name="name" value="${escapeHtml(customer.name || "")}" required autocomplete="name"></label>
+      <label>CPF ou CNPJ<input name="document" value="${escapeHtml(customer.document || "")}" required inputmode="numeric" autocomplete="off"></label>
+      <label>Telefone<input name="phone" value="${escapeHtml(customer.phone || "")}" required autocomplete="tel"></label>
+      <div class="checkout-grid">
+        <label>CEP<input name="zipCode" value="${escapeHtml(customer.zipCode || "")}" required inputmode="numeric" autocomplete="postal-code"></label>
+        <label>NÃºmero<input name="number" value="${escapeHtml(customer.number || "")}" required autocomplete="address-line2"></label>
+      </div>
+      <label>Rua<input name="street" value="${escapeHtml(customer.street || "")}" required autocomplete="address-line1"></label>
+      <div class="checkout-grid">
+        <label>Bairro<input name="neighborhood" value="${escapeHtml(customer.neighborhood || "")}" required></label>
+        <label>Complemento<input name="complement" value="${escapeHtml(customer.complement || "")}" autocomplete="address-line3"></label>
+      </div>
+      <div class="checkout-grid">
+        <label>Cidade<input name="city" value="${escapeHtml(customer.city || "")}" required autocomplete="address-level2"></label>
+        <label>Estado<input name="state" value="${escapeHtml(customer.state || "")}" required maxlength="2" autocomplete="address-level1"></label>
+      </div>
+      <button class="ghost-button" type="submit">Salvar dados</button>
+      <p class="form-status" id="accountDataStatus"></p>
+    </form>
     <article class="account-card">
       <strong>Endereço principal</strong>
       <span>${customer.street || "Rua não informada"}, ${customer.number || "s/n"}</span>
@@ -359,6 +380,11 @@ function renderAccount() {
   renderRequests();
   $("#resendVerificationButton")?.addEventListener("click", resendVerification);
   $("#accountProfileForm")?.addEventListener("submit", saveProfile);
+  const dataForm = $("#accountDataForm");
+  if (dataForm) {
+    setupCepLookup(dataForm, "#accountDataStatus");
+    dataForm.addEventListener("submit", saveAccountData);
+  }
 }
 
 async function saveProfile(event) {
@@ -401,6 +427,30 @@ async function saveProfile(event) {
     renderAccount();
   } catch (error) {
     if (status) status.textContent = error.message || "Nao foi possivel salvar o perfil.";
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+async function saveAccountData(event) {
+  event.preventDefault();
+  if (!isLoggedIn()) return;
+  const form = event.currentTarget;
+  const status = $("#accountDataStatus");
+  const button = form.querySelector("button[type='submit']");
+  const body = new FormData(form);
+  body.set("email", state.session.customer.email);
+  body.set("ibge", form.dataset.ibge || state.session.customer.ibge || "");
+  if (button) button.disabled = true;
+  if (status) status.textContent = "Salvando dados...";
+  try {
+    const response = await fetch("/api/customer/profile", { method: "POST", body });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || "Nao foi possivel salvar os dados.");
+    setSession(data.account);
+    renderAccount();
+  } catch (error) {
+    if (status) status.textContent = error.message || "Nao foi possivel salvar os dados.";
   } finally {
     if (button) button.disabled = false;
   }

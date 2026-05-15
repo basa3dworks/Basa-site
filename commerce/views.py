@@ -1658,8 +1658,19 @@ def api_customer_profile(request):
             customer["avatarUrl"] = _save_upload(avatar_file, "customers")
         except ValueError as error:
             return JsonResponse({"error": str(error)}, status=400)
+    editable_fields = ["name", "phone", "document", "zipCode", "street", "number", "neighborhood", "complement", "city", "state", "ibge"]
+    for field in editable_fields:
+        if field not in body:
+            continue
+        value = body.get(field, "")
+        if field in {"phone", "document", "zipCode", "ibge"}:
+            value = re.sub(r"\D", "", str(value))
+        if field == "state":
+            value = str(value).upper()[:2]
+        customer[field] = value
     customer["profileVerified"] = bool(customer.get("profileVerified", False))
     account["updatedAt"] = _now()
+    _sync_customer_public_reviews(db, account)
     write_db(db)
     return JsonResponse({"account": _safe_customer_account(account)})
 
