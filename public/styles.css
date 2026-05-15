@@ -700,7 +700,7 @@ nav {
   body.store-body:not(.admin-body) .stock-note {
     order: 4;
     margin: 3px 0 0;
-    color: #00a650;
+    color: #111;
     font-size: 0.72rem;
     line-height: 1.2;
   }
@@ -1671,7 +1671,7 @@ textarea {
 
 .stock-note {
   margin: 12px 0 0;
-  color: var(--brand);
+  color: #111;
   font-size: 0.9rem;
   font-weight: 800;
 }
@@ -6459,7 +6459,7 @@ pre {
   .stock-note {
     order: 4;
     margin: 3px 0 0;
-    color: #00a650;
+    color: #111;
     font-size: 0.72rem;
     line-height: 1.2;
   }

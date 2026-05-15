@@ -130,6 +130,11 @@ function productPiecesLabel(product) {
   return product.variants?.bundleType === "kit" || pieces > 1 ? `Kit com ${pieces} pe\u00e7as` : "1 pe\u00e7a";
 }
 
+function stockLabel(stock) {
+  const quantity = Number(stock || 0);
+  return `${quantity} ${quantity === 1 ? "unidade dispon\u00edvel" : "unidades dispon\u00edveis"}`;
+}
+
 function soldLabel(count) {
   const sold = Number(count || 0);
   if (!sold) return "";
@@ -840,7 +845,7 @@ function renderProducts() {
           </div>
         </div>
         <span class="shipping-note">${shippingCardLabel(product)}</span>
-        <span class="stock-note">${product.stock} unidades dispon\u00edveis</span>
+        <span class="stock-note">${stockLabel(product.stock)}</span>
       </div>
     </article>
   `).join("") : `<div class="empty-catalog"><strong>Nenhum produto por aqui ainda.</strong><span>${state.catalogFeed === "favorites" ? "Favorite alguns itens para montar sua vitrine." : "Tente outra categoria ou busca."}</span></div>`;
