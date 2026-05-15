@@ -568,6 +568,9 @@ async function loadOrders() {
   const response = await fetch(`/api/customer/orders?email=${encodeURIComponent(state.session.customer.email)}`);
   const data = await response.json();
   state.orders = response.ok ? data.orders || [] : [];
+  if (response.ok && data.account) {
+    setSession(data.account);
+  }
 }
 
 async function loadRequests() {

@@ -61,7 +61,7 @@
           <button class="admin-tab" type="button" data-admin-tab="chat"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 5h11v8H8l-3 3V5Zm7 5h7v8l-3-3h-4v-5Z"/></svg></span>Chat</button>
           <button class="admin-tab" type="button" data-admin-tab="requests"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 5h14v10H8l-3 3V5Zm4 4h6m-6 3h4"/></svg></span>Encomendas</button>
           <span class="admin-nav-label">Pessoas</span>
-          <button class="admin-tab" type="button" data-admin-tab="people"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M10 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-6 7a6 6 0 0 1 12 0m2-7 3 3m0-3-3 3"/></svg></span>Afiliados</button>
+          <button class="admin-tab" type="button" data-admin-tab="people"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M10 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-6 7a6 6 0 0 1 12 0m2-7 3 3m0-3-3 3"/></svg></span>Pessoas</button>
           <span class="admin-nav-label">Sistema</span>
           <a class="admin-tab admin-store-link" href="/"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></svg></span>Ver loja</a>
           <div class="admin-sidebar-user"><span>U</span><strong>admin@basa3d.com</strong><small>Superadmin</small></div>
@@ -508,13 +508,50 @@
           <div class="section-head compact">
             <div>
               <p class="eyebrow">Relacionamento</p>
-              <h2>Afiliados</h2>
+              <h2>Pessoas</h2>
             </div>
             <label class="admin-search">Pesquisar pessoas
               <input id="peopleSearchInput" type="search" placeholder="Nome, email, código ou status">
             </label>
           </div>
-          <div class="people-grid affiliate-only-grid">
+          <div class="people-grid">
+            <form id="customerAdminForm" class="stack-form people-form">
+              <input name="id" type="hidden">
+              <h3>Cliente</h3>
+              <label>Nome<input name="name" required></label>
+              <label>Nome de perfil<input name="displayName" maxlength="15" placeholder="Ex: fernanda.landimm"></label>
+              <label>Usuário interno<input name="username" placeholder="Ex: fernanda.landimm"></label>
+              <label>Email<input name="email" type="email" required></label>
+              <label>Senha nova<input name="password" type="password" minlength="6" placeholder="Deixe vazio para manter"></label>
+              <label>Telefone<input name="phone" inputmode="numeric"></label>
+              <label>CPF/CNPJ<input name="document" inputmode="numeric"></label>
+              <div class="checkout-grid">
+                <label>CEP<input name="zipCode" inputmode="numeric"></label>
+                <label>Número<input name="number"></label>
+              </div>
+              <label>Rua<input name="street"></label>
+              <div class="checkout-grid">
+                <label>Bairro<input name="neighborhood"></label>
+                <label>UF<input name="state" maxlength="2"></label>
+              </div>
+              <label>Cidade<input name="city"></label>
+              <label>Status
+                <select name="status">
+                  <option value="active">Ativo</option>
+                  <option value="blocked">Bloqueado</option>
+                </select>
+              </label>
+              <label class="checkbox-row">
+                <input name="profileVerified" type="checkbox" value="true">
+                <span>Selo verificado aprovado pelo admin</span>
+              </label>
+              <label>Observações<textarea name="notes" rows="3" placeholder="Ex: Verificado por Instagram via chat."></textarea></label>
+              <div class="form-actions">
+                <button class="primary-button" type="submit">Salvar cliente</button>
+                <button class="ghost-button" id="cancelCustomerEditButton" type="button" hidden>Cancelar</button>
+              </div>
+              <p class="form-status" id="customerAdminStatus"></p>
+            </form>
             <form id="affiliateForm" class="stack-form people-form">
               <input name="id" type="hidden">
               <h3>Afiliado</h3>
@@ -544,6 +581,10 @@
             </aside>
           </div>
           <div class="people-lists">
+            <section>
+              <h3>Clientes</h3>
+              <div class="people-list" id="customersList"></div>
+            </section>
             <section>
               <h3>Afiliados</h3>
               <div class="people-list" id="affiliatesList"></div>

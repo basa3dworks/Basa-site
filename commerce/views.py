@@ -308,7 +308,7 @@ def _upsert_google_customer(profile):
     current["name"] = current.get("name") or profile.get("name") or email.split("@")[0]
     current["displayName"] = current.get("displayName") or suggested_profile_name
     current["avatarUrl"] = current.get("avatarUrl") or profile.get("picture", "")
-    current["profileVerified"] = bool(current.get("profileVerified", True))
+    current["profileVerified"] = bool(current.get("profileVerified", False))
     customer["username"] = customer.get("username") or email.split("@")[0]
     customer["emailVerified"] = bool(profile.get("email_verified", True))
     customer["google"] = {
@@ -436,7 +436,21 @@ def _profile_name_suggestion(*values):
     return f"cliente{secrets.token_hex(3)}"[:15]
 
 
-def _customer_payload(body, existing=None):
+def _sync_customer_public_reviews(db, account):
+    email = _customer_email(account)
+    if not email:
+        return
+    public_customer = account.get("customer", {})
+    for product in db.get("products", []):
+        for review in product.get("reviews", []):
+            if str(review.get("customerEmail", "")).strip().lower() != email:
+                continue
+            review["customerName"] = public_customer.get("displayName") or public_customer.get("name") or "Cliente Basa"
+            review["customerAvatar"] = public_customer.get("avatarUrl", "")
+            review["profileVerified"] = bool(public_customer.get("profileVerified", False))
+
+
+def _customer_payload(body, existing=None, allow_profile_verified=False):
     existing = existing or {}
     current = existing.get("customer", {}) if "customer" in existing else existing
     email = str(body.get("email", current.get("email", ""))).strip().lower()
@@ -444,11 +458,14 @@ def _customer_payload(body, existing=None):
     if not email:
         raise ValueError("Informe o email.")
     display_name = _profile_display_name(body.get("displayName") or body.get("customerUsername") or current.get("displayName") or username)
+    profile_verified = bool(current.get("profileVerified", False))
+    if allow_profile_verified:
+        profile_verified = str(body.get("profileVerified", "")).lower() in {"1", "true", "on", "yes"}
     customer = {
         "name": body.get("name", current.get("name", "")),
         "displayName": display_name,
         "avatarUrl": body.get("avatarUrl", current.get("avatarUrl", "")),
-        "profileVerified": bool(current.get("profileVerified", False)),
+        "profileVerified": profile_verified,
         "profileNameChangedAt": current.get("profileNameChangedAt", ""),
         "email": email,
         "phone": re.sub(r"\D", "", str(body.get("phone", current.get("phone", "")))),
@@ -1641,7 +1658,7 @@ def api_customer_profile(request):
             customer["avatarUrl"] = _save_upload(avatar_file, "customers")
         except ValueError as error:
             return JsonResponse({"error": str(error)}, status=400)
-    customer["profileVerified"] = bool(customer.get("profileVerified", True))
+    customer["profileVerified"] = bool(customer.get("profileVerified", False))
     account["updatedAt"] = _now()
     write_db(db)
     return JsonResponse({"account": _safe_customer_account(account)})
@@ -1784,7 +1801,11 @@ def api_customer_orders(request):
     if _expire_pending_orders(db):
         write_db(db)
     orders = [order for order in db.get("orders", []) if str(order.get("customer", {}).get("email", "")).lower() == email]
-    return JsonResponse({"orders": [_public_order(order) for order in orders]})
+    account = next((item for item in db.get("customers", []) if _customer_email(item) == email), None)
+    return JsonResponse({
+        "orders": [_public_order(order) for order in orders],
+        "account": _safe_customer_account(account) if account else None,
+    })
 
 
 @csrf_exempt
@@ -1870,7 +1891,7 @@ def api_customer_product_reviews(request, product_id):
         "productId": product_id,
         "customerEmail": email,
         "customerAvatar": public_customer.get("avatarUrl", ""),
-        "profileVerified": bool(public_customer.get("profileVerified", True)),
+        "profileVerified": bool(public_customer.get("profileVerified", False)),
     })
     if not existing:
         reviews.insert(0, review)
@@ -2291,7 +2312,7 @@ def _save_person(collection_name, body, item_id=None, kind="customer"):
     index = next((idx for idx, item in enumerate(collection) if item.get("id") == item_id), -1) if item_id else -1
     existing = collection[index] if index >= 0 else {}
     try:
-        item = _customer_payload(body, existing) if kind == "customer" else _partner_payload(body, existing, kind)
+        item = _customer_payload(body, existing, allow_profile_verified=True) if kind == "customer" else _partner_payload(body, existing, kind)
     except ValueError as error:
         return None, JsonResponse({"error": str(error)}, status=400)
     if kind == "customer":
@@ -2302,6 +2323,8 @@ def _save_person(collection_name, body, item_id=None, kind="customer"):
         collection[index] = item
     else:
         collection.insert(0, item)
+    if kind == "customer":
+        _sync_customer_public_reviews(db, item)
     write_db(db)
     return db, None
 

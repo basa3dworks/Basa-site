@@ -909,6 +909,7 @@ function customerSearchText(account) {
     account.status,
     account.notes,
     customer.name,
+    customer.displayName,
     customer.email,
     customer.phone,
     customer.document,
@@ -932,7 +933,28 @@ function partnerSearchText(item) {
 
 function renderPeopleLists() {
   const query = $("#peopleSearchInput")?.value || "";
+  const customers = currentCustomers.filter((item) => matchesSearch(customerSearchText(item), query));
   const affiliates = currentAffiliates.filter((item) => matchesSearch(partnerSearchText(item), query));
+
+  const customersList = $("#customersList");
+  if (customersList) {
+    customersList.innerHTML = customers.length ? customers.map((account) => {
+      const customer = account.customer || {};
+      return `
+        <article class="people-card">
+          <div>
+            <strong>${escapeHtml(customer.name || account.username || "Cliente")} ${customer.profileVerified ? '<span class="profile-verified" title="Perfil verificado">✓</span>' : ""}</strong>
+            <span>${escapeHtml(customer.email || "")}${customer.phone ? ` | ${escapeHtml(customer.phone)}` : ""}</span>
+            <small>@${escapeHtml(customer.displayName || account.username || "")} | ${personStatusLabel(account.status)}</small>
+          </div>
+          <div class="story-admin-actions">
+            <button class="ghost-button table-action" type="button" data-edit-customer="${account.id}">Editar</button>
+            <button class="ghost-button table-action" type="button" data-delete-customer="${account.id}">Excluir</button>
+          </div>
+        </article>
+      `;
+    }).join("") : "<p>Nenhum cliente cadastrado.</p>";
+  }
 
   $("#affiliatesList").innerHTML = affiliates.length ? affiliates.map((affiliate) => `
     <article class="people-card">
@@ -950,6 +972,8 @@ function renderPeopleLists() {
 
   document.querySelectorAll("[data-edit-affiliate]").forEach((button) => button.addEventListener("click", () => editAffiliate(button.dataset.editAffiliate)));
   document.querySelectorAll("[data-delete-affiliate]").forEach((button) => button.addEventListener("click", () => deleteAffiliate(button.dataset.deleteAffiliate)));
+  document.querySelectorAll("[data-edit-customer]").forEach((button) => button.addEventListener("click", () => editCustomer(button.dataset.editCustomer)));
+  document.querySelectorAll("[data-delete-customer]").forEach((button) => button.addEventListener("click", () => deleteCustomer(button.dataset.deleteCustomer)));
 }
 
 function renderAdminDashboard() {
@@ -1301,6 +1325,7 @@ function resetCustomerAdminForm() {
   form.reset();
   form.elements.id.value = "";
   form.elements.status.value = "active";
+  form.elements.profileVerified.checked = false;
   $("#cancelCustomerEditButton").hidden = true;
   $("#customerAdminStatus").textContent = "";
 }
@@ -1484,6 +1509,7 @@ function editCustomer(id) {
   const customer = account.customer || {};
   form.elements.id.value = account.id;
   form.elements.name.value = customer.name || "";
+  form.elements.displayName.value = customer.displayName || "";
   form.elements.username.value = account.username || "";
   form.elements.email.value = customer.email || "";
   form.elements.password.value = "";
@@ -1496,6 +1522,7 @@ function editCustomer(id) {
   form.elements.city.value = customer.city || "";
   form.elements.state.value = customer.state || "";
   form.elements.status.value = account.status || "active";
+  form.elements.profileVerified.checked = Boolean(customer.profileVerified);
   form.elements.notes.value = account.notes || "";
   $("#cancelCustomerEditButton").hidden = false;
   $("#customerAdminStatus").textContent = `Editando ${customer.name || account.username}`;
@@ -1538,6 +1565,7 @@ async function saveCustomerAdmin(event) {
   event.preventDefault();
   const form = event.currentTarget;
   const body = Object.fromEntries(new FormData(form).entries());
+  body.profileVerified = form.elements.profileVerified.checked ? "true" : "false";
   const id = body.id;
   delete body.id;
   if (!body.password) delete body.password;
