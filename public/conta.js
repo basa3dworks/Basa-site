@@ -179,7 +179,7 @@ function orderItemLabel(item) {
 }
 
 function canReviewOrder(order) {
-  return ["paid", "in_production", "shipped", "completed"].includes(order.status);
+  return order.status === "completed";
 }
 
 function reviewFormMarkup(order, item) {

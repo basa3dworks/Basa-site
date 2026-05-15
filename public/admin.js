@@ -861,7 +861,7 @@ function renderSocialProofList() {
       <article class="social-proof-card">
         <div>
           <strong>${escapeHtml(review.customerName || "Cliente Basa")}</strong>
-          <span>${socialRatingLabel(review.rating)} | +${Number(review.soldUnits || 0)} vendido(s)${review.approved === false ? " | Oculto" : ""}</span>
+          <span>${socialRatingLabel(review.rating)} | ${review.source === "customer" ? "Comentário de cliente" : `+${Number(review.soldUnits || 0)} vendido(s)`}${review.orderId ? ` | ${review.orderId}` : ""}${review.approved === false ? " | Oculto" : ""}</span>
           <p>${escapeHtml(review.comment || "Sem comentário")}</p>
           ${renderReviewMedia(reviewMediaList(review), "social-proof-photos")}
         </div>
