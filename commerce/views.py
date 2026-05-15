@@ -41,6 +41,8 @@ MELHOR_ENVIO_TOKEN = os.environ.get("MELHOR_ENVIO_TOKEN", "")
 MELHOR_ENVIO_API_BASE = os.environ.get("MELHOR_ENVIO_API_BASE", "https://melhorenvio.com.br")
 MELHOR_ENVIO_USER_AGENT = os.environ.get("MELHOR_ENVIO_USER_AGENT", "Basa 3D Works (contato@basa3d.com)")
 CHAT_INACTIVE_CLOSE_HOURS = max(1.0, float(os.environ.get("CHAT_INACTIVE_CLOSE_HOURS", "24") or 24))
+PROFILE_NAME_COOLDOWN_DAYS = 30
+PROFILE_NAME_RE = re.compile(r"^[a-z0-9._]{1,15}$")
 signer = TimestampSigner(key=SESSION_SECRET, salt="basa-admin")
 
 
@@ -289,6 +291,7 @@ def _upsert_google_customer(profile):
     email = str(profile.get("email", "")).strip().lower()
     if not email:
         raise ValueError("Google nao retornou e-mail.")
+    suggested_profile_name = _profile_name_suggestion(email.split("@")[0], profile.get("name"), "cliente")
     db = read_db()
     customers = db.setdefault("customers", [])
     customer = next((item for item in customers if _customer_email(item) == email), None)
@@ -297,12 +300,13 @@ def _upsert_google_customer(profile):
             "email": email,
             "name": profile.get("name") or email.split("@")[0],
             "username": email.split("@")[0],
+            "displayName": suggested_profile_name,
         })
         customers.append(customer)
     current = customer.setdefault("customer", {})
     current["email"] = email
     current["name"] = current.get("name") or profile.get("name") or email.split("@")[0]
-    current["displayName"] = current.get("displayName") or current.get("name") or profile.get("name") or email.split("@")[0]
+    current["displayName"] = current.get("displayName") or suggested_profile_name
     current["avatarUrl"] = current.get("avatarUrl") or profile.get("picture", "")
     current["profileVerified"] = bool(current.get("profileVerified", True))
     customer["username"] = customer.get("username") or email.split("@")[0]
@@ -374,6 +378,7 @@ def _safe_customer_account(account):
         customer.setdefault("displayName", customer.get("name", ""))
         customer.setdefault("avatarUrl", "")
         customer["profileVerified"] = bool(customer.get("profileVerified", False))
+        customer["profileNameChangedAt"] = customer.get("profileNameChangedAt", "")
         return {
             "id": account.get("id"),
             "username": account.get("username"),
@@ -392,6 +397,7 @@ def _safe_customer_account(account):
             "displayName": account.get("displayName", account.get("name", "")),
             "avatarUrl": account.get("avatarUrl", ""),
             "profileVerified": bool(account.get("profileVerified", False)),
+            "profileNameChangedAt": account.get("profileNameChangedAt", ""),
             "email": account.get("email", ""),
             "phone": account.get("phone", ""),
             "document": account.get("document", ""),
@@ -413,6 +419,23 @@ def _customer_username(account):
     return str(account.get("username") or account.get("customerUsername") or _customer_email(account).split("@")[0]).strip().lower()
 
 
+def _profile_display_name(value):
+    name = str(value or "").strip().lstrip("@").lower()
+    if not name:
+        raise ValueError("Informe o nome do perfil.")
+    if not PROFILE_NAME_RE.fullmatch(name):
+        raise ValueError("Use ate 15 caracteres, sem espacos. Permitidos: letras, numeros, ponto e underline.")
+    return name
+
+
+def _profile_name_suggestion(*values):
+    for value in values:
+        name = re.sub(r"[^a-z0-9._]", "", str(value or "").strip().lstrip("@").lower())[:15]
+        if name and PROFILE_NAME_RE.fullmatch(name):
+            return name
+    return f"cliente{secrets.token_hex(3)}"[:15]
+
+
 def _customer_payload(body, existing=None):
     existing = existing or {}
     current = existing.get("customer", {}) if "customer" in existing else existing
@@ -420,11 +443,13 @@ def _customer_payload(body, existing=None):
     username = str(body.get("username") or body.get("customerUsername") or existing.get("username") or email.split("@")[0]).strip()
     if not email:
         raise ValueError("Informe o email.")
+    display_name = _profile_display_name(body.get("displayName") or body.get("customerUsername") or current.get("displayName") or username)
     customer = {
         "name": body.get("name", current.get("name", "")),
-        "displayName": body.get("displayName", current.get("displayName") or current.get("name", "")),
+        "displayName": display_name,
         "avatarUrl": body.get("avatarUrl", current.get("avatarUrl", "")),
         "profileVerified": bool(current.get("profileVerified", False)),
+        "profileNameChangedAt": current.get("profileNameChangedAt", ""),
         "email": email,
         "phone": re.sub(r"\D", "", str(body.get("phone", current.get("phone", "")))),
         "document": re.sub(r"\D", "", str(body.get("document", current.get("document", "")))),
@@ -1588,10 +1613,26 @@ def api_customer_profile(request):
     if not account:
         return JsonResponse({"error": "Conta nao encontrada."}, status=404)
     customer = account.setdefault("customer", {})
-    display_name = str(body.get("displayName") or customer.get("displayName") or customer.get("name") or account.get("username") or "").strip()
-    if not display_name:
-        return JsonResponse({"error": "Informe o nome do perfil."}, status=400)
-    customer["displayName"] = display_name[:80]
+    try:
+        display_name = _profile_display_name(body.get("displayName") or customer.get("displayName") or account.get("username") or "")
+    except ValueError as error:
+        return JsonResponse({"error": str(error)}, status=400)
+    try:
+        current_display_name = _profile_display_name(customer.get("displayName") or account.get("username") or display_name)
+    except ValueError:
+        current_display_name = _profile_display_name(account.get("username") or display_name)
+    name_changed = display_name != current_display_name
+    if name_changed:
+        changed_at = _parse_dt(customer.get("profileNameChangedAt"))
+        if changed_at:
+            next_allowed = changed_at + timedelta(days=PROFILE_NAME_COOLDOWN_DAYS)
+            if next_allowed > datetime.now(timezone.utc):
+                return JsonResponse({
+                    "error": f"Voce podera trocar o nome novamente em {next_allowed.strftime('%d/%m/%Y')}.",
+                    "nextProfileNameChangeAt": next_allowed.isoformat(),
+                }, status=429)
+        customer["displayName"] = display_name
+        customer["profileNameChangedAt"] = _now()
     avatar_file = request.FILES.get("avatar") if hasattr(request, "FILES") else None
     if avatar_file:
         if not str(getattr(avatar_file, "content_type", "")).startswith("image/"):

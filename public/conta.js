@@ -14,6 +14,20 @@ const escapeHtml = (value) => String(value || "")
   .replaceAll(">", "&gt;")
   .replaceAll('"', "&quot;")
   .replaceAll("'", "&#039;");
+const PROFILE_NAME_PATTERN = /^[a-z0-9._]{1,15}$/;
+
+function normalizeProfileName(value) {
+  return String(value || "").trim().replace(/^@+/, "").toLowerCase();
+}
+
+function profileNameError(value) {
+  const name = normalizeProfileName(value);
+  if (!name) return "Informe o nome do perfil.";
+  if (!PROFILE_NAME_PATTERN.test(name)) {
+    return "Use ate 15 caracteres, sem espacos. Permitidos: letras, numeros, ponto e underline.";
+  }
+  return "";
+}
 
 function favoriteKey() {
   return `basa_favorites_${state.session?.customer?.email || "guest"}`;
@@ -24,6 +38,7 @@ function favoriteIds() {
 }
 
 function customerFromForm(form) {
+  const displayName = normalizeProfileName(form.elements.displayName?.value || form.elements.customerUsername?.value || "");
   return {
     name: form.elements.name?.value || "",
     document: form.elements.document?.value || "",
@@ -37,7 +52,8 @@ function customerFromForm(form) {
     city: form.elements.city?.value || "",
     state: form.elements.state?.value || "",
     ibge: form.dataset.ibge || "",
-    customerUsername: form.elements.customerUsername?.value || form.elements.email?.value?.split("@")[0] || "",
+    displayName,
+    customerUsername: displayName || form.elements.email?.value?.split("@")[0] || "",
     customerPassword: form.elements.customerPassword?.value || ""
   };
 }
@@ -168,6 +184,11 @@ function paymentExpiryLabel(order) {
 
 function profileName(customer = {}) {
   return customer.displayName || customer.name || state.session?.username || "Cliente Basa";
+}
+
+function profileInputName(customer = {}) {
+  const name = normalizeProfileName(customer.displayName || state.session?.username || customer.email?.split("@")[0] || "");
+  return PROFILE_NAME_PATTERN.test(name) ? name : "";
 }
 
 function avatarMarkup(customer = {}, sizeClass = "") {
@@ -321,7 +342,8 @@ function renderAccount() {
     </article>
     <form class="account-card account-profile-form" id="accountProfileForm" enctype="multipart/form-data">
       <strong>Editar perfil público</strong>
-      <label>Nome do perfil<input name="displayName" maxlength="80" value="${escapeHtml(profileName(customer))}" required></label>
+      <label>Nome do perfil<input name="displayName" maxlength="15" value="${escapeHtml(profileInputName(customer))}" placeholder="Ex: fernanda.landimm" required></label>
+      <small>Use seu @ do Instagram sem @. A primeira troca avisa; depois, apenas uma troca a cada 30 dias.</small>
       <label>Foto de perfil<input name="avatar" type="file" accept="image/*"></label>
       <button class="ghost-button" type="submit">Salvar perfil</button>
       <p class="form-status" id="accountProfileStatus"></p>
@@ -345,8 +367,22 @@ async function saveProfile(event) {
   const form = event.currentTarget;
   const status = $("#accountProfileStatus");
   const button = form.querySelector("button[type='submit']");
+  const input = form.elements.displayName;
+  const normalizedName = normalizeProfileName(input?.value);
+  const validationError = profileNameError(normalizedName);
+  if (validationError) {
+    if (status) status.textContent = validationError;
+    return;
+  }
+  const currentName = normalizeProfileName(state.session.customer?.displayName || state.session.username || "");
+  if (normalizedName !== currentName && !state.session.customer?.profileNameChangedAt) {
+    const confirmed = window.confirm("Voce pode trocar o nome de perfil agora. Depois desta troca, a proxima so podera ser feita em 30 dias. Tem certeza?");
+    if (!confirmed) return;
+  }
+  if (input) input.value = normalizedName;
   const body = new FormData(form);
   body.set("email", state.session.customer.email);
+  body.set("displayName", normalizedName);
   if (button) button.disabled = true;
   if (status) status.textContent = "Salvando perfil...";
   try {
@@ -575,6 +611,14 @@ async function login(event) {
 async function register(event) {
   event.preventDefault();
   const form = event.currentTarget;
+  const displayNameInput = form.elements.displayName || form.elements.customerUsername;
+  const normalizedName = normalizeProfileName(displayNameInput?.value);
+  const validationError = profileNameError(normalizedName);
+  if (validationError) {
+    $("#registerStatus").textContent = validationError;
+    return;
+  }
+  if (displayNameInput) displayNameInput.value = normalizedName;
   $("#registerStatus").textContent = "Criando conta...";
   const response = await fetch("/api/customer/access", {
     method: "POST",
