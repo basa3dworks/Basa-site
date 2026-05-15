@@ -5362,10 +5362,10 @@ label {
 
 .profile-verified::before {
   content: "";
-  width: 9px;
-  height: 5px;
-  border-left: 3px solid #fff;
-  border-bottom: 3px solid #fff;
+  width: 7px;
+  height: 4px;
+  border-left: 2.5px solid #fff;
+  border-bottom: 2.5px solid #fff;
   transform: translateY(-1px) rotate(-45deg);
 }
 
