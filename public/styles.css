@@ -286,8 +286,9 @@ nav {
   }
 
   body.store-body:not(.admin-body) > main.product-page {
-    padding: 16px 8px 32px;
-    overflow: visible;
+    padding: 16px 12px 32px;
+    overflow-x: hidden;
+    overflow-y: visible;
   }
 
   body.store-body:not(.admin-body) .topbar {
@@ -1971,6 +1972,9 @@ textarea {
 
 body.store-body:not(.admin-body) .product-sticky-nav {
   top: 56px;
+  width: calc(100% + 24px);
+  margin-left: -12px;
+  margin-right: -12px;
 }
 
 body.store-body:not(.admin-body) .product-sticky-row {
@@ -6073,6 +6077,23 @@ pre {
     max-width: 100%;
   }
 
+  body.store-body:not(.admin-body) > main.product-page {
+    padding-left: 12px;
+    padding-right: 12px;
+    overflow-x: hidden;
+    overflow-y: visible;
+  }
+
+  body.store-body:not(.admin-body) .product-detail-hero,
+  body.store-body:not(.admin-body) .product-info-grid,
+  body.store-body:not(.admin-body) .product-reviews-panel,
+  body.store-body:not(.admin-body) .product-related-panel,
+  body.store-body:not(.admin-body) .product-gallery,
+  body.store-body:not(.admin-body) .product-detail-copy {
+    max-width: 100%;
+    min-width: 0;
+  }
+
   .pending-payment-banner {
     position: relative;
     align-items: stretch;
@@ -7109,7 +7130,9 @@ pre {
 @media (max-width: 760px) {
   body.store-body:not(.admin-body) .product-sticky-nav {
     grid-column: auto;
-    width: calc(100% + 16px);
+    width: calc(100% + 24px);
+    margin-left: -12px;
+    margin-right: -12px;
     display: grid;
     grid-template-columns: 1fr;
     gap: 0;
