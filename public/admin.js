@@ -953,7 +953,7 @@ function renderPeopleLists() {
           </div>
         </article>
       `;
-    }).join("") : "<p>Nenhum cliente cadastrado.</p>";
+    }).join("") : '<article class="people-card"><strong>Nenhum cliente encontrado</strong><span>Quando houver clientes cadastrados, eles aparecem aqui para aprovar o selo verificado.</span></article>';
   }
 
   $("#affiliatesList").innerHTML = affiliates.length ? affiliates.map((affiliate) => `
