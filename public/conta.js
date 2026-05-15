@@ -200,7 +200,7 @@ function avatarMarkup(customer = {}, sizeClass = "") {
 }
 
 function verifiedBadgeMarkup(customer = {}) {
-  return customer.profileVerified ? `<span class="profile-verified" title="Perfil verificado" aria-label="Perfil verificado">✓</span>` : "";
+  return customer.profileVerified ? `<span class="profile-verified" title="Perfil verificado" aria-label="Perfil verificado"></span>` : "";
 }
 
 function productById(productId) {
@@ -343,7 +343,7 @@ function renderAccount() {
     <form class="account-card account-profile-form" id="accountProfileForm" enctype="multipart/form-data">
       <strong>Editar perfil público</strong>
       <label>Nome do perfil<input name="displayName" maxlength="15" value="${escapeHtml(profileInputName(customer))}" placeholder="Ex: fernanda.landimm" required></label>
-      <small>Use seu @ do Instagram sem @. A primeira troca avisa; depois, apenas uma troca a cada 30 dias.</small>
+      <small>Prefira usar seu @ do Instagram.</small>
       <label>Foto de perfil<input name="avatar" type="file" accept="image/*"></label>
       <button class="ghost-button" type="submit">Salvar perfil</button>
       <p class="form-status" id="accountProfileStatus"></p>
@@ -355,7 +355,7 @@ function renderAccount() {
       <label>Telefone<input name="phone" value="${escapeHtml(customer.phone || "")}" required autocomplete="tel"></label>
       <div class="checkout-grid">
         <label>CEP<input name="zipCode" value="${escapeHtml(customer.zipCode || "")}" required inputmode="numeric" autocomplete="postal-code"></label>
-        <label>NÃºmero<input name="number" value="${escapeHtml(customer.number || "")}" required autocomplete="address-line2"></label>
+        <label>N&uacute;mero<input name="number" value="${escapeHtml(customer.number || "")}" required autocomplete="address-line2"></label>
       </div>
       <label>Rua<input name="street" value="${escapeHtml(customer.street || "")}" required autocomplete="address-line1"></label>
       <div class="checkout-grid">

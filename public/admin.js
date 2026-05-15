@@ -943,7 +943,7 @@ function renderPeopleLists() {
       return `
         <article class="people-card">
           <div>
-            <strong>${escapeHtml(customer.name || account.username || "Cliente")} ${customer.profileVerified ? '<span class="profile-verified" title="Perfil verificado">✓</span>' : ""}</strong>
+            <strong>${escapeHtml(customer.name || account.username || "Cliente")} ${customer.profileVerified ? '<span class="profile-verified" title="Perfil verificado" aria-label="Perfil verificado"></span>' : ""}</strong>
             <span>${escapeHtml(customer.email || "")}${customer.phone ? ` | ${escapeHtml(customer.phone)}` : ""}</span>
             <small>@${escapeHtml(customer.displayName || account.username || "")} | ${personStatusLabel(account.status)}</small>
           </div>

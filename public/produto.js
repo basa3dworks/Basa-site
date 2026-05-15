@@ -102,7 +102,7 @@ function reviewAvatarMarkup(review) {
 }
 
 function reviewVerifiedBadge(review) {
-  return review.profileVerified ? `<span class="profile-verified review-verified" title="Perfil verificado" aria-label="Perfil verificado">✓</span>` : "";
+  return review.profileVerified ? `<span class="profile-verified review-verified" title="Perfil verificado" aria-label="Perfil verificado"></span>` : "";
 }
 
 function socialReviewsSection(product) {
