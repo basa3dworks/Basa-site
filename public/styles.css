@@ -12,6 +12,7 @@
   --steel: #244057;
   --danger: #a33a34;
   --shadow: 0 18px 48px rgba(25, 37, 32, 0.12);
+  --public-app-width: min(520px, 100%);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 body[data-theme="graphite"] {
@@ -70,6 +71,12 @@ body {
 
 body:not(.admin-body) {
   font-family: Roboto, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+body.store-body:not(.admin-body),
+body.account-body:not(.admin-body) {
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .material-symbols-rounded {
@@ -173,7 +180,7 @@ nav {
 
 @media (min-width: 761px) {
   :root {
-    --public-app-width: min(520px, 100vw);
+    --public-app-width: min(520px, 100%);
   }
 
   body.store-body:not(.admin-body),
@@ -6026,6 +6033,44 @@ pre {
   body {
     padding-bottom: 74px;
     background: #f3f4f2;
+  }
+
+  body.store-body:not(.admin-body),
+  body.account-body:not(.admin-body) {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  body.store-body:not(.admin-body) > .topbar,
+  body.store-body:not(.admin-body) > .mobile-tabbar,
+  body.store-body:not(.admin-body) > .mobile-category-panel,
+  body.store-body:not(.admin-body) > main,
+  body.store-body:not(.admin-body) > main.product-page,
+  body.account-body:not(.admin-body) > .topbar,
+  body.account-body:not(.admin-body) > main.account-page {
+    width: 100%;
+    max-width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  body.store-body:not(.admin-body) .cart-panel,
+  body.store-body:not(.admin-body) .customer-panel,
+  body.store-body:not(.admin-body) .quote-panel,
+  body.store-body:not(.admin-body) .support-panel,
+  body.store-body:not(.admin-body) .media-lightbox {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  body.store-body:not(.admin-body) .cart,
+  body.store-body:not(.admin-body) .customer-drawer,
+  body.store-body:not(.admin-body) .quote-panel .customer-drawer,
+  body.store-body:not(.admin-body) .support-panel .customer-drawer {
+    width: 100%;
+    max-width: 100%;
   }
 
   .pending-payment-banner {
