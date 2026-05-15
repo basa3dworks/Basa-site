@@ -82,7 +82,7 @@ function productImage(product) {
   return product.image || (product.gallery || [])[0] || "";
 }
 
-function ratingMarkup(product) {
+function ratingMarkup(product, extraClass = "") {
   const average = Number(product.rating?.average || 0);
   const count = Number(product.rating?.count || 0);
   if (!average || !count) return "";
@@ -90,7 +90,8 @@ function ratingMarkup(product) {
     const fill = Math.max(0, Math.min(100, (average - index) * 100));
     return `<span class="star" style="--fill:${fill}%">&#9733;</span>`;
   }).join("");
-  return `<div class="rating-row detail-rating"><span>${average.toFixed(1)}</span><span class="stars" aria-label="${average.toFixed(1)} de 5">${proportionalStars}</span><span>(${count})</span></div>`;
+  const className = `rating-row ${extraClass}`.trim();
+  return `<div class="${className}"><span>${average.toFixed(1)}</span><span class="stars" aria-label="${average.toFixed(1)} de 5">${proportionalStars}</span><span>(${count})</span></div>`;
 }
 
 function reviewAvatarMarkup(review) {
@@ -207,7 +208,7 @@ function relatedProductCard(product) {
         <img src="${productImage(product)}" alt="${escapeHtml(product.name)}">
         <span class="related-product-category">${escapeHtml(product.category || "Produto")}</span>
         <strong>${escapeHtml(product.name)}</strong>
-        ${ratingMarkup(product)}
+        ${ratingMarkup(product, "related-rating")}
         <span class="related-product-price">${money(product.price)}</span>
         ${productShippingLabel(product) ? `<em>${productShippingLabel(product)}</em>` : ""}
       </a>
@@ -222,8 +223,7 @@ function relatedProductsSection(product) {
     <section class="panel product-related-panel" id="productRelatedSection" data-product-section="related">
       <div class="panel-head">
         <div>
-          <p class="eyebrow">Relacionados</p>
-          <h2>Continue surfando</h2>
+          <h2>Relacionados</h2>
         </div>
       </div>
       <div class="related-product-grid" id="relatedProductGrid"></div>
@@ -1087,7 +1087,7 @@ function renderProduct() {
         <p class="eyebrow">${product.category}</p>
         <div class="product-social-proof detail-social-proof">${productMeta(product)}</div>
         <h1>${product.name}</h1>
-        ${ratingMarkup(product)}
+        ${ratingMarkup(product, "detail-rating")}
         ${detailFlashOffer(product)}
         <p class="lead">${product.longDescription || product.description}</p>
         <div class="detail-price">

@@ -4872,8 +4872,8 @@ label {
 
 .related-product-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .related-product-card {
@@ -4897,19 +4897,21 @@ label {
   background: #f7f7f7;
 }
 
-.related-product-card strong,
-.related-product-card span,
-.related-product-card em {
+.related-product-card a > strong,
+.related-product-card a > span,
+.related-product-card a > em,
+.related-product-card a > .rating-row {
   padding: 0 12px;
 }
 
 .related-product-card strong {
-  min-height: 42px;
+  min-height: 34px;
   display: -webkit-box;
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
-  line-height: 1.18;
+  font-size: 0.88rem;
+  line-height: 1.15;
 }
 
 .related-product-category {
@@ -4922,8 +4924,24 @@ label {
 
 .related-product-price {
   color: var(--ink);
-  font-size: 1.05rem;
+  font-size: 0.95rem;
   font-weight: 900;
+}
+
+.related-rating {
+  width: 100%;
+  justify-content: flex-start;
+  gap: 4px;
+  margin: 2px 0 0;
+  color: #111;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.related-rating .stars {
+  gap: 0;
+  color: #f5b301;
+  font-size: 0.72rem;
 }
 
 .related-product-card em {
