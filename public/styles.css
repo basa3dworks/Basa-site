@@ -657,7 +657,7 @@ nav {
 
   body.store-body:not(.admin-body) .product-body {
     grid-template-rows: none;
-    min-height: 196px;
+    min-height: 0;
     align-content: start;
     padding: 11px 10px 10px;
   }
@@ -672,7 +672,7 @@ nav {
 
   body.store-body:not(.admin-body) .product-body h3 {
     display: -webkit-box;
-    min-height: 34px;
+    min-height: 0;
     margin: 0 0 5px;
     overflow: hidden;
     color: #222;
@@ -6416,7 +6416,7 @@ pre {
 
   .product-body {
     grid-template-rows: none;
-    min-height: 196px;
+    min-height: 0;
     align-content: start;
     padding: 11px 10px 10px;
   }
@@ -6431,7 +6431,7 @@ pre {
 
   .product-body h3 {
     display: -webkit-box;
-    min-height: 34px;
+    min-height: 0;
     margin: 0 0 5px;
     overflow: hidden;
     color: #222;
