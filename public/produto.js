@@ -93,6 +93,18 @@ function ratingMarkup(product) {
   return `<div class="rating-row detail-rating"><span>${average.toFixed(1)}</span><span class="stars" aria-label="${average.toFixed(1)} de 5">${proportionalStars}</span><span>(${count})</span></div>`;
 }
 
+function reviewAvatarMarkup(review) {
+  const name = review.customerName || "Cliente Basa";
+  const initial = escapeHtml(name.trim().charAt(0).toUpperCase() || "B");
+  return review.customerAvatar
+    ? `<img class="review-avatar" src="${review.customerAvatar}" alt="${escapeHtml(name)}">`
+    : `<span class="review-avatar" aria-hidden="true">${initial}</span>`;
+}
+
+function reviewVerifiedBadge(review) {
+  return review.profileVerified ? `<span class="profile-verified review-verified" title="Perfil verificado" aria-label="Perfil verificado">✓</span>` : "";
+}
+
 function socialReviewsSection(product) {
   const reviews = product.publicReviews || [];
   const isVideoMedia = (url) => /\.(mp4|webm|mov|m4v)$/i.test(String(url || "").split("?")[0]);
@@ -119,7 +131,10 @@ function socialReviewsSection(product) {
           ${reviews.slice(0, 8).map((review) => `
           <article class="product-review-card">
             <div class="product-review-head">
-              <strong>${escapeHtml(review.customerName || "Cliente Basa")}</strong>
+              <div class="product-review-author">
+                ${reviewAvatarMarkup(review)}
+                <strong>${escapeHtml(review.customerName || "Cliente Basa")} ${reviewVerifiedBadge(review)}</strong>
+              </div>
               ${review.rating ? `<span>${Number(review.rating).toFixed(1)} ★</span>` : ""}
             </div>
             ${review.comment ? `<p>${escapeHtml(review.comment)}</p>` : ""}

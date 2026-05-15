@@ -302,6 +302,9 @@ def _upsert_google_customer(profile):
     current = customer.setdefault("customer", {})
     current["email"] = email
     current["name"] = current.get("name") or profile.get("name") or email.split("@")[0]
+    current["displayName"] = current.get("displayName") or current.get("name") or profile.get("name") or email.split("@")[0]
+    current["avatarUrl"] = current.get("avatarUrl") or profile.get("picture", "")
+    current["profileVerified"] = bool(current.get("profileVerified", True))
     customer["username"] = customer.get("username") or email.split("@")[0]
     customer["emailVerified"] = bool(profile.get("email_verified", True))
     customer["google"] = {
@@ -349,6 +352,8 @@ def _public_product(product, db):
                 {
                     "id": review.get("id"),
                     "customerName": review.get("customerName", "Cliente Basa"),
+                    "customerAvatar": review.get("customerAvatar", ""),
+                    "profileVerified": bool(review.get("profileVerified", False)),
                     "rating": _number_or_zero(review.get("rating")),
                     "comment": review.get("comment", ""),
                     "photos": review.get("photos", []),
@@ -365,10 +370,14 @@ def _public_product(product, db):
 
 def _safe_customer_account(account):
     if "customer" in account:
+        customer = dict(account.get("customer", {}))
+        customer.setdefault("displayName", customer.get("name", ""))
+        customer.setdefault("avatarUrl", "")
+        customer["profileVerified"] = bool(customer.get("profileVerified", False))
         return {
             "id": account.get("id"),
             "username": account.get("username"),
-            "customer": account.get("customer", {}),
+            "customer": customer,
             "status": account.get("status", "active"),
             "emailVerified": bool(account.get("emailVerified", False)),
             "notes": account.get("notes", ""),
@@ -380,6 +389,9 @@ def _safe_customer_account(account):
         "username": account.get("username") or str(account.get("email", "")).split("@")[0],
         "customer": {
             "name": account.get("name", ""),
+            "displayName": account.get("displayName", account.get("name", "")),
+            "avatarUrl": account.get("avatarUrl", ""),
+            "profileVerified": bool(account.get("profileVerified", False)),
             "email": account.get("email", ""),
             "phone": account.get("phone", ""),
             "document": account.get("document", ""),
@@ -410,6 +422,9 @@ def _customer_payload(body, existing=None):
         raise ValueError("Informe o email.")
     customer = {
         "name": body.get("name", current.get("name", "")),
+        "displayName": body.get("displayName", current.get("displayName") or current.get("name", "")),
+        "avatarUrl": body.get("avatarUrl", current.get("avatarUrl", "")),
+        "profileVerified": bool(current.get("profileVerified", False)),
         "email": email,
         "phone": re.sub(r"\D", "", str(body.get("phone", current.get("phone", "")))),
         "document": re.sub(r"\D", "", str(body.get("document", current.get("document", "")))),
@@ -1560,6 +1575,37 @@ def api_customer_access(request):
     }, status=201 if created else 200)
 
 
+@csrf_exempt
+def api_customer_profile(request):
+    if request.method not in {"POST", "PATCH"}:
+        return JsonResponse({"error": "Metodo nao permitido."}, status=405)
+    body = request.POST if request.content_type and "multipart/form-data" in request.content_type else _json_body(request)
+    email = str(body.get("email", "")).strip().lower()
+    if not email:
+        return JsonResponse({"error": "Informe o email."}, status=400)
+    db = read_db()
+    account = next((item for item in db.get("customers", []) if _customer_email(item) == email), None)
+    if not account:
+        return JsonResponse({"error": "Conta nao encontrada."}, status=404)
+    customer = account.setdefault("customer", {})
+    display_name = str(body.get("displayName") or customer.get("displayName") or customer.get("name") or account.get("username") or "").strip()
+    if not display_name:
+        return JsonResponse({"error": "Informe o nome do perfil."}, status=400)
+    customer["displayName"] = display_name[:80]
+    avatar_file = request.FILES.get("avatar") if hasattr(request, "FILES") else None
+    if avatar_file:
+        if not str(getattr(avatar_file, "content_type", "")).startswith("image/"):
+            return JsonResponse({"error": "Envie uma imagem para a foto de perfil."}, status=400)
+        try:
+            customer["avatarUrl"] = _save_upload(avatar_file, "customers")
+        except ValueError as error:
+            return JsonResponse({"error": str(error)}, status=400)
+    customer["profileVerified"] = bool(customer.get("profileVerified", True))
+    account["updatedAt"] = _now()
+    write_db(db)
+    return JsonResponse({"account": _safe_customer_account(account)})
+
+
 def api_customer_google_start(request):
     if not _google_oauth_enabled():
         return JsonResponse({"error": "Login com Google ainda nao configurado."}, status=503)
@@ -1772,7 +1818,9 @@ def api_customer_product_reviews(request, product_id):
     next_media = [*(existing or {}).get("media", []), *media] if existing else media
     next_photos = [*(existing or {}).get("photos", []), *photos] if existing else photos
     payload = request.POST.copy()
-    payload["customerName"] = order.get("customer", {}).get("name") or "Cliente Basa"
+    account = next((item for item in db.get("customers", []) if _customer_email(item) == email), None)
+    public_customer = account.get("customer", {}) if account else order.get("customer", {})
+    payload["customerName"] = public_customer.get("displayName") or public_customer.get("name") or "Cliente Basa"
     payload["approved"] = "true"
     review = _social_post_payload(payload, existing, next_photos, next_media)
     review.update({
@@ -1780,6 +1828,8 @@ def api_customer_product_reviews(request, product_id):
         "orderId": order_id,
         "productId": product_id,
         "customerEmail": email,
+        "customerAvatar": public_customer.get("avatarUrl", ""),
+        "profileVerified": bool(public_customer.get("profileVerified", True)),
     })
     if not existing:
         reviews.insert(0, review)

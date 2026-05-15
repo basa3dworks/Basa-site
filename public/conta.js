@@ -8,6 +8,12 @@ const state = {
 
 const $ = (selector) => document.querySelector(selector);
 const money = (value) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(value || 0));
+const escapeHtml = (value) => String(value || "")
+  .replaceAll("&", "&amp;")
+  .replaceAll("<", "&lt;")
+  .replaceAll(">", "&gt;")
+  .replaceAll('"', "&quot;")
+  .replaceAll("'", "&#039;");
 
 function favoriteKey() {
   return `basa_favorites_${state.session?.customer?.email || "guest"}`;
@@ -160,6 +166,22 @@ function paymentExpiryLabel(order) {
   return hours >= 24 ? `expira em ${Math.ceil(hours / 24)} dia(s)` : `expira em ${hours}h`;
 }
 
+function profileName(customer = {}) {
+  return customer.displayName || customer.name || state.session?.username || "Cliente Basa";
+}
+
+function avatarMarkup(customer = {}, sizeClass = "") {
+  const name = profileName(customer);
+  const initial = escapeHtml(name.trim().charAt(0).toUpperCase() || "B");
+  return customer.avatarUrl
+    ? `<img class="profile-avatar ${sizeClass}" src="${customer.avatarUrl}" alt="${escapeHtml(name)}">`
+    : `<span class="profile-avatar ${sizeClass}" aria-hidden="true">${initial}</span>`;
+}
+
+function verifiedBadgeMarkup(customer = {}) {
+  return customer.profileVerified ? `<span class="profile-verified" title="Perfil verificado" aria-label="Perfil verificado">✓</span>` : "";
+}
+
 function productById(productId) {
   return state.products.find((product) => product.id === productId) || {};
 }
@@ -289,11 +311,21 @@ function renderAccount() {
         <button class="ghost-button" type="button" id="resendVerificationButton">Reenviar confirmação</button>
       </article>
     ` : ""}
-    <article class="account-card">
-      <strong>${customer.name || state.session.username}</strong>
-      <span>${customer.email}</span>
-      <small>@${state.session.username}</small>
+    <article class="account-card account-profile-card">
+      ${avatarMarkup(customer, "profile-avatar-large")}
+      <div>
+        <strong>${escapeHtml(profileName(customer))} ${verifiedBadgeMarkup(customer)}</strong>
+        <span>${escapeHtml(customer.email || "")}</span>
+        <small>@${escapeHtml(state.session.username || "")}</small>
+      </div>
     </article>
+    <form class="account-card account-profile-form" id="accountProfileForm" enctype="multipart/form-data">
+      <strong>Editar perfil público</strong>
+      <label>Nome do perfil<input name="displayName" maxlength="80" value="${escapeHtml(profileName(customer))}" required></label>
+      <label>Foto de perfil<input name="avatar" type="file" accept="image/*"></label>
+      <button class="ghost-button" type="submit">Salvar perfil</button>
+      <p class="form-status" id="accountProfileStatus"></p>
+    </form>
     <article class="account-card">
       <strong>Endereço principal</strong>
       <span>${customer.street || "Rua não informada"}, ${customer.number || "s/n"}</span>
@@ -304,6 +336,38 @@ function renderAccount() {
   renderFavorites();
   renderRequests();
   $("#resendVerificationButton")?.addEventListener("click", resendVerification);
+  $("#accountProfileForm")?.addEventListener("submit", saveProfile);
+}
+
+async function saveProfile(event) {
+  event.preventDefault();
+  if (!isLoggedIn()) return;
+  const form = event.currentTarget;
+  const status = $("#accountProfileStatus");
+  const button = form.querySelector("button[type='submit']");
+  const body = new FormData(form);
+  body.set("email", state.session.customer.email);
+  if (button) button.disabled = true;
+  if (status) status.textContent = "Salvando perfil...";
+  try {
+    const response = await fetch("/api/customer/profile", { method: "POST", body });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || "Nao foi possivel salvar o perfil.");
+    const account = data.account;
+    state.session = {
+      ...state.session,
+      username: account.username,
+      customer: account.customer,
+      emailVerified: Boolean(account.emailVerified),
+      updatedAt: new Date().toISOString()
+    };
+    localStorage.setItem("basa_customer_session", JSON.stringify(state.session));
+    renderAccount();
+  } catch (error) {
+    if (status) status.textContent = error.message || "Nao foi possivel salvar o perfil.";
+  } finally {
+    if (button) button.disabled = false;
+  }
 }
 
 function renderOrders() {
