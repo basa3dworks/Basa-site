@@ -5010,7 +5010,7 @@ label {
 }
 
 .account-page {
-  padding-top: 96px;
+  padding-top: 24px;
 }
 
 .account-hero {
@@ -6858,11 +6858,11 @@ pre {
   }
 
   .account-page {
-    padding-top: 76px;
+    padding-top: 10px;
   }
 
   .account-hero {
-    padding: 24px 16px 12px;
+    padding: 14px 16px 12px;
   }
 
   .account-shell {
