@@ -245,15 +245,27 @@ function updateCustomerPanelSession() {
   }
 }
 
+function setCustomerPanelTopbarMode(isOpen) {
+  const menuButton = $("#mobileMenuButton");
+  const icon = menuButton?.querySelector(".material-symbols-rounded");
+  if (!menuButton || !icon) return;
+  icon.textContent = isOpen ? "arrow_back" : "menu";
+  menuButton.setAttribute("aria-label", isOpen ? "Voltar" : "Abrir menu");
+  menuButton.setAttribute("aria-expanded", isOpen ? "true" : "false");
+  menuButton.classList.toggle("is-back", isOpen);
+}
+
 function openCustomerPanel() {
   updateCustomerPanelSession();
   $("#customerPanel").classList.add("open");
   $("#customerPanel").setAttribute("aria-hidden", "false");
+  setCustomerPanelTopbarMode(true);
 }
 
 function closeCustomerPanel() {
   $("#customerPanel").classList.remove("open");
   $("#customerPanel").setAttribute("aria-hidden", "true");
+  setCustomerPanelTopbarMode(false);
 }
 
 function openQuotePanel() {
@@ -1341,8 +1353,14 @@ async function init() {
   $("#closeCart").addEventListener("click", () => $("#cartPanel").classList.remove("open"));
   $("#customerButton")?.addEventListener("click", () => openCustomerPanel());
   $("#mobileCustomerButton")?.addEventListener("click", () => { window.location.href = "/conta.html"; });
-  $("#mobileMenuButton")?.addEventListener("click", () => openCustomerPanel());
-  $("#closeCustomerPanel").addEventListener("click", closeCustomerPanel);
+  $("#mobileMenuButton")?.addEventListener("click", () => {
+    if ($("#customerPanel")?.classList.contains("open")) {
+      closeCustomerPanel();
+      return;
+    }
+    openCustomerPanel();
+  });
+  $("#closeCustomerPanel")?.addEventListener("click", closeCustomerPanel);
   $("#customerPanelLogoutButton")?.addEventListener("click", () => logoutCustomer($("#checkoutForm")));
   $("#closeQuotePanel").addEventListener("click", closeQuotePanel);
   $("#closeSupportPanel")?.addEventListener("click", closeSupportPanel);
