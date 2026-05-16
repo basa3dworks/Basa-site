@@ -244,7 +244,7 @@ nav {
   body.account-body:not(.admin-body) .account-shell {
     max-width: none;
     grid-template-columns: 1fr;
-    padding: 0 16px 28px;
+    padding: 12px 16px 28px;
     margin-bottom: 0;
   }
 
@@ -5253,11 +5253,75 @@ body.store-body:not(.admin-body) .customer-drawer {
 }
 
 .account-topbar-actions .icon-button {
+  position: relative;
   width: 34px;
   height: 34px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 999px;
   border: 0;
-  color: var(--brand);
+  color: transparent;
   background: #fff;
+  font-size: 0;
+}
+
+.account-topbar-actions .chat-button .material-symbols-rounded {
+  display: none;
+}
+
+.account-topbar-actions .chat-button::before,
+.account-topbar-actions .chat-button::after {
+  content: "";
+  position: absolute;
+  border: 2px solid var(--brand);
+  background: #fff;
+}
+
+.account-topbar-actions .chat-button::before {
+  left: 7px;
+  top: 10px;
+  width: 15px;
+  height: 11px;
+  border-radius: 8px 8px 8px 2px;
+}
+
+.account-topbar-actions .chat-button::after {
+  left: 15px;
+  top: 7px;
+  width: 13px;
+  height: 10px;
+  border-radius: 8px 8px 2px 8px;
+}
+
+.account-topbar-actions .cart-button .material-symbols-rounded {
+  display: none;
+}
+
+.account-topbar-actions .cart-button::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 11px;
+  width: 15px;
+  height: 13px;
+  border: 2px solid var(--brand);
+  border-radius: 3px 3px 6px 6px;
+  transform: translateX(-50%);
+}
+
+.account-topbar-actions .cart-button::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 7px;
+  width: 9px;
+  height: 8px;
+  border: 2px solid var(--brand);
+  border-bottom: 0;
+  border-radius: 999px 999px 0 0;
+  background: transparent;
+  transform: translateX(-50%);
 }
 
 .account-page {
@@ -7244,7 +7308,7 @@ pre {
   }
 
   .account-shell {
-    padding: 0 16px 28px;
+    padding: 12px 16px 28px;
   }
 
   .account-view {

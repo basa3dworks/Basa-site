@@ -1395,6 +1395,14 @@ async function init() {
   loadCustomerRequests();
   renderCart();
   autoQuoteShippingIfPossible();
+
+  const initialPanel = new URLSearchParams(window.location.search).get("panel");
+  if (initialPanel === "chat") {
+    openSupportPanel();
+  } else if (initialPanel === "cart") {
+    $("#cartPanel").classList.add("open");
+    autoQuoteShippingIfPossible();
+  }
 }
 
 $("#storyCloseButton").addEventListener("click", closeStory);
