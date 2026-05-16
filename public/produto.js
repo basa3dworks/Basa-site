@@ -65,8 +65,37 @@ const escapeHtml = (value) => String(value || "")
   .replaceAll("'", "&#039;");
 
 function lockProductHorizontalScroll() {
-  if (!window.scrollX) return;
-  window.requestAnimationFrame(() => window.scrollTo(0, window.scrollY));
+  const html = document.documentElement;
+  const body = document.body;
+  const hasHorizontalOffset = window.scrollX || html.scrollLeft || body.scrollLeft;
+  if (!hasHorizontalOffset) return;
+  window.requestAnimationFrame(() => {
+    html.scrollLeft = 0;
+    body.scrollLeft = 0;
+    window.scrollTo(0, window.scrollY);
+  });
+}
+
+function preventProductHorizontalPan() {
+  let startX = 0;
+  let startY = 0;
+  const allowedHorizontalSelectors = ".product-thumbs, .mobile-category-tabs, .mobile-interest-chips";
+  document.addEventListener("touchstart", (event) => {
+    const touch = event.touches[0];
+    if (!touch) return;
+    startX = touch.clientX;
+    startY = touch.clientY;
+  }, { passive: true });
+  document.addEventListener("touchmove", (event) => {
+    const touch = event.touches[0];
+    if (!touch || event.target.closest(allowedHorizontalSelectors)) return;
+    const deltaX = touch.clientX - startX;
+    const deltaY = touch.clientY - startY;
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 6) {
+      event.preventDefault();
+      lockProductHorizontalScroll();
+    }
+  }, { passive: false });
 }
 
 function soldLabel(count) {
@@ -1357,6 +1386,7 @@ async function submitSupportChat(event) {
 
 async function init() {
   lockProductHorizontalScroll();
+  preventProductHorizontalPan();
   window.addEventListener("scroll", lockProductHorizontalScroll, { passive: true });
   window.addEventListener("resize", lockProductHorizontalScroll);
   const slug = new URLSearchParams(location.search).get("slug");

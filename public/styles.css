@@ -77,12 +77,15 @@ body.store-body:not(.admin-body),
 body.account-body:not(.admin-body) {
   max-width: 100%;
   overflow-x: hidden;
+  overscroll-behavior-x: none;
+  touch-action: pan-y;
 }
 
 html:has(> body.store-body:not(.admin-body)),
 html:has(> body.account-body:not(.admin-body)) {
   max-width: 100%;
   overflow-x: hidden;
+  overscroll-behavior-x: none;
 }
 
 .material-symbols-rounded {
@@ -2159,6 +2162,7 @@ body.store-body:not(.admin-body) .product-sticky-tabs button {
   overflow-x: auto;
   padding: 2px 2px 6px;
   scroll-snap-type: x proximity;
+  touch-action: pan-x;
 }
 
 .thumb-button {
@@ -6469,6 +6473,7 @@ pre {
     align-items: center;
     gap: 16px;
     overflow: hidden;
+    touch-action: pan-x;
   }
 
   .mobile-more-button {
@@ -6551,6 +6556,7 @@ pre {
     gap: 9px 10px;
     max-height: 128px;
     overflow: hidden;
+    touch-action: pan-x;
   }
 
   .mobile-category-panel.is-expanded .mobile-interest-chips {
