@@ -3851,6 +3851,32 @@ label {
   background: #fff;
 }
 
+.admin-filter-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 16px;
+}
+
+.admin-filter-tabs button {
+  min-height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0 12px;
+  color: var(--muted);
+  background: #fff;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.admin-filter-tabs button.active {
+  border-color: var(--brand);
+  color: #fff;
+  background: var(--brand);
+}
+
 .split-box {
   display: grid;
   gap: 10px;

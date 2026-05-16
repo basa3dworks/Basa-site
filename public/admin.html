@@ -476,6 +476,13 @@
               <input id="chatSearchInput" type="search" placeholder="Cliente, mensagem ou status">
             </label>
           </div>
+          <div class="admin-filter-tabs" id="chatStatusTabs" aria-label="Filtrar conversas por status">
+            <button type="button" class="active" data-chat-status="all">Todas</button>
+            <button type="button" data-chat-status="waiting_admin">Aguardando Basa</button>
+            <button type="button" data-chat-status="answered">Respondidas</button>
+            <button type="button" data-chat-status="waiting_customer">Aguardando cliente</button>
+            <button type="button" data-chat-status="closed">Encerradas</button>
+          </div>
           <div class="panel-head compact">
             <div>
               <h3>Conversas com clientes</h3>
@@ -513,6 +520,12 @@
             <label class="admin-search">Pesquisar pessoas
               <input id="peopleSearchInput" type="search" placeholder="Nome, email, código ou status">
             </label>
+          </div>
+          <div class="admin-filter-tabs" id="customerStatusTabs" aria-label="Filtrar clientes por status">
+            <button type="button" class="active" data-customer-status="all">Todos</button>
+            <button type="button" data-customer-status="active">Ativos</button>
+            <button type="button" data-customer-status="lead">Leads</button>
+            <button type="button" data-customer-status="blocked">Bloqueados</button>
           </div>
           <div class="people-grid">
             <form id="customerAdminForm" class="stack-form people-form">

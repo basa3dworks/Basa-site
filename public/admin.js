@@ -28,6 +28,8 @@ let currentSellers = [];
 let selectedOrderId = "";
 let currentMetricsView = "overview";
 let currentSocialProductId = "";
+let chatStatusFilter = "all";
+let customerStatusFilter = "all";
 let productSaveInProgress = false;
 let settingsSaveInProgress = false;
 
@@ -933,8 +935,29 @@ function partnerSearchText(item) {
 
 function renderPeopleLists() {
   const query = $("#peopleSearchInput")?.value || "";
-  const customers = currentCustomers.filter((item) => matchesSearch(customerSearchText(item), query));
+  const customers = currentCustomers.filter((item) =>
+    (customerStatusFilter === "all" || (item.status || "active") === customerStatusFilter)
+    && matchesSearch(customerSearchText(item), query)
+  );
   const affiliates = currentAffiliates.filter((item) => matchesSearch(partnerSearchText(item), query));
+  const customerCounts = currentCustomers.reduce((acc, item) => {
+    const status = item.status || "active";
+    acc.all += 1;
+    acc[status] = (acc[status] || 0) + 1;
+    return acc;
+  }, { all: 0, active: 0, lead: 0, blocked: 0 });
+
+  document.querySelectorAll("[data-customer-status]").forEach((button) => {
+    const status = button.dataset.customerStatus;
+    button.classList.toggle("active", status === customerStatusFilter);
+    const baseLabel = {
+      all: "Todos",
+      active: "Ativos",
+      lead: "Leads",
+      blocked: "Bloqueados"
+    }[status] || personStatusLabel(status);
+    button.textContent = `${baseLabel} (${customerCounts[status] || 0})`;
+  });
 
   const customersList = $("#customersList");
   if (customersList) {
@@ -1953,7 +1976,29 @@ function requestMatchesQuery(request, query) {
 function renderAdminRequests() {
   const chatQuery = $("#chatSearchInput")?.value || "";
   const requestQuery = $("#requestSearchInput")?.value || "";
-  const chats = currentRequests.filter((request) => requestKind(request) === "chat" && requestMatchesQuery(request, chatQuery));
+  const allChats = currentRequests.filter((request) => requestKind(request) === "chat");
+  const chatCounts = allChats.reduce((acc, request) => {
+    const status = request.status || "waiting_admin";
+    acc.all += 1;
+    acc[status] = (acc[status] || 0) + 1;
+    return acc;
+  }, { all: 0, waiting_admin: 0, answered: 0, waiting_customer: 0, closed: 0 });
+  document.querySelectorAll("[data-chat-status]").forEach((button) => {
+    const status = button.dataset.chatStatus;
+    button.classList.toggle("active", status === chatStatusFilter);
+    const baseLabel = {
+      all: "Todas",
+      waiting_admin: "Aguardando Basa",
+      answered: "Respondidas",
+      waiting_customer: "Aguardando cliente",
+      closed: "Encerradas"
+    }[status] || requestStatusLabel(status);
+    button.textContent = `${baseLabel} (${chatCounts[status] || 0})`;
+  });
+  const chats = allChats.filter((request) =>
+    (chatStatusFilter === "all" || request.status === chatStatusFilter)
+    && requestMatchesQuery(request, chatQuery)
+  );
   const customRequests = currentRequests.filter((request) => requestKind(request) !== "chat" && requestMatchesQuery(request, requestQuery));
 
   const chatList = $("#adminChatList");
@@ -2297,8 +2342,20 @@ $("#campaignForm").addEventListener("input", (event) => {
 });
 $("#orderSearchInput").addEventListener("input", renderOrdersList);
 $("#chatSearchInput")?.addEventListener("input", renderAdminRequests);
+document.querySelectorAll("[data-chat-status]").forEach((button) => {
+  button.addEventListener("click", () => {
+    chatStatusFilter = button.dataset.chatStatus || "all";
+    renderAdminRequests();
+  });
+});
 $("#requestSearchInput").addEventListener("input", renderAdminRequests);
 $("#peopleSearchInput").addEventListener("input", renderPeopleLists);
+document.querySelectorAll("[data-customer-status]").forEach((button) => {
+  button.addEventListener("click", () => {
+    customerStatusFilter = button.dataset.customerStatus || "all";
+    renderPeopleLists();
+  });
+});
 $("#customerAdminForm")?.addEventListener("submit", saveCustomerAdmin);
 $("#affiliateForm").addEventListener("submit", saveAffiliate);
 $("#sellerForm")?.addEventListener("submit", saveSeller);
