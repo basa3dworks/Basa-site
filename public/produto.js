@@ -64,6 +64,11 @@ const escapeHtml = (value) => String(value || "")
   .replaceAll('"', "&quot;")
   .replaceAll("'", "&#039;");
 
+function lockProductHorizontalScroll() {
+  if (!window.scrollX) return;
+  window.requestAnimationFrame(() => window.scrollTo(0, window.scrollY));
+}
+
 function soldLabel(count) {
   const sold = Number(count || 0);
   if (!sold) return "";
@@ -1351,6 +1356,9 @@ async function submitSupportChat(event) {
 }
 
 async function init() {
+  lockProductHorizontalScroll();
+  window.addEventListener("scroll", lockProductHorizontalScroll, { passive: true });
+  window.addEventListener("resize", lockProductHorizontalScroll);
   const slug = new URLSearchParams(location.search).get("slug");
   document.querySelectorAll("[data-google-login]").forEach((link) => {
     link.href = `/api/customer/google/start?next=${encodeURIComponent(location.pathname + location.search)}`;

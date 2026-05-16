@@ -6096,6 +6096,7 @@ pre {
     padding-right: 12px;
     overflow-x: hidden;
     overflow-y: visible;
+    contain: inline-size;
   }
 
   body.store-body:not(.admin-body) .product-detail-hero,
@@ -6103,9 +6104,29 @@ pre {
   body.store-body:not(.admin-body) .product-reviews-panel,
   body.store-body:not(.admin-body) .product-related-panel,
   body.store-body:not(.admin-body) .product-gallery,
-  body.store-body:not(.admin-body) .product-detail-copy {
+  body.store-body:not(.admin-body) .product-detail-copy,
+  body.store-body:not(.admin-body) .product-main-media,
+  body.store-body:not(.admin-body) .product-thumbs,
+  body.store-body:not(.admin-body) .detail-price,
+  body.store-body:not(.admin-body) .price-block,
+  body.store-body:not(.admin-body) .price-line,
+  body.store-body:not(.admin-body) .free-shipping-callout,
+  body.store-body:not(.admin-body) .product-options,
+  body.store-body:not(.admin-body) .payment-info {
     max-width: 100%;
     min-width: 0;
+  }
+
+  body.store-body:not(.admin-body) .product-detail-copy,
+  body.store-body:not(.admin-body) .payment-info,
+  body.store-body:not(.admin-body) .product-options {
+    overflow: hidden;
+  }
+
+  body.store-body:not(.admin-body) .lead,
+  body.store-body:not(.admin-body) .payment-info span,
+  body.store-body:not(.admin-body) .payment-info strong {
+    overflow-wrap: anywhere;
   }
 
   .pending-payment-banner {
@@ -6992,6 +7013,16 @@ pre {
   .detail-price {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  body.store-body:not(.admin-body) .detail-price {
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  body.store-body:not(.admin-body) .detail-price-block .price {
+    max-width: 100%;
+    overflow-wrap: anywhere;
   }
 
   .product-card-actions {
