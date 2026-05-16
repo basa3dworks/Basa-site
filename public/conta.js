@@ -146,6 +146,7 @@ function showView(view) {
   if (isLoggedIn() && ["login", "register", "reset"].includes(view)) {
     view = "profile";
   }
+  document.body.dataset.accountView = view;
   document.querySelectorAll("[data-account-panel]").forEach((panel) => {
     panel.hidden = panel.dataset.accountPanel !== view;
     panel.classList.toggle("active", panel.dataset.accountPanel === view);

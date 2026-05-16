@@ -10,21 +10,25 @@
     <link rel="stylesheet" href="/styles.css">
   </head>
   <body class="account-body account-loading">
-    <header class="topbar">
-      <a class="brand" href="/#produtos">
-        <span class="brand-mark">B3D</span>
-        <span>Basa 3D Works</span>
-      </a>
-      <nav>
-        <a href="/#produtos">Produtos</a>
-        <a href="/conta.html">Minha conta</a>
-        <a href="/admin.html">Admin</a>
+    <header class="topbar account-topbar">
+      <div class="topbar-left">
+        <a class="back-icon-button" href="/#produtos" aria-label="Voltar para loja">
+          <span class="material-symbols-rounded" aria-hidden="true">arrow_back</span>
+        </a>
+      </div>
+      <a class="account-topbar-search" href="/#produtos" aria-label="Voltar para a loja e buscar produtos">Buscar na Basa 3D Works</a>
+      <nav class="account-topbar-actions" aria-label="Atalhos da loja">
+        <a class="icon-button chat-button" href="/#produtos" aria-label="Abrir loja">
+          <span class="material-symbols-rounded" aria-hidden="true">forum</span>
+        </a>
+        <a class="icon-button cart-button" href="/#produtos" aria-label="Abrir carrinho">
+          <span class="material-symbols-rounded" aria-hidden="true">shopping_bag</span>
+        </a>
       </nav>
     </header>
 
     <main class="account-page">
       <section class="account-hero">
-        <a class="account-back-link" href="/#produtos" aria-label="Voltar para loja">&larr;</a>
         <p class="eyebrow">Conta do cliente</p>
         <h1>Minha Basa</h1>
         <p>Acesse sua conta, pedidos e encomendas em um lugar simples.</p>
@@ -131,7 +135,6 @@
                 <p class="eyebrow">Compras</p>
                 <h2>Meus pedidos</h2>
               </div>
-              <a class="ghost-button account-store-link" href="/#produtos">Voltar para a loja</a>
             </div>
             <div class="account-list" id="accountOrders"></div>
           </section>

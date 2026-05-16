@@ -214,28 +214,23 @@ nav {
   }
 
   body.account-body:not(.admin-body) > .topbar {
-    height: 18px;
-    min-height: 18px;
-    padding: 0;
-    border: 0;
-    background: var(--brand);
-    box-shadow: none;
-  }
-
-  body.account-body:not(.admin-body) > .topbar > * {
-    display: none;
+    position: fixed;
+    top: 0;
+    left: 50%;
+    z-index: 80;
+    transform: translateX(-50%);
   }
 
   body.account-body:not(.admin-body) > main.account-page {
-    min-height: calc(100vh - 18px);
-    padding-top: 10px;
+    min-height: calc(100vh - 56px);
+    padding-top: 64px;
     overflow: visible;
     background: #f7f8f6;
   }
 
   body.account-body:not(.admin-body) .account-hero {
     max-width: none;
-    padding: 14px 16px 12px;
+    padding: 12px 16px 12px;
   }
 
   body.account-body:not(.admin-body) .account-hero h1 {
@@ -255,6 +250,14 @@ nav {
 
   body.account-body:not(.admin-body) .account-sidebar {
     position: static;
+  }
+
+  body.account-body.account-logged:not(.admin-body) .account-shell {
+    display: block;
+  }
+
+  body.account-body.account-logged:not(.admin-body) .account-sidebar {
+    display: none;
   }
 
   body.account-body:not(.admin-body) .account-menu-group {
@@ -3076,6 +3079,11 @@ label {
   display: flex;
 }
 
+body.store-body:not(.admin-body) .customer-panel {
+  box-sizing: border-box;
+  padding-top: 56px;
+}
+
 .customer-drawer {
   width: min(430px, 100%);
   height: 100%;
@@ -3083,6 +3091,10 @@ label {
   padding: 18px;
   background: var(--surface);
   box-shadow: var(--shadow);
+}
+
+body.store-body:not(.admin-body) .customer-drawer {
+  height: calc(100vh - 56px);
 }
 
 .quote-panel .customer-drawer {
@@ -5195,6 +5207,59 @@ label {
   color: var(--muted);
 }
 
+.account-topbar {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px 12px;
+  border-bottom: 0;
+  background: var(--brand);
+  box-shadow: none;
+}
+
+.account-topbar .topbar-left {
+  gap: 0;
+}
+
+.account-topbar .back-icon-button {
+  width: 34px;
+  height: 34px;
+  color: var(--brand);
+  background: #fff;
+  font-size: 1.25rem;
+}
+
+.account-topbar-search {
+  min-width: 0;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  padding: 0 16px;
+  border-radius: 999px;
+  color: #6b716e;
+  background: #fff;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.account-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.account-topbar-actions .icon-button {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  color: var(--brand);
+  background: #fff;
+}
+
 .account-page {
   padding-top: 24px;
 }
@@ -6144,11 +6209,13 @@ pre {
     margin-right: 0;
   }
 
-  body.store-body:not(.admin-body) > .topbar {
+  body.store-body:not(.admin-body) > .topbar,
+  body.account-body:not(.admin-body) > .topbar {
     position: fixed;
     top: 0;
     left: 0;
     z-index: 80;
+    transform: none;
   }
 
   body.store-body:not(.admin-body) > .mobile-tabbar {
@@ -7169,11 +7236,11 @@ pre {
   }
 
   .account-page {
-    padding-top: 10px;
+    padding-top: 64px;
   }
 
   .account-hero {
-    padding: 14px 16px 12px;
+    padding: 12px 16px 12px;
   }
 
   .account-shell {
@@ -7195,6 +7262,14 @@ pre {
 
   .account-sidebar {
     position: static;
+  }
+
+  body.account-body.account-logged:not(.admin-body) .account-shell {
+    display: block;
+  }
+
+  body.account-body.account-logged:not(.admin-body) .account-sidebar {
+    display: none;
   }
 
   .account-menu-group {
