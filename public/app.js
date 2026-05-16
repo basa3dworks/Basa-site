@@ -249,8 +249,8 @@ function setCustomerPanelTopbarMode(isOpen) {
   const menuButton = $("#mobileMenuButton");
   const icon = menuButton?.querySelector(".material-symbols-rounded");
   if (!menuButton || !icon) return;
-  icon.textContent = isOpen ? "arrow_back" : "home";
-  menuButton.setAttribute("aria-label", isOpen ? "Voltar" : "Abrir Minha Basa");
+  icon.textContent = isOpen ? "arrow_back" : "menu";
+  menuButton.setAttribute("aria-label", isOpen ? "Voltar" : "Abrir menu");
   menuButton.setAttribute("aria-expanded", isOpen ? "true" : "false");
   menuButton.classList.toggle("is-back", isOpen);
 }
@@ -298,6 +298,17 @@ async function openSupportPanel() {
 function closeSupportPanel() {
   $("#supportPanel").classList.remove("open");
   $("#supportPanel").setAttribute("aria-hidden", "true");
+}
+
+function closeCartPanel() {
+  $("#cartPanel").classList.remove("open");
+}
+
+function closePublicPanels(except = "") {
+  if (except !== "customer") closeCustomerPanel();
+  if (except !== "quote") closeQuotePanel();
+  if (except !== "support") closeSupportPanel();
+  if (except !== "cart") closeCartPanel();
 }
 
 function supportChatState() {
@@ -1356,15 +1367,24 @@ async function init() {
   });
   $("#mobileSearchInput")?.addEventListener("input", renderProducts);
   $("#cartButton").addEventListener("click", () => {
+    closePublicPanels("cart");
     $("#cartPanel").classList.add("open");
     autoQuoteShippingIfPossible();
   });
-  $("#supportChatButton")?.addEventListener("click", openSupportPanel);
+  $("#supportChatButton")?.addEventListener("click", () => {
+    if ($("#supportPanel")?.classList.contains("open")) {
+      closeSupportPanel();
+      return;
+    }
+    closePublicPanels("support");
+    openSupportPanel();
+  });
   $("#mobileCartButton")?.addEventListener("click", () => {
+    closePublicPanels("cart");
     $("#cartPanel").classList.add("open");
     autoQuoteShippingIfPossible();
   });
-  $("#closeCart").addEventListener("click", () => $("#cartPanel").classList.remove("open"));
+  $("#closeCart").addEventListener("click", closeCartPanel);
   $("#customerButton")?.addEventListener("click", () => openCustomerPanel());
   $("#mobileCustomerButton")?.addEventListener("click", () => { window.location.href = "/conta.html"; });
   $("#mobileMenuButton")?.addEventListener("click", () => {
@@ -1372,6 +1392,7 @@ async function init() {
       closeCustomerPanel();
       return;
     }
+    closePublicPanels("customer");
     openCustomerPanel();
   });
   $("#closeCustomerPanel")?.addEventListener("click", closeCustomerPanel);

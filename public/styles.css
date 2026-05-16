@@ -5354,50 +5354,6 @@ body.store-body:not(.admin-body) .customer-drawer {
   transform: translateX(-50%);
 }
 
-.account-home-actions {
-  display: grid;
-  gap: 10px;
-}
-
-.account-home-actions button {
-  min-height: 72px;
-  display: grid;
-  grid-template-columns: 38px minmax(0, 1fr) 18px;
-  align-items: center;
-  gap: 12px;
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  padding: 12px;
-  color: var(--ink);
-  background: #fff;
-  text-align: left;
-  cursor: pointer;
-}
-
-.account-home-actions button > .material-symbols-rounded {
-  width: 38px;
-  height: 38px;
-  display: grid;
-  place-items: center;
-  border-radius: 14px;
-  color: var(--brand);
-  background: #edf5ef;
-}
-
-.account-home-actions button span:not(.material-symbols-rounded) {
-  display: grid;
-  gap: 4px;
-}
-
-.account-home-actions small {
-  color: var(--muted);
-  font-weight: 700;
-}
-
-.account-home-actions b {
-  color: var(--muted);
-}
-
 .account-page {
   padding-top: 24px;
 }

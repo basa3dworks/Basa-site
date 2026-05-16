@@ -141,10 +141,10 @@ function updateAccountTopbar(view) {
   const link = $("#accountTopbarBackLink");
   const icon = $("#accountTopbarBackIcon");
   if (!link || !icon) return;
-  const isHome = view === "home" || !isLoggedIn();
-  link.href = isHome ? "/#produtos" : "/conta.html";
-  link.setAttribute("aria-label", isHome ? "Voltar para loja" : "Voltar para Minha Basa");
-  icon.textContent = isHome ? "home" : "arrow_back";
+  const isProfile = view === "profile" || !isLoggedIn();
+  link.href = isProfile ? "/#produtos" : "/conta.html#profile";
+  link.setAttribute("aria-label", isProfile ? "Voltar para loja" : "Voltar para Minha Basa");
+  icon.textContent = isProfile ? "home" : "arrow_back";
 }
 
 function showView(view) {
@@ -154,7 +154,7 @@ function showView(view) {
     view = "login";
   }
   if (isLoggedIn() && ["login", "register", "reset"].includes(view)) {
-    view = "home";
+    view = "profile";
   }
   document.body.dataset.accountView = view;
   updateAccountTopbar(view);
@@ -808,10 +808,10 @@ async function init() {
   $("#logoutAccountButton").addEventListener("click", logout);
   $("#logoutSidebarButton")?.addEventListener("click", logout);
   const hashView = location.hash.replace("#", "");
-  const allowedPrivateViews = ["home", "profile", "orders", "favorites", "quotes"];
+  const allowedPrivateViews = ["profile", "orders", "favorites", "quotes"];
   const allowedGuestViews = ["login", "register", "reset"];
   const initialView = isLoggedIn()
-    ? (allowedPrivateViews.includes(hashView) ? hashView : "home")
+    ? (allowedPrivateViews.includes(hashView) ? hashView : "profile")
     : (allowedGuestViews.includes(hashView) ? hashView : "login");
   state.privateLoading = isLoggedIn();
   showView(initialView);
