@@ -295,9 +295,19 @@ nav {
   }
 
   body.store-body:not(.admin-body) > main.product-page {
-    padding: 16px 12px 32px;
-    overflow-x: hidden;
+    padding: 72px 12px 32px;
+    overflow-x: clip;
     overflow-y: visible;
+  }
+
+  body.store-body:not(.admin-body):has(> main.product-page) > .topbar {
+    position: fixed;
+    top: 0;
+    left: 50%;
+    z-index: 80;
+    width: var(--public-app-width);
+    max-width: var(--public-app-width);
+    transform: translateX(-50%);
   }
 
   body.store-body:not(.admin-body) .topbar {
@@ -6122,11 +6132,18 @@ pre {
   }
 
   body.store-body:not(.admin-body) > main.product-page {
+    padding-top: 72px;
     padding-left: 12px;
     padding-right: 12px;
-    overflow-x: hidden;
+    overflow-x: clip;
     overflow-y: visible;
-    contain: inline-size;
+  }
+
+  body.store-body:not(.admin-body):has(> main.product-page) > .topbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 80;
   }
 
   body.store-body:not(.admin-body) .product-detail-hero,
