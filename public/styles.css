@@ -1997,11 +1997,15 @@ textarea {
 }
 
 body.store-body:not(.admin-body) .product-sticky-nav {
+  position: fixed;
   top: 56px;
+  left: 50%;
+  z-index: 79;
   width: 100%;
-  max-width: 100%;
+  max-width: var(--public-app-width);
   margin-left: 0;
   margin-right: 0;
+  transform: translate(-50%, -10px);
 }
 
 body.store-body:not(.admin-body) .product-sticky-row {
@@ -2028,6 +2032,10 @@ body.store-body:not(.admin-body) .product-sticky-tabs button {
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0);
+}
+
+body.store-body:not(.admin-body) .product-sticky-nav.is-visible {
+  transform: translate(-50%, 0);
 }
 
 .product-sticky-row {
@@ -7231,13 +7239,19 @@ pre {
 @media (max-width: 760px) {
   body.store-body:not(.admin-body) .product-sticky-nav {
     grid-column: auto;
+    left: 0;
     width: 100%;
     max-width: 100%;
     margin-left: 0;
     margin-right: 0;
+    transform: translateY(-10px);
     display: grid;
     grid-template-columns: 1fr;
     gap: 0;
+  }
+
+  body.store-body:not(.admin-body) .product-sticky-nav.is-visible {
+    transform: translateY(0);
   }
 
   body.store-body:not(.admin-body) .product-sticky-tabs {

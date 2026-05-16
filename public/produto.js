@@ -76,26 +76,37 @@ function lockProductHorizontalScroll() {
   });
 }
 
+function isAllowedHorizontalTarget(target) {
+  return Boolean(target?.closest?.(".product-thumbs, .mobile-category-tabs, .mobile-interest-chips"));
+}
+
 function preventProductHorizontalPan() {
   let startX = 0;
   let startY = 0;
-  const allowedHorizontalSelectors = ".product-thumbs, .mobile-category-tabs, .mobile-interest-chips";
-  document.addEventListener("touchstart", (event) => {
+  const start = (event) => {
     const touch = event.touches[0];
     if (!touch) return;
     startX = touch.clientX;
     startY = touch.clientY;
-  }, { passive: true });
-  document.addEventListener("touchmove", (event) => {
+  };
+  const move = (event) => {
     const touch = event.touches[0];
-    if (!touch || event.target.closest(allowedHorizontalSelectors)) return;
+    if (!touch || isAllowedHorizontalTarget(event.target)) return;
     const deltaX = touch.clientX - startX;
     const deltaY = touch.clientY - startY;
     if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 6) {
       event.preventDefault();
       lockProductHorizontalScroll();
     }
-  }, { passive: false });
+  };
+  window.addEventListener("touchstart", start, { passive: true, capture: true });
+  window.addEventListener("touchmove", move, { passive: false, capture: true });
+  window.addEventListener("pointermove", (event) => {
+    if (event.pointerType !== "touch" || isAllowedHorizontalTarget(event.target)) return;
+    if (Math.abs(event.movementX || 0) > Math.abs(event.movementY || 0)) {
+      lockProductHorizontalScroll();
+    }
+  }, { passive: true, capture: true });
 }
 
 function soldLabel(count) {
@@ -322,11 +333,12 @@ function setupProductStickyNav(product) {
   const stickyOffset = () => {
     const topbarHeight = document.querySelector(".topbar")?.getBoundingClientRect().height || 0;
     const navHeight = nav.getBoundingClientRect().height || 44;
-    return Math.max(86, topbarHeight + navHeight + 10);
+    return topbarHeight + navHeight + 10;
   };
   const updateNavVisibility = () => {
     const introBottom = intro.getBoundingClientRect().bottom;
-    nav.classList.toggle("is-visible", introBottom <= stickyOffset() - 20);
+    const topbarHeight = document.querySelector(".topbar")?.getBoundingClientRect().height || 0;
+    nav.classList.toggle("is-visible", introBottom <= topbarHeight + 18);
   };
   const updateActiveTab = () => {
     const marker = stickyOffset() + 20;
