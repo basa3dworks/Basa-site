@@ -330,14 +330,23 @@ function setupProductStickyNav(product) {
   const nav = $("#productStickyNav");
   const intro = $("#productIntroSection");
   if (!nav || !intro) return;
+  const topbar = document.querySelector(".topbar");
+  if (document.body.classList.contains("store-body") && nav.parentElement !== document.body) {
+    document.body.appendChild(nav);
+  }
+  const updateStickyTop = () => {
+    const topbarHeight = topbar?.getBoundingClientRect().height || 0;
+    document.documentElement.style.setProperty("--product-sticky-top", `${Math.round(topbarHeight)}px`);
+    return topbarHeight;
+  };
   const stickyOffset = () => {
-    const topbarHeight = document.querySelector(".topbar")?.getBoundingClientRect().height || 0;
+    const topbarHeight = updateStickyTop();
     const navHeight = nav.getBoundingClientRect().height || 44;
     return topbarHeight + navHeight + 10;
   };
   const updateNavVisibility = () => {
     const introBottom = intro.getBoundingClientRect().bottom;
-    const topbarHeight = document.querySelector(".topbar")?.getBoundingClientRect().height || 0;
+    const topbarHeight = updateStickyTop();
     nav.classList.toggle("is-visible", introBottom <= topbarHeight + 18);
   };
   const updateActiveTab = () => {
@@ -354,6 +363,7 @@ function setupProductStickyNav(product) {
   };
   updateNavState();
   window.addEventListener("scroll", updateNavState, { passive: true });
+  window.addEventListener("resize", updateNavState);
   document.querySelectorAll("[data-product-tab]").forEach((button) => {
     button.addEventListener("click", () => {
       const section = $(`[data-product-section="${button.dataset.productTab}"]`);

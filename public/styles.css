@@ -1998,7 +1998,7 @@ textarea {
 
 body.store-body:not(.admin-body) .product-sticky-nav {
   position: fixed;
-  top: 56px;
+  top: var(--product-sticky-top, 56px);
   left: 50%;
   z-index: 79;
   width: 100%;
@@ -7240,6 +7240,7 @@ pre {
   body.store-body:not(.admin-body) .product-sticky-nav {
     grid-column: auto;
     left: 0;
+    top: var(--product-sticky-top, 56px);
     width: 100%;
     max-width: 100%;
     margin-left: 0;
