@@ -287,6 +287,18 @@ nav {
     box-shadow: 0 18px 50px rgba(15, 31, 25, 0.08);
   }
 
+  body.store-body:not(.admin-body) > .topbar {
+    position: fixed;
+    top: 0;
+    left: 50%;
+    z-index: 80;
+    transform: translateX(-50%);
+  }
+
+  body.store-body:not(.admin-body) > .mobile-tabbar {
+    margin-top: 56px;
+  }
+
   body.store-body:not(.admin-body) > main,
   body.store-body:not(.admin-body) > main.product-page {
     min-height: calc(100vh - 102px);
@@ -298,16 +310,6 @@ nav {
     padding: 72px 12px 32px;
     overflow-x: clip;
     overflow-y: visible;
-  }
-
-  body.store-body:not(.admin-body):has(> main.product-page) > .topbar {
-    position: fixed;
-    top: 0;
-    left: 50%;
-    z-index: 80;
-    width: var(--public-app-width);
-    max-width: var(--public-app-width);
-    transform: translateX(-50%);
   }
 
   body.store-body:not(.admin-body) .topbar {
@@ -6121,6 +6123,17 @@ pre {
     margin-right: 0;
   }
 
+  body.store-body:not(.admin-body) > .topbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 80;
+  }
+
+  body.store-body:not(.admin-body) > .mobile-tabbar {
+    margin-top: 56px;
+  }
+
   body.store-body:not(.admin-body) .cart-panel,
   body.store-body:not(.admin-body) .customer-panel,
   body.store-body:not(.admin-body) .quote-panel,
@@ -6145,13 +6158,6 @@ pre {
     padding-right: 12px;
     overflow-x: clip;
     overflow-y: visible;
-  }
-
-  body.store-body:not(.admin-body):has(> main.product-page) > .topbar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    z-index: 80;
   }
 
   body.store-body:not(.admin-body) .product-detail-hero,
