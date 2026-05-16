@@ -249,8 +249,8 @@ function setCustomerPanelTopbarMode(isOpen) {
   const menuButton = $("#mobileMenuButton");
   const icon = menuButton?.querySelector(".material-symbols-rounded");
   if (!menuButton || !icon) return;
-  icon.textContent = isOpen ? "arrow_back" : "menu";
-  menuButton.setAttribute("aria-label", isOpen ? "Voltar" : "Abrir menu");
+  icon.textContent = isOpen ? "arrow_back" : "home";
+  menuButton.setAttribute("aria-label", isOpen ? "Voltar" : "Abrir Minha Basa");
   menuButton.setAttribute("aria-expanded", isOpen ? "true" : "false");
   menuButton.classList.toggle("is-back", isOpen);
 }
@@ -309,10 +309,20 @@ function saveSupportChatState(chat) {
 }
 
 function updateSupportIdentityFields() {
-  const known = Boolean(state.customerSession?.customer?.email || supportChatState()?.email);
+  const logged = Boolean(state.customerSession?.customer?.email);
+  const form = $("#supportChatForm");
+  const prompt = $("#supportLoginRequired");
+  const messageField = form?.elements.message?.closest("label");
+  const submitButton = form?.querySelector("button[type='submit']");
   document.querySelectorAll("[data-support-identity]").forEach((field) => {
-    field.hidden = known;
+    field.hidden = true;
   });
+  if (prompt) prompt.hidden = logged;
+  if (messageField) messageField.hidden = !logged;
+  if (submitButton) submitButton.hidden = !logged;
+  if (!logged && $("#supportChatStatus")) {
+    $("#supportChatStatus").textContent = "Entre para enviar mensagem e receber a resposta no chat.";
+  }
 }
 
 function supportRequestFromList(requests, chat) {
@@ -1210,6 +1220,10 @@ async function submitSupportChat(event) {
   const form = event.currentTarget;
   const customer = state.customerSession?.customer || {};
   const chat = supportChatState();
+  if (!customer.email) {
+    $("#supportChatStatus").textContent = "Entre para enviar mensagem e receber a resposta no chat.";
+    return;
+  }
   const name = form.elements.name.value.trim() || customer.name || "Cliente Basa";
   const email = (form.elements.email.value.trim() || customer.email || chat?.email || "").toLowerCase();
   const message = form.elements.message.value.trim();

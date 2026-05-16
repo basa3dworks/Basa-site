@@ -12,8 +12,8 @@
   <body class="account-body account-loading">
     <header class="topbar account-topbar">
       <div class="topbar-left">
-        <a class="back-icon-button" href="/#produtos" aria-label="Voltar para loja">
-          <span class="material-symbols-rounded" aria-hidden="true">arrow_back</span>
+        <a class="back-icon-button" id="accountTopbarBackLink" href="/#produtos" aria-label="Voltar para loja">
+          <span class="material-symbols-rounded" id="accountTopbarBackIcon" aria-hidden="true">home</span>
         </a>
       </div>
       <a class="account-topbar-search" href="/#produtos" aria-label="Voltar para a loja e buscar produtos">Buscar na Basa 3D Works</a>
@@ -47,7 +47,36 @@
         </aside>
 
         <div class="account-content">
-          <section class="account-view active" data-account-panel="login">
+          <section class="account-view account-home-view active" data-account-panel="home">
+            <div class="account-home-actions">
+              <button type="button" data-account-view="profile">
+                <span class="material-symbols-rounded" aria-hidden="true">manage_accounts</span>
+                <span>
+                  <strong>Perfil e dados</strong>
+                  <small>Cadastro, foto e endereço.</small>
+                </span>
+                <b>&gt;</b>
+              </button>
+              <button type="button" data-account-view="orders">
+                <span class="material-symbols-rounded" aria-hidden="true">receipt_long</span>
+                <span>
+                  <strong>Pedidos</strong>
+                  <small>Compras, pagamentos e entrega.</small>
+                </span>
+                <b>&gt;</b>
+              </button>
+              <button type="button" data-account-view="quotes">
+                <span class="material-symbols-rounded" aria-hidden="true">inventory_2</span>
+                <span>
+                  <strong>Encomendas</strong>
+                  <small>Solicitações sob medida.</small>
+                </span>
+                <b>&gt;</b>
+              </button>
+            </div>
+          </section>
+
+          <section class="account-view" data-account-panel="login" hidden>
             <div class="panel-head">
               <div>
                 <p class="eyebrow">Acesso</p>

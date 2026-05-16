@@ -11,7 +11,7 @@
   </head>
   <body class="store-body">
     <header class="topbar">
-        <button class="menu-button" id="mobileMenuButton" type="button" aria-label="Abrir menu"><span class="material-symbols-rounded" aria-hidden="true">menu</span></button>
+        <button class="menu-button" id="mobileMenuButton" type="button" aria-label="Abrir Minha Basa"><span class="material-symbols-rounded" aria-hidden="true">home</span></button>
         <a class="brand" href="/">
           <span class="brand-mark">B3D</span>
           <span>Basa 3D Works</span>
@@ -257,12 +257,16 @@
             <p class="eyebrow">Atendimento</p>
             <h2>Fale conosco</h2>
           </div>
-          <button class="ghost-button" id="closeSupportPanel" type="button">Fechar</button>
         </div>
         <article class="panel">
           <form id="supportChatForm" class="stack-form">
             <label data-support-identity>Nome<input name="name" autocomplete="name" placeholder="Seu nome"></label>
             <label data-support-identity>Email<input name="email" type="email" autocomplete="email" placeholder="voce@email.com"></label>
+            <div class="support-login-required" id="supportLoginRequired" hidden>
+              <strong>Entre para falar conosco</strong>
+              <span>Faça login para enviar mensagens e acompanhar a resposta aqui no chat.</span>
+              <a class="primary-button" href="/conta.html#login">Entrar ou criar conta</a>
+            </div>
             <div class="support-chat-thread" id="supportChatThread" hidden></div>
             <label>Mensagem<textarea name="message" rows="5" required placeholder="Conte como podemos ajudar."></textarea></label>
             <button class="primary-button" type="submit">Enviar mensagem</button>

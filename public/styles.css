@@ -2655,12 +2655,22 @@ body.lightbox-open {
   display: flex;
 }
 
+body.store-body:not(.admin-body) .cart-panel {
+  box-sizing: border-box;
+  padding-top: 56px;
+}
+
 .cart {
   width: min(460px, 100%);
   min-height: 100%;
   overflow: auto;
   padding: 24px;
   background: #fff;
+}
+
+body.store-body:not(.admin-body) .cart {
+  height: calc(100vh - 56px);
+  min-height: 0;
 }
 
 .cart > .section-head.compact {
@@ -3186,6 +3196,26 @@ body.store-body:not(.admin-body) .customer-drawer {
   opacity: 0.72;
   font-size: 0.72rem;
   font-weight: 700;
+}
+
+.support-login-required {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid #dce8e1;
+  border-radius: 8px;
+  background: #f5faf7;
+}
+
+.support-login-required strong,
+.support-login-required span {
+  display: block;
+}
+
+.support-login-required span {
+  color: var(--muted);
+  font-weight: 700;
+  line-height: 1.35;
 }
 
 .profile-grid {
@@ -5324,6 +5354,50 @@ body.store-body:not(.admin-body) .customer-drawer {
   transform: translateX(-50%);
 }
 
+.account-home-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.account-home-actions button {
+  min-height: 72px;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) 18px;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 12px;
+  color: var(--ink);
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.account-home-actions button > .material-symbols-rounded {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  color: var(--brand);
+  background: #edf5ef;
+}
+
+.account-home-actions button span:not(.material-symbols-rounded) {
+  display: grid;
+  gap: 4px;
+}
+
+.account-home-actions small {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.account-home-actions b {
+  color: var(--muted);
+}
+
 .account-page {
   padding-top: 24px;
 }
@@ -6648,6 +6722,14 @@ pre {
     width: 13px;
     height: 10px;
     border-radius: 8px 8px 2px 8px;
+  }
+
+  .account-topbar .account-topbar-actions {
+    display: flex;
+  }
+
+  .account-topbar .account-topbar-actions .icon-button {
+    display: grid;
   }
 
   .mobile-tabbar {
