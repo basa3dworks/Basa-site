@@ -302,6 +302,8 @@ nav {
     grid-template-columns: 34px minmax(0, 1fr) auto;
     gap: 10px;
     padding: 10px 12px 12px;
+    max-width: 100%;
+    overflow: hidden;
     border-bottom: 0;
     background: var(--brand);
   }
@@ -340,6 +342,9 @@ nav {
     display: grid;
     position: static;
     grid-column: 2;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
   }
 
   body.store-body:not(.admin-body) .mobile-search span {
@@ -350,6 +355,8 @@ nav {
   }
 
   body.store-body:not(.admin-body) .mobile-search input {
+    width: 100%;
+    min-width: 0;
     min-height: 34px;
     border: 0;
     border-radius: 999px;
@@ -390,7 +397,7 @@ nav {
     min-width: 36px;
     height: 34px;
     min-height: 34px;
-    overflow: visible;
+    overflow: hidden;
     border-radius: 999px;
     color: transparent;
     background: #fff;
@@ -458,16 +465,16 @@ nav {
 
   body.store-body:not(.admin-body) .icon-button strong {
     position: absolute;
-    right: -5px;
-    bottom: -5px;
-    min-width: 20px;
-    min-height: 20px;
+    right: 0;
+    bottom: 0;
+    min-width: 18px;
+    min-height: 18px;
     display: inline-grid;
     place-items: center;
     border-radius: 999px;
     color: #fff;
     background: var(--brand);
-    font-size: 0.72rem;
+    font-size: 0.68rem;
   }
 
   body.store-body:not(.admin-body) .chat-button strong {
@@ -6232,6 +6239,8 @@ pre {
     grid-template-columns: 34px minmax(0, 1fr) auto;
     gap: 10px;
     padding: 10px 12px 12px;
+    max-width: 100%;
+    overflow: hidden;
     border-bottom: 0;
     background: var(--brand);
   }
@@ -6277,6 +6286,9 @@ pre {
     display: grid;
     position: static;
     grid-column: 2;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
   }
 
   .mobile-search span {
@@ -6287,6 +6299,8 @@ pre {
   }
 
   .mobile-search input {
+    width: 100%;
+    min-width: 0;
     min-height: 34px;
     border: 0;
     border-radius: 999px;
@@ -6329,7 +6343,7 @@ pre {
     min-width: 36px;
     height: 34px;
     min-height: 34px;
-    overflow: visible;
+    overflow: hidden;
     border-radius: 999px;
     color: transparent;
     background: #fff;
@@ -6567,16 +6581,16 @@ pre {
 
   .icon-button strong {
     position: absolute;
-    right: -5px;
-    bottom: -5px;
-    min-width: 20px;
-    min-height: 20px;
+    right: 0;
+    bottom: 0;
+    min-width: 18px;
+    min-height: 18px;
     display: inline-grid;
     place-items: center;
     border-radius: 999px;
     color: #fff;
     background: var(--brand);
-    font-size: 0.72rem;
+    font-size: 0.68rem;
   }
 
   .hero {
