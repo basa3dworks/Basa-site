@@ -256,27 +256,27 @@ function updateCustomerPanelSession() {
   }
 }
 
-function setCustomerPanelTopbarMode(isOpen) {
+function setPublicTopbarPanelMode(isPanelOpen) {
   const menuButton = $("#mobileMenuButton");
   const icon = menuButton?.querySelector(".material-symbols-rounded");
   if (!menuButton || !icon) return;
-  icon.textContent = isOpen ? "home" : "menu";
-  menuButton.setAttribute("aria-label", isOpen ? "Voltar para loja" : "Abrir menu");
-  menuButton.setAttribute("aria-expanded", isOpen ? "true" : "false");
-  menuButton.classList.toggle("is-back", isOpen);
+  icon.textContent = isPanelOpen ? "home" : "menu";
+  menuButton.setAttribute("aria-label", isPanelOpen ? "Voltar para loja" : "Abrir menu");
+  menuButton.setAttribute("aria-expanded", isPanelOpen ? "true" : "false");
+  menuButton.classList.toggle("is-back", isPanelOpen);
 }
 
 function openCustomerPanel() {
   updateCustomerPanelSession();
   $("#customerPanel").classList.add("open");
   $("#customerPanel").setAttribute("aria-hidden", "false");
-  setCustomerPanelTopbarMode(true);
+  setPublicTopbarPanelMode(true);
 }
 
 function closeCustomerPanel() {
   $("#customerPanel").classList.remove("open");
   $("#customerPanel").setAttribute("aria-hidden", "true");
-  setCustomerPanelTopbarMode(false);
+  setPublicTopbarPanelMode($("#cartPanel")?.classList.contains("open"));
 }
 
 function openQuotePanel() {
@@ -311,8 +311,17 @@ function closeSupportPanel() {
   $("#supportPanel").setAttribute("aria-hidden", "true");
 }
 
+function openCartPanel() {
+  $("#cartPanel").classList.add("open");
+  $("#cartPanel").setAttribute("aria-hidden", "false");
+  setPublicTopbarPanelMode(true);
+  autoQuoteShippingIfPossible();
+}
+
 function closeCartPanel() {
   $("#cartPanel").classList.remove("open");
+  $("#cartPanel").setAttribute("aria-hidden", "true");
+  setPublicTopbarPanelMode($("#customerPanel")?.classList.contains("open"));
 }
 
 function closePublicPanels(except = "") {
@@ -417,7 +426,7 @@ function addToCart(productId, quantityToAdd = 1) {
   resetShippingCalculation();
   saveCart();
   renderProducts();
-  $("#cartPanel").classList.add("open");
+  openCartPanel();
 }
 
 function setCartQuantity(productId, color, quantity) {
@@ -1214,7 +1223,7 @@ async function submitCustomRequest(event) {
   const customer = customerForRequest();
   if (!customer?.email) {
     $("#customRequestStatus").textContent = "Entre/cadastre seus dados no carrinho antes de enviar uma ideia.";
-    $("#cartPanel").classList.add("open");
+    openCartPanel();
     closeCustomerPanel();
     closeQuotePanel();
     return;
@@ -1380,8 +1389,7 @@ async function init() {
   $("#mobileSearchInput")?.addEventListener("input", renderProducts);
   $("#cartButton").addEventListener("click", () => {
     closePublicPanels("cart");
-    $("#cartPanel").classList.add("open");
-    autoQuoteShippingIfPossible();
+    openCartPanel();
   });
   $("#supportChatButton")?.addEventListener("click", () => {
     if ($("#supportPanel")?.classList.contains("open")) {
@@ -1393,13 +1401,16 @@ async function init() {
   });
   $("#mobileCartButton")?.addEventListener("click", () => {
     closePublicPanels("cart");
-    $("#cartPanel").classList.add("open");
-    autoQuoteShippingIfPossible();
+    openCartPanel();
   });
   $("#closeCart")?.addEventListener("click", closeCartPanel);
   $("#customerButton")?.addEventListener("click", () => openCustomerPanel());
   $("#mobileCustomerButton")?.addEventListener("click", () => { window.location.href = "/conta.html"; });
   $("#mobileMenuButton")?.addEventListener("click", () => {
+    if ($("#cartPanel")?.classList.contains("open")) {
+      closeCartPanel();
+      return;
+    }
     if ($("#customerPanel")?.classList.contains("open")) {
       closeCustomerPanel();
       return;
@@ -1447,8 +1458,7 @@ async function init() {
   if (initialPanel === "chat") {
     openSupportPanel();
   } else if (initialPanel === "cart") {
-    $("#cartPanel").classList.add("open");
-    autoQuoteShippingIfPossible();
+    openCartPanel();
   } else if (initialPanel === "account") {
     openCustomerPanel();
   }
