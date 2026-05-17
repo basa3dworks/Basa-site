@@ -339,7 +339,7 @@ function productStickyNav(product) {
         <button class="product-sticky-icon" type="button" data-share-product aria-label="Compartilhar produto">&#8599;</button>
       </div>
       <div class="product-sticky-tabs">
-        <button type="button" class="active" data-product-tab="intro">Introdu\u00e7\u00e3o</button>
+        <button type="button" class="active" data-product-tab="intro">In\u00edcio</button>
         <button type="button" data-product-tab="comments">Coment\u00e1rios</button>
         <button type="button" data-product-tab="related">Relacionados</button>
       </div>
