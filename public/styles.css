@@ -214,6 +214,41 @@ nav {
   display: none;
 }
 
+.topbar-customer-row {
+  display: none;
+}
+
+.topbar-customer-row:not([hidden]) {
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  padding: 6px 10px;
+  border-radius: 999px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  font-size: 0.74rem;
+  line-height: 1.1;
+}
+
+.topbar-customer-row strong,
+.topbar-customer-row span {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.topbar-customer-row strong {
+  flex: 0 1 auto;
+  font-weight: 900;
+}
+
+.topbar-customer-row span {
+  flex: 1 1 auto;
+  opacity: 0.9;
+}
+
 .menu-button,
 .mobile-tabbar {
   display: none;
@@ -364,6 +399,41 @@ nav {
     overflow: hidden;
     border-bottom: 0;
     background: var(--brand);
+  }
+
+  body.store-body:not(.admin-body) .topbar-customer-row:not([hidden]),
+  body.account-body:not(.admin-body) .topbar-customer-row:not([hidden]) {
+    grid-column: 1 / -1;
+    display: flex;
+  }
+
+  body.store-body.topbar-profile-visible:not(.admin-body) > .mobile-tabbar {
+    top: 86px;
+  }
+
+  body.store-body.topbar-profile-visible:not(.admin-body) > .mobile-category-panel {
+    top: 128px;
+  }
+
+  body.store-body.topbar-profile-visible:not(.admin-body) .mobile-tabbar:has(+ .mobile-category-panel:not([hidden])) + .mobile-category-panel {
+    top: 86px;
+  }
+
+  body.store-body.topbar-profile-visible:not(.admin-body):not(:has(> main.product-page)) > main {
+    padding-top: 132px;
+  }
+
+  body.store-body.topbar-profile-visible:not(.admin-body) > main.product-page {
+    padding-top: 102px;
+  }
+
+  body.account-body.topbar-profile-visible:not(.admin-body) > main.account-page {
+    padding-top: 94px;
+  }
+
+  body.store-body.topbar-profile-visible:not(.admin-body) .cart-panel,
+  body.store-body.topbar-profile-visible:not(.admin-body) .customer-panel {
+    padding-top: 86px;
   }
 
   body.store-body:not(.admin-body) .menu-button {
@@ -6400,8 +6470,30 @@ pre {
     z-index: 79;
   }
 
+  body.store-body:not(.admin-body) .topbar-customer-row:not([hidden]),
+  body.account-body:not(.admin-body) .topbar-customer-row:not([hidden]) {
+    grid-column: 1 / -1;
+    display: flex;
+  }
+
+  body.store-body.topbar-profile-visible:not(.admin-body) > .mobile-tabbar {
+    top: 86px;
+  }
+
+  body.store-body.topbar-profile-visible:not(.admin-body) > .mobile-category-panel {
+    top: 128px;
+  }
+
+  body.store-body.topbar-profile-visible:not(.admin-body) .mobile-tabbar:has(+ .mobile-category-panel:not([hidden])) + .mobile-category-panel {
+    top: 86px;
+  }
+
   body.store-body:not(.admin-body):not(:has(> main.product-page)) > main {
     padding-top: 102px;
+  }
+
+  body.store-body.topbar-profile-visible:not(.admin-body):not(:has(> main.product-page)) > main {
+    padding-top: 132px;
   }
 
   body.store-body:not(.admin-body) .cart-panel,
@@ -6428,6 +6520,15 @@ pre {
     padding-right: 12px;
     overflow-x: clip;
     overflow-y: visible;
+  }
+
+  body.store-body.topbar-profile-visible:not(.admin-body) > main.product-page {
+    padding-top: 102px;
+  }
+
+  body.store-body.topbar-profile-visible:not(.admin-body) .cart-panel,
+  body.store-body.topbar-profile-visible:not(.admin-body) .customer-panel {
+    padding-top: 86px;
   }
 
   body.store-body:not(.admin-body) .product-detail-hero,
@@ -6855,6 +6956,19 @@ pre {
 
   .mobile-tabbar:has(+ .mobile-category-panel:not([hidden])) + .mobile-category-panel {
     top: 56px;
+  }
+
+  body.store-body.topbar-profile-visible:not(.admin-body) > .mobile-tabbar {
+    top: 86px;
+  }
+
+  body.store-body.topbar-profile-visible:not(.admin-body) > .mobile-category-panel,
+  body.store-body.topbar-profile-visible:not(.admin-body) .mobile-category-panel {
+    top: 128px;
+  }
+
+  body.store-body.topbar-profile-visible:not(.admin-body) .mobile-tabbar:has(+ .mobile-category-panel:not([hidden])) + .mobile-category-panel {
+    top: 86px;
   }
 
   .mobile-interest-card {
@@ -7420,6 +7534,10 @@ pre {
 
   .account-page {
     padding-top: 64px;
+  }
+
+  body.account-body.topbar-profile-visible:not(.admin-body) .account-page {
+    padding-top: 94px;
   }
 
   .account-hero {

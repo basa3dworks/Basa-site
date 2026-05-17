@@ -80,6 +80,29 @@ const escapeHtml = (value) => String(value || "")
   .replaceAll('"', "&quot;")
   .replaceAll("'", "&#039;");
 
+function customerProfileLabel(customer = {}) {
+  return customer.displayName || customer.customerUsername || customer.name || "Cliente Basa";
+}
+
+function customerAddressLabel(customer = {}) {
+  const streetLine = [customer.street, customer.number].filter(Boolean).join(", ");
+  const areaLine = [customer.neighborhood, customer.city && customer.state ? `${customer.city}/${customer.state}` : customer.city || customer.state].filter(Boolean).join(" - ");
+  return [streetLine, areaLine || (customer.zipCode ? `CEP ${customer.zipCode}` : "")].filter(Boolean).join(" | ");
+}
+
+function updateTopbarCustomerRow() {
+  const row = $("#topbarCustomerRow");
+  if (!row) return;
+  const customer = state.customerSession?.customer || {};
+  const logged = Boolean(state.customerSession?.loggedIn && customer.email);
+  const address = customerAddressLabel(customer);
+  row.hidden = !logged;
+  document.body.classList.toggle("topbar-profile-visible", logged);
+  if (!logged) return;
+  $("#topbarCustomerName").textContent = customerProfileLabel(customer);
+  $("#topbarCustomerAddress").textContent = address || "Endereço não cadastrado";
+}
+
 function lockProductHorizontalScroll() {
   const html = document.documentElement;
   const body = document.body;
@@ -921,6 +944,7 @@ async function saveCustomerSession(form) {
   const customer = data.account.customer;
   state.customerSession = { loggedIn: true, username: data.account.username, customer, updatedAt: new Date().toISOString() };
   localStorage.setItem("basa_customer_session", JSON.stringify(state.customerSession));
+  updateTopbarCustomerRow();
   applyCustomerSession(form);
   loadPendingOrders();
   $("#checkoutStatus").textContent = data.created ? "Cadastro criado. Agora você pode finalizar o pedido." : "Login confirmado. Agora você pode finalizar o pedido.";
@@ -944,6 +968,7 @@ function logoutCustomer(form) {
   state.customerSession = null;
   state.pendingOrders = [];
   localStorage.removeItem("basa_customer_session");
+  updateTopbarCustomerRow();
   customerFields(form).forEach((input) => {
     input.readOnly = false;
   });
@@ -1464,6 +1489,7 @@ async function init() {
   state.products = data.products;
   state.settings = data.settings;
   applyTheme(data.settings.theme);
+  updateTopbarCustomerRow();
   state.product = state.products.find((product) => product.slug === slug || product.id === slug);
 
   $("#cartButton").addEventListener("click", () => {

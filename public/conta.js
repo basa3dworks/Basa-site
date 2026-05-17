@@ -43,6 +43,29 @@ function favoriteKey() {
   return `basa_favorites_${state.session?.customer?.email || "guest"}`;
 }
 
+function customerProfileLabel(customer = {}) {
+  return customer.displayName || customer.customerUsername || customer.name || "Cliente Basa";
+}
+
+function customerAddressLabel(customer = {}) {
+  const streetLine = [customer.street, customer.number].filter(Boolean).join(", ");
+  const areaLine = [customer.neighborhood, customer.city && customer.state ? `${customer.city}/${customer.state}` : customer.city || customer.state].filter(Boolean).join(" - ");
+  return [streetLine, areaLine || (customer.zipCode ? `CEP ${customer.zipCode}` : "")].filter(Boolean).join(" | ");
+}
+
+function updateTopbarCustomerRow() {
+  const row = $("#topbarCustomerRow");
+  if (!row) return;
+  const customer = state.session?.customer || {};
+  const logged = Boolean(state.session?.loggedIn && customer.email);
+  const address = customerAddressLabel(customer);
+  row.hidden = !logged;
+  document.body.classList.toggle("topbar-profile-visible", logged);
+  if (!logged) return;
+  $("#topbarCustomerName").textContent = customerProfileLabel(customer);
+  $("#topbarCustomerAddress").textContent = address || "Endereço não cadastrado";
+}
+
 function favoriteIds() {
   return JSON.parse(localStorage.getItem(favoriteKey()) || "[]");
 }
@@ -128,6 +151,7 @@ function setSession(account) {
     updatedAt: new Date().toISOString()
   };
   localStorage.setItem("basa_customer_session", JSON.stringify(state.session));
+  updateTopbarCustomerRow();
 }
 
 function googleLoginUrl() {
@@ -339,6 +363,7 @@ function requestStatusLabel(status) {
 }
 
 function renderAccount() {
+  updateTopbarCustomerRow();
   const customer = state.session?.customer || {};
   const pendingOrders = pendingPaymentOrders();
   $("#accountSummary").innerHTML = isLoggedIn() ? `
@@ -456,6 +481,7 @@ async function saveProfile(event) {
       updatedAt: new Date().toISOString()
     };
     localStorage.setItem("basa_customer_session", JSON.stringify(state.session));
+    updateTopbarCustomerRow();
     renderAccount();
   } catch (error) {
     if (status) status.textContent = error.message || "Nao foi possivel salvar o perfil.";
@@ -799,6 +825,7 @@ function logout() {
   state.orders = [];
   state.requests = [];
   localStorage.removeItem("basa_customer_session");
+  updateTopbarCustomerRow();
   updateAccountMenu();
   renderAccount();
   showView("login");

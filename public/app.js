@@ -68,6 +68,29 @@ function normalizeSearch(value) {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
+function customerProfileLabel(customer = {}) {
+  return customer.displayName || customer.customerUsername || customer.name || "Cliente Basa";
+}
+
+function customerAddressLabel(customer = {}) {
+  const streetLine = [customer.street, customer.number].filter(Boolean).join(", ");
+  const areaLine = [customer.neighborhood, customer.city && customer.state ? `${customer.city}/${customer.state}` : customer.city || customer.state].filter(Boolean).join(" - ");
+  return [streetLine, areaLine || (customer.zipCode ? `CEP ${customer.zipCode}` : "")].filter(Boolean).join(" | ");
+}
+
+function updateTopbarCustomerRow() {
+  const row = $("#topbarCustomerRow");
+  if (!row) return;
+  const customer = state.customerSession?.customer || {};
+  const logged = Boolean(state.customerSession?.loggedIn && customer.email);
+  const address = customerAddressLabel(customer);
+  row.hidden = !logged;
+  document.body.classList.toggle("topbar-profile-visible", logged);
+  if (!logged) return;
+  $("#topbarCustomerName").textContent = customerProfileLabel(customer);
+  $("#topbarCustomerAddress").textContent = address || "Endereço não cadastrado";
+}
+
 function readCustomerProfile() {
   return JSON.parse(localStorage.getItem("basa_customer_profile") || "{\"categories\":{}}");
 }
@@ -586,6 +609,7 @@ async function saveCustomerSession(form) {
   const customer = data.account.customer;
   state.customerSession = { loggedIn: true, username: data.account.username, customer, updatedAt: new Date().toISOString() };
   localStorage.setItem("basa_customer_session", JSON.stringify(state.customerSession));
+  updateTopbarCustomerRow();
   applyCustomerSession(form);
   loadPendingOrders();
   loadCustomerRequests();
@@ -610,6 +634,7 @@ function logoutCustomer(form) {
   state.customerSession = null;
   state.pendingOrders = [];
   localStorage.removeItem("basa_customer_session");
+  updateTopbarCustomerRow();
   state.customRequests = [];
   customerFields(form).forEach((input) => {
     input.readOnly = false;
@@ -1307,6 +1332,7 @@ async function init() {
   state.stories = data.stories || [];
   state.settings = data.settings;
   applyTheme(data.settings.theme);
+  updateTopbarCustomerRow();
   renderHeroSlides();
   $("#tagline").textContent = data.settings.tagline;
   document.querySelectorAll("[data-google-login]").forEach((link) => {
