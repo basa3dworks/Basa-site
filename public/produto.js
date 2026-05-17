@@ -38,6 +38,17 @@ const $ = (selector) => document.querySelector(selector);
 const FREE_SHIPPING_MIN_SUBTOTAL = 100;
 const RELATED_ORIGIN_KEY = "basa_related_origin";
 const SUPPORT_CHAT_KEY = "basa_support_chat";
+
+function protectAppSurface() {
+  const editableSelector = "input, textarea, select, option, [contenteditable='true']";
+  document.addEventListener("contextmenu", (event) => {
+    if (!event.target.closest(editableSelector)) event.preventDefault();
+  });
+  document.addEventListener("dragstart", (event) => {
+    if (!event.target.closest(editableSelector)) event.preventDefault();
+  });
+}
+
 const money = (value) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: state.settings?.currency || "BRL" }).format(value);
 const shippingQuoteId = (quote) => String(quote?.id ?? `${quote?.carrier || ""}-${quote?.service || ""}`);
 const moneyParts = (value) => {
@@ -1407,6 +1418,7 @@ async function submitSupportChat(event) {
 }
 
 async function init() {
+  protectAppSurface();
   lockProductHorizontalScroll();
   preventProductHorizontalPan();
   window.addEventListener("scroll", lockProductHorizontalScroll, { passive: true });

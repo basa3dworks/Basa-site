@@ -16,6 +16,16 @@ const escapeHtml = (value) => String(value || "")
   .replaceAll("'", "&#039;");
 const PROFILE_NAME_PATTERN = /^[a-z0-9._]{1,15}$/;
 
+function protectAppSurface() {
+  const editableSelector = "input, textarea, select, option, [contenteditable='true']";
+  document.addEventListener("contextmenu", (event) => {
+    if (!event.target.closest(editableSelector)) event.preventDefault();
+  });
+  document.addEventListener("dragstart", (event) => {
+    if (!event.target.closest(editableSelector)) event.preventDefault();
+  });
+}
+
 function normalizeProfileName(value) {
   return String(value || "").trim().replace(/^@+/, "").toLowerCase();
 }
@@ -795,6 +805,7 @@ function logout() {
 }
 
 async function init() {
+  protectAppSurface();
   document.querySelectorAll(".google-login-button").forEach((link) => {
     link.href = googleLoginUrl();
   });

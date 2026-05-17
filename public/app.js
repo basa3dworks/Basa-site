@@ -33,6 +33,17 @@ const debugCustomer = {
 const storyDurationMs = 6500;
 const FREE_SHIPPING_MIN_SUBTOTAL = 100;
 const SUPPORT_CHAT_KEY = "basa_support_chat";
+
+function protectAppSurface() {
+  const editableSelector = "input, textarea, select, option, [contenteditable='true']";
+  document.addEventListener("contextmenu", (event) => {
+    if (!event.target.closest(editableSelector)) event.preventDefault();
+  });
+  document.addEventListener("dragstart", (event) => {
+    if (!event.target.closest(editableSelector)) event.preventDefault();
+  });
+}
+
 let activeStoryIndex = -1;
 let storyTimer = null;
 let heroSlideTimer = null;
@@ -1280,6 +1291,7 @@ async function submitSupportChat(event) {
 }
 
 async function init() {
+  protectAppSurface();
   const response = await fetch("/api/products");
   const data = await response.json();
   state.products = data.products;

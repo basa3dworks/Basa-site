@@ -79,6 +79,38 @@ body.account-body:not(.admin-body) {
   overflow-x: hidden;
   overscroll-behavior-x: none;
   touch-action: pan-y;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
+body.store-body:not(.admin-body) img,
+body.account-body:not(.admin-body) img {
+  -webkit-user-drag: none;
+  user-drag: none;
+}
+
+body.store-body:not(.admin-body) button,
+body.store-body:not(.admin-body) a,
+body.store-body:not(.admin-body) summary,
+body.store-body:not(.admin-body) label,
+body.account-body:not(.admin-body) button,
+body.account-body:not(.admin-body) a,
+body.account-body:not(.admin-body) summary,
+body.account-body:not(.admin-body) label {
+  touch-action: manipulation;
+}
+
+body.store-body:not(.admin-body) input,
+body.store-body:not(.admin-body) textarea,
+body.store-body:not(.admin-body) select,
+body.store-body:not(.admin-body) [contenteditable="true"],
+body.account-body:not(.admin-body) input,
+body.account-body:not(.admin-body) textarea,
+body.account-body:not(.admin-body) select,
+body.account-body:not(.admin-body) [contenteditable="true"] {
+  -webkit-touch-callout: default;
+  user-select: text;
 }
 
 html:has(> body.store-body:not(.admin-body)),
