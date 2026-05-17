@@ -141,18 +141,15 @@ function updateAccountTopbar(view) {
   const link = $("#accountTopbarBackLink");
   const icon = $("#accountTopbarBackIcon");
   if (!link || !icon) return;
-  const isProfile = view === "profile" || !isLoggedIn();
-  link.href = isProfile ? "/#produtos" : "/conta.html#profile";
-  link.setAttribute("aria-label", isProfile ? "Voltar para loja" : "Voltar para Minha Basa");
+  link.href = isLoggedIn() ? "/?panel=account#produtos" : "/#produtos";
+  link.setAttribute("aria-label", isLoggedIn() ? "Voltar para Minha Basa" : "Voltar para loja");
   icon.textContent = "arrow_back";
 }
 
 function handleAccountTopbarBack(event) {
-  if (isLoggedIn() && document.body.dataset.accountView !== "profile") {
-    event.preventDefault();
-    history.replaceState(null, "", "/conta.html#profile");
-    showView("profile");
-  }
+  if (!isLoggedIn()) return;
+  event.preventDefault();
+  window.location.href = "/?panel=account#produtos";
 }
 
 function showView(view) {

@@ -249,8 +249,8 @@ function setCustomerPanelTopbarMode(isOpen) {
   const menuButton = $("#mobileMenuButton");
   const icon = menuButton?.querySelector(".material-symbols-rounded");
   if (!menuButton || !icon) return;
-  icon.textContent = isOpen ? "arrow_back" : "menu";
-  menuButton.setAttribute("aria-label", isOpen ? "Voltar" : "Abrir menu");
+  icon.textContent = isOpen ? "home" : "menu";
+  menuButton.setAttribute("aria-label", isOpen ? "Voltar para loja" : "Abrir menu");
   menuButton.setAttribute("aria-expanded", isOpen ? "true" : "false");
   menuButton.classList.toggle("is-back", isOpen);
 }
@@ -1437,6 +1437,8 @@ async function init() {
   } else if (initialPanel === "cart") {
     $("#cartPanel").classList.add("open");
     autoQuoteShippingIfPossible();
+  } else if (initialPanel === "account") {
+    openCustomerPanel();
   }
 }
 
