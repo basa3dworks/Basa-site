@@ -208,6 +208,8 @@ export function publicProduct(product, db = {}) {
     publicReviews: publicReviews.map((review) => ({
       id: review.id,
       customerName: review.customerName || "Cliente Basa",
+      customerAvatar: review.customerAvatar || "",
+      profileVerified: Boolean(review.profileVerified),
       rating: Number(review.rating || 0),
       comment: review.comment || "",
       photos: review.photos || [],

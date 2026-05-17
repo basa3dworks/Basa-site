@@ -12,6 +12,7 @@
   lightboxMediaItems: [],
   lightboxProduct: null,
   lightboxReady: false,
+  reviewLightboxGroups: {},
   relatedProducts: [],
   relatedVisible: 8,
   relatedObserver: null,
@@ -162,18 +163,34 @@ function reviewVerifiedBadge(review) {
   return review.profileVerified ? `<span class="profile-verified review-verified" title="Perfil verificado" aria-label="Perfil verificado"></span>` : "";
 }
 
+function reviewMediaItems(review) {
+  return (review.media || review.photos || [])
+    .map((item, index) => {
+      const url = typeof item === "string" ? item : item?.url;
+      if (!url) return null;
+      return {
+        type: /\.(mp4|webm|mov|m4v)$/i.test(String(url).split("?")[0]) ? "video" : "image",
+        src: url,
+        label: `Mídia ${index + 1}`
+      };
+    })
+    .filter(Boolean);
+}
+
 function socialReviewsSection(product) {
   const reviews = product.publicReviews || [];
-  const isVideoMedia = (url) => /\.(mp4|webm|mov|m4v)$/i.test(String(url || "").split("?")[0]);
+  state.reviewLightboxGroups = {};
   const renderMedia = (review) => {
-    const media = review.media || review.photos || [];
-    return media.length ? `<div class="product-review-photos">${media.map((item) => {
-      const url = typeof item === "string" ? item : item?.url;
-      if (!url) return "";
-      return isVideoMedia(url)
-        ? `<video src="${url}" controls muted playsinline aria-label="Vídeo enviado por cliente"></video>`
-        : `<img src="${url}" alt="Foto enviada por cliente">`;
-    }).join("")}</div>` : "";
+    const media = reviewMediaItems(review);
+    if (!media.length) return "";
+    const groupId = review.id || `review-${Object.keys(state.reviewLightboxGroups).length}`;
+    state.reviewLightboxGroups[groupId] = media;
+    return `<div class="product-review-photos">${media.map((item, index) => {
+      const label = `${review.customerName || "Cliente Basa"} - ${item.label}`;
+      return item.type === "video"
+        ? `<button class="product-review-media-thumb" type="button" data-review-media-group="${escapeHtml(groupId)}" data-review-media-index="${index}" aria-label="Abrir vídeo do comentário"><video src="${item.src}" muted playsinline preload="metadata"></video><span class="review-media-play" aria-hidden="true">▶</span></button>`
+        : `<button class="product-review-media-thumb" type="button" data-review-media-group="${escapeHtml(groupId)}" data-review-media-index="${index}" aria-label="Abrir foto do comentário"><img src="${item.src}" alt="${escapeHtml(label)}"></button>`;
+    }).join("")}</div>`;
   };
   return `
     <section class="panel product-reviews-panel" id="productCommentsSection" data-product-section="comments">
@@ -591,7 +608,18 @@ function setupMediaLightbox(mediaItems, product) {
   document.addEventListener("click", (event) => {
     const button = event.target.closest?.("[data-media-expand]");
     if (!button) return;
+    state.lightboxMediaItems = productMediaItems(state.product || state.lightboxProduct || {});
+    state.lightboxProduct = state.product || state.lightboxProduct;
     open(Number(button.dataset.mediaExpand || 0));
+  });
+  document.addEventListener("click", (event) => {
+    const button = event.target.closest?.("[data-review-media-group]");
+    if (!button) return;
+    const group = state.reviewLightboxGroups?.[button.dataset.reviewMediaGroup] || [];
+    if (!group.length) return;
+    state.lightboxMediaItems = group;
+    state.lightboxProduct = { name: "Comentário de cliente" };
+    open(Number(button.dataset.reviewMediaIndex || 0));
   });
   lightbox.querySelector("[data-lightbox-close]")?.addEventListener("click", close);
   lightbox.querySelector("[data-lightbox-prev]")?.addEventListener("click", () => show(activeIndex - 1));
