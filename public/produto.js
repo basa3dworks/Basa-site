@@ -64,6 +64,10 @@ const productPiecesLabel = (product) => {
   const pieces = Number(product.variants?.piecesIncluded || 1);
   return product.variants?.bundleType === "kit" || pieces > 1 ? `Kit com ${pieces} pe\u00e7as` : "1 pe\u00e7a";
 };
+const productStockLabel = (product) => {
+  const stock = Math.max(0, Number(product.stock || 0));
+  return `${stock} ${stock === 1 ? "unidade dispon\u00edvel" : "unidades dispon\u00edveis"}`;
+};
 const colorName = (color) => typeof color === "string" ? color : color?.name || "";
 const colorHex = (color) => {
   const hex = typeof color === "object" ? color?.hex : "";
@@ -1222,8 +1226,8 @@ function renderProduct() {
                 return `<option value="${quantity}">${quantity} ${quantity === 1 ? "unidade" : "unidades"}</option>`;
               }).join("")}
             </select>
-            <small>(+${product.stock} dispon\u00edveis)</small>
           </label>
+          <p class="product-stock-badge">${productStockLabel(product)}</p>
         </div>
         <div class="hero-actions">
           <button class="primary-button" data-add="${product.id}">Adicionar ao carrinho</button>

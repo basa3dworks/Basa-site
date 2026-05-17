@@ -3108,6 +3108,17 @@ label {
   text-overflow: ellipsis;
 }
 
+.product-stock-badge {
+  margin: 2px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: #111;
+  background: #eef3ef;
+  font-size: 0.92rem;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
 .customer-panel {
   position: fixed;
   inset: 0;
