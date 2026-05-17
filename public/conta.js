@@ -144,7 +144,15 @@ function updateAccountTopbar(view) {
   const isProfile = view === "profile" || !isLoggedIn();
   link.href = isProfile ? "/#produtos" : "/conta.html#profile";
   link.setAttribute("aria-label", isProfile ? "Voltar para loja" : "Voltar para Minha Basa");
-  icon.textContent = isProfile ? "home" : "arrow_back";
+  icon.textContent = "arrow_back";
+}
+
+function handleAccountTopbarBack(event) {
+  if (isLoggedIn() && document.body.dataset.accountView !== "profile") {
+    event.preventDefault();
+    history.replaceState(null, "", "/conta.html#profile");
+    showView("profile");
+  }
 }
 
 function showView(view) {
@@ -799,6 +807,7 @@ async function init() {
   document.querySelectorAll("[data-account-view]").forEach((button) => {
     button.addEventListener("click", () => showView(button.dataset.accountView));
   });
+  $("#accountTopbarBackLink")?.addEventListener("click", handleAccountTopbarBack);
   $("#loginForm").addEventListener("submit", login);
   const registerForm = $("#registerForm");
   setupCepLookup(registerForm, "#registerStatus");

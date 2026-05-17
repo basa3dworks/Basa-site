@@ -1384,7 +1384,7 @@ async function init() {
     $("#cartPanel").classList.add("open");
     autoQuoteShippingIfPossible();
   });
-  $("#closeCart").addEventListener("click", closeCartPanel);
+  $("#closeCart")?.addEventListener("click", closeCartPanel);
   $("#customerButton")?.addEventListener("click", () => openCustomerPanel());
   $("#mobileCustomerButton")?.addEventListener("click", () => { window.location.href = "/conta.html"; });
   $("#mobileMenuButton")?.addEventListener("click", () => {
