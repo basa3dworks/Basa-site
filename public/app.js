@@ -384,9 +384,7 @@ function updateSupportIdentityFields() {
   if (prompt) prompt.hidden = logged;
   if (messageField) messageField.hidden = !logged;
   if (submitButton) submitButton.hidden = !logged;
-  if (!logged && $("#supportChatStatus")) {
-    $("#supportChatStatus").textContent = "Entre para enviar mensagem e receber a resposta no chat.";
-  }
+  if (!logged && $("#supportChatStatus")) $("#supportChatStatus").textContent = "";
 }
 
 function supportRequestFromList(requests, chat) {
@@ -1287,7 +1285,7 @@ async function submitSupportChat(event) {
   const customer = state.customerSession?.customer || {};
   const chat = supportChatState();
   if (!customer.email) {
-    $("#supportChatStatus").textContent = "Entre para enviar mensagem e receber a resposta no chat.";
+    $("#supportChatStatus").textContent = "";
     return;
   }
   const name = form.elements.name.value.trim() || customer.name || "Cliente Basa";
