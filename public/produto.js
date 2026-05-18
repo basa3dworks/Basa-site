@@ -162,6 +162,15 @@ function productShippingLabel(product) {
   return product.shipping?.sellerPaysShipping ? "Frete Gr\u00e1tis" : "";
 }
 
+function shippingLogoAlt(quote) {
+  return quote.methodCode === "correios-sedex" ? "Correios Sedex" : "J&T Express";
+}
+
+function shippingLogoMarkup(quote) {
+  if (!quote.logo) return "";
+  return `<span class="shipping-option-logo"><img src="${quote.logo}" alt="${shippingLogoAlt(quote)}"></span>`;
+}
+
 function productImage(product) {
   return product.image || (product.gallery || [])[0] || "";
 }
@@ -1169,8 +1178,9 @@ function renderShippingOptions() {
     ${state.shippingQuotes.map((quote) => `
     <label class="shipping-option">
       <input type="radio" name="shippingOption" value="${shippingQuoteId(quote)}" ${shippingQuoteId(state.selectedShipping) === shippingQuoteId(quote) ? "checked" : ""}>
+      ${shippingLogoMarkup(quote)}
       <span>
-        <strong>${quote.carrier} - ${quote.service}</strong>
+        <strong>${quote.displayName || `${quote.carrier} - ${quote.service}`}</strong>
         <small>${quote.deliveryDays ? `${quote.deliveryDays} dias \u00fateis` : "Prazo a confirmar"}${quote.note ? ` - ${quote.note}` : ""}</small>
       </span>
       <b>${promo.eligible ? "Gr\u00e1tis" : money(quote.price)}</b>

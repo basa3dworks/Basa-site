@@ -951,13 +951,43 @@ def _better_envio_product(line, product):
     }
 
 
+def _shipping_text(value):
+    normalized = unicodedata.normalize("NFD", str(value or ""))
+    ascii_text = "".join(ch for ch in normalized if unicodedata.category(ch) != "Mn")
+    return re.sub(r"[^a-z0-9]+", " ", ascii_text.lower()).strip()
+
+
+def _shipping_quote_brand(quote):
+    carrier = _shipping_text(quote.get("carrier"))
+    service = _shipping_text(quote.get("service"))
+    compact_carrier = carrier.replace(" ", "")
+    if (
+        ("jt" in compact_carrier or "jet" in compact_carrier or "j t" in carrier)
+        and any(term in service for term in {"standard", "standart", "padrao", "expresso"})
+    ):
+        return {
+            "code": "jet-standard",
+            "label": "J&T Standard",
+            "logo": "/uploads/assets/JET-Express.png",
+            "rank": 0,
+        }
+    if "correios" in carrier and "sedex" in service:
+        return {
+            "code": "correios-sedex",
+            "label": "Correios Sedex",
+            "logo": "/uploads/assets/Sedex_logo.png",
+            "rank": 1,
+        }
+    return None
+
+
 def _normalize_melhor_envio_quotes(data):
     quotes = []
     for item in data if isinstance(data, list) else []:
         if item.get("error") or not item.get("price"):
             continue
         company = item.get("company") or {}
-        quotes.append({
+        quote = {
             "id": str(item.get("id") or f"{company.get('name', '')}-{item.get('name', '')}"),
             "provider": SHIPPING_PROVIDER,
             "carrier": company.get("name") or "Melhor Envio",
@@ -965,15 +995,21 @@ def _normalize_melhor_envio_quotes(data):
             "price": _money(item.get("custom_price") or item.get("price")),
             "originalPrice": _money(item.get("price")),
             "deliveryDays": int(float(item.get("custom_delivery_time") or item.get("delivery_time") or 0)),
+        }
+        brand = _shipping_quote_brand(quote)
+        if not brand:
+            continue
+        quote.update({
+            "methodCode": brand["code"],
+            "displayName": brand["label"],
+            "logo": brand["logo"],
+            "_rank": brand["rank"],
         })
-    jt_prices = [
-        quote["price"] for quote in quotes
-        if "jt" in (quote["carrier"] or "").lower().replace("&", "").replace(" ", "")
+        quotes.append(quote)
+    return [
+        {key: value for key, value in quote.items() if key != "_rank"}
+        for quote in sorted(quotes, key=lambda quote: (quote["_rank"], quote["price"]))
     ]
-    if jt_prices:
-        ceiling = min(jt_prices)
-        quotes = [quote for quote in quotes if quote["price"] <= ceiling]
-    return sorted(quotes, key=lambda quote: quote["price"])
 
 
 def _quote_melhor_envio(db, lines):

@@ -135,6 +135,31 @@ function isJtExpressQuote(quote) {
   return carrier.includes("j&t") || carrier.includes("j t") || carrier.includes("jt express") || carrier === "jet" || carrier.includes("jet ");
 }
 
+function shippingText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function shippingQuoteBrand(quote) {
+  const carrier = shippingText(quote.carrier);
+  const service = shippingText(quote.service);
+  const compactCarrier = carrier.replace(/\s+/g, "");
+  if (
+    (compactCarrier.includes("jt") || compactCarrier.includes("jet") || carrier.includes("j t")) &&
+    ["standard", "standart", "padrao", "expresso"].some((term) => service.includes(term))
+  ) {
+    return { code: "jet-standard", label: "J&T Standard", logo: "/uploads/assets/JET-Express.png", rank: 0 };
+  }
+  if (carrier.includes("correios") && service.includes("sedex")) {
+    return { code: "correios-sedex", label: "Correios Sedex", logo: "/uploads/assets/Sedex_logo.png", rank: 1 };
+  }
+  return null;
+}
+
 function mockQuotes({ db, items, zipCode }) {
   const lines = cartProducts({ db, items });
   const weight = lines.reduce((sum, line) => sum + Number(line.product.shipping?.weightKg || 0.3) * line.quantity, 0);
@@ -148,6 +173,9 @@ function mockQuotes({ db, items, zipCode }) {
       provider: "mock",
       carrier: "J&T Express",
       service: "Entrega padrão",
+      methodCode: "jet-standard",
+      displayName: "J&T Standard",
+      logo: "/uploads/assets/JET-Express.png",
       price: money(base),
       deliveryDays: Math.max(4, Math.round(3 + distanceFactor / 4)),
       note: "Cotacao temporaria da J&T Express ate conectar o Melhor Envio."
@@ -156,25 +184,26 @@ function mockQuotes({ db, items, zipCode }) {
 }
 
 function normalizeBetterEnvioResponse(data) {
-  return (Array.isArray(data) ? data : []).filter((item) => !item.error && item.price).map((item) => ({
-    id: String(item.id || `${item.company?.name}-${item.name}`),
-    provider: "melhor-envio",
-    carrier: item.company?.name || "Transportadora",
-    service: item.name || "Entrega",
-    price: Number(item.custom_price || item.price),
-    deliveryDays: Number(item.custom_delivery_time || item.delivery_time || 0),
-    packages: item.packages || []
-  }));
-}
-
-function filterQuotesByJtCeiling(quotes) {
-  if (!quotes.length) return [];
-  const jtPrices = quotes.filter(isJtExpressQuote).map((quote) => Number(quote.price || 0)).filter((price) => price > 0);
-  if (!jtPrices.length) return quotes;
-  const jtCeiling = Math.min(...jtPrices);
-  return quotes
-    .filter((quote) => Number(quote.price || 0) <= jtCeiling)
-    .sort((left, right) => Number(left.price || 0) - Number(right.price || 0));
+  return (Array.isArray(data) ? data : [])
+    .filter((item) => !item.error && item.price)
+    .map((item) => {
+      const quote = {
+        id: String(item.id || `${item.company?.name}-${item.name}`),
+        provider: "melhor-envio",
+        carrier: item.company?.name || "Transportadora",
+        service: item.name || "Entrega",
+        price: Number(item.custom_price || item.price),
+        originalPrice: Number(item.price || 0),
+        deliveryDays: Number(item.custom_delivery_time || item.delivery_time || 0),
+        packages: item.packages || []
+      };
+      const brand = shippingQuoteBrand(quote);
+      if (!brand) return null;
+      return { ...quote, methodCode: brand.code, displayName: brand.label, logo: brand.logo, rank: brand.rank };
+    })
+    .filter(Boolean)
+    .sort((left, right) => left.rank - right.rank || Number(left.price || 0) - Number(right.price || 0))
+    .map(({ rank, ...quote }) => quote);
 }
 
 export async function quoteShipping({ db, items, zipCode, provider = "melhor-envio", token = "", apiBase = "https://sandbox.melhorenvio.com.br", userAgent = "" }) {
@@ -230,7 +259,7 @@ export async function quoteShipping({ db, items, zipCode, provider = "melhor-env
     provider: "melhor-envio",
     originZipCode: db.settings.originZipCode,
     destinationZipCode: destinationZip,
-    quotes: filterQuotesByJtCeiling(normalizeBetterEnvioResponse(data))
+    quotes: normalizeBetterEnvioResponse(data)
   };
 }
 

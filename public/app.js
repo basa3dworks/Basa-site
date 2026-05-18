@@ -190,6 +190,15 @@ function shippingCardLabel(product) {
   return "Frete calculado";
 }
 
+function shippingLogoAlt(quote) {
+  return quote.methodCode === "correios-sedex" ? "Correios Sedex" : "J&T Express";
+}
+
+function shippingLogoMarkup(quote) {
+  if (!quote.logo) return "";
+  return `<span class="shipping-option-logo"><img src="${quote.logo}" alt="${shippingLogoAlt(quote)}"></span>`;
+}
+
 function ratingMarkup(product) {
   const average = Number(product.rating?.average || 0);
   const count = Number(product.rating?.count || 0);
@@ -880,8 +889,9 @@ function renderShippingOptions() {
     ${state.shippingQuotes.map((quote) => `
     <label class="shipping-option">
       <input type="radio" name="shippingOption" value="${shippingQuoteId(quote)}" ${shippingQuoteId(state.selectedShipping) === shippingQuoteId(quote) ? "checked" : ""}>
+      ${shippingLogoMarkup(quote)}
       <span>
-        <strong>${quote.carrier} - ${quote.service}</strong>
+        <strong>${quote.displayName || `${quote.carrier} - ${quote.service}`}</strong>
         <small>${quote.deliveryDays ? `${quote.deliveryDays} dias \u00fateis` : "Prazo a confirmar"}${quote.note ? ` - ${quote.note}` : ""}</small>
       </span>
       <b>${promo.eligible ? "Gr\u00e1tis" : money(quote.price)}</b>
