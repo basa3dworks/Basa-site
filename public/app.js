@@ -130,7 +130,7 @@ function campaignIsRunning(campaign) {
 
 function campaignLabel(product) {
   const campaign = product.campaign;
-  if (!campaignIsRunning(campaign)) return discountPercent(product) ? `${discountPercent(product)}% OFF` : "Destaque";
+  if (!campaignIsRunning(campaign)) return "";
   if (campaign.type === "flash" && (!campaign.label || normalizeSearch(campaign.label).includes("relampago"))) return "Oferta rel\u00e2mpago";
   if (campaign.label) return campaign.label;
   return {
@@ -143,6 +143,12 @@ function campaignLabel(product) {
 
 function campaignBadgeClass(product) {
   return campaignIsRunning(product.campaign) ? `campaign-${product.campaign.type || "featured"}` : "";
+}
+
+function campaignBadgeMarkup(product) {
+  const label = campaignLabel(product);
+  if (!label) return "";
+  return `<span class="product-badge ${campaignBadgeClass(product)}">${label}</span>`;
 }
 
 function campaignEndsLabel(campaign) {
@@ -907,7 +913,7 @@ function renderProducts() {
       <article class="product-card">
         <a class="product-image-link" href="/produto.html?slug=${product.slug}">
           <img src="${product.image}" alt="${product.name}">
-          <span class="product-badge ${campaignBadgeClass(product)}">${campaignLabel(product)}</span>
+          ${campaignBadgeMarkup(product)}
         </a>
         <button class="favorite-button ${isFavorite(product.id) ? "active" : ""}" type="button" data-favorite="${product.id}" aria-label="Favoritar ${product.name}">
           <span aria-hidden="true">${isFavorite(product.id) ? "&#9829;" : "&#9825;"}</span>
