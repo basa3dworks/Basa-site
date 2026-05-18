@@ -33,6 +33,7 @@ const debugCustomer = {
 const storyDurationMs = 6500;
 const FREE_SHIPPING_MIN_SUBTOTAL = 100;
 const SUPPORT_CHAT_KEY = "basa_support_chat";
+const DELIVERY_ADDRESSES_KEY = "basa_delivery_addresses";
 
 function protectAppSurface() {
   const editableSelector = "input, textarea, select, option, [contenteditable='true']";
@@ -594,20 +595,119 @@ function customerFields(form) {
   return [...form.querySelectorAll("[data-customer-field]")];
 }
 
+function deliveryAddressFromForm(form) {
+  const value = (name) => String(form.elements[name]?.value || "").trim();
+  return {
+    zipCode: value("zipCode").replace(/\D/g, ""),
+    street: value("street"),
+    number: value("number"),
+    neighborhood: value("neighborhood"),
+    complement: value("complement"),
+    city: value("city"),
+    state: value("state").toUpperCase(),
+    ibge: form.dataset.ibge || ""
+  };
+}
+
+function deliveryAddressKey(address = {}) {
+  return [address.zipCode, address.number, address.complement].map((value) => String(value || "").trim().toLowerCase()).join("|");
+}
+
+function deliveryAddressLines(address = {}) {
+  const zip = String(address.zipCode || "").replace(/\D/g, "");
+  const lineOne = [address.street, address.number].filter(Boolean).join(", ");
+  const lineTwo = [address.neighborhood, address.city && address.state ? `${address.city}/${address.state}` : address.city || address.state].filter(Boolean).join(" - ");
+  const complement = address.complement ? `Complemento: ${address.complement}` : "";
+  const zipLine = zip.length === 8 ? `CEP ${zip.replace(/^(\d{5})(\d{3})$/, "$1-$2")}` : "";
+  return [lineOne, lineTwo, complement, zipLine].filter(Boolean);
+}
+
+function loadDeliveryAddresses() {
+  try {
+    return JSON.parse(localStorage.getItem(DELIVERY_ADDRESSES_KEY) || "[]").filter((address) => address?.zipCode);
+  } catch {
+    return [];
+  }
+}
+
+function saveDeliveryAddresses(addresses) {
+  localStorage.setItem(DELIVERY_ADDRESSES_KEY, JSON.stringify(addresses.slice(0, 3)));
+}
+
+function setDeliveryAddress(form, address = {}) {
+  ["zipCode", "street", "number", "neighborhood", "complement", "city", "state"].forEach((name) => {
+    if (form.elements[name]) form.elements[name].value = address[name] || "";
+  });
+  form.dataset.ibge = address.ibge || "";
+  resetShippingCalculation();
+  $("#shippingOptions").innerHTML = "<p>Calcule a entrega novamente após alterar o endereço.</p>";
+  updateCheckoutAddressSummary(form);
+  renderDeliveryAddressBook(form);
+  if (String(address.zipCode || "").replace(/\D/g, "").length === 8 && state.cart.length) quoteShipping();
+}
+
+function maybeSeedCustomerAddress(form) {
+  const address = deliveryAddressFromForm(form);
+  if (address.zipCode.length !== 8 || !address.number) return;
+  const addresses = loadDeliveryAddresses();
+  if (addresses.some((item) => deliveryAddressKey(item) === deliveryAddressKey(address))) return;
+  if (addresses.length >= 3) return;
+  saveDeliveryAddresses([address, ...addresses]);
+}
+
+function renderDeliveryAddressBook(form) {
+  const book = form?.querySelector("[data-address-book]");
+  if (!book) return;
+  const addresses = loadDeliveryAddresses();
+  const currentKey = deliveryAddressKey(deliveryAddressFromForm(form));
+  book.hidden = !addresses.length;
+  book.innerHTML = addresses.map((address, index) => {
+    const active = deliveryAddressKey(address) === currentKey;
+    return `
+      <article class="checkout-address-card ${active ? "active" : ""}">
+        <strong>${active ? "Destino atual" : `Endereço ${index + 1}`}</strong>
+        ${deliveryAddressLines(address).map((line) => `<span>${escapeHtml(line)}</span>`).join("")}
+        <div class="checkout-address-card-actions">
+          <button class="ghost-button" type="button" data-use-address="${index}">Usar este endereço</button>
+          <button class="ghost-button" type="button" data-remove-address="${index}">Remover</button>
+        </div>
+      </article>
+    `;
+  }).join("");
+  book.querySelectorAll("[data-use-address]").forEach((button) => {
+    button.addEventListener("click", () => setDeliveryAddress(form, loadDeliveryAddresses()[Number(button.dataset.useAddress)]));
+  });
+  book.querySelectorAll("[data-remove-address]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const next = loadDeliveryAddresses().filter((_, index) => index !== Number(button.dataset.removeAddress));
+      saveDeliveryAddresses(next);
+      renderDeliveryAddressBook(form);
+    });
+  });
+}
+
+function saveCurrentDeliveryAddress(form) {
+  const address = deliveryAddressFromForm(form);
+  if (address.zipCode.length !== 8 || !address.number) {
+    $("#checkoutStatus").textContent = "Informe CEP e número para salvar este endereço.";
+    return;
+  }
+  const addresses = loadDeliveryAddresses();
+  const existingIndex = addresses.findIndex((item) => deliveryAddressKey(item) === deliveryAddressKey(address));
+  if (existingIndex >= 0) addresses.splice(existingIndex, 1);
+  else if (addresses.length >= 3) {
+    $("#checkoutStatus").textContent = "Você pode salvar até 3 endereços. Remova um endereço para adicionar outro.";
+    return;
+  }
+  saveDeliveryAddresses([address, ...addresses]);
+  $("#checkoutStatus").textContent = "Endereço salvo para este carrinho.";
+  renderDeliveryAddressBook(form);
+}
+
 function updateCheckoutAddressSummary(form) {
   const summary = form?.querySelector("[data-address-summary]");
   if (!summary) return;
-  const value = (name) => String(form.elements[name]?.value || "").trim();
-  const zip = value("zipCode").replace(/\D/g, "");
-  const street = value("street");
-  const number = value("number");
-  const neighborhood = value("neighborhood");
-  const city = value("city");
-  const stateValue = value("state");
-  const lineOne = [street, number].filter(Boolean).join(", ");
-  const lineTwo = [neighborhood, city && stateValue ? `${city}/${stateValue}` : city || stateValue].filter(Boolean).join(" - ");
-  const zipLine = zip.length === 8 ? `CEP ${zip.replace(/^(\d{5})(\d{3})$/, "$1-$2")}` : "";
-  const lines = [lineOne, lineTwo, zipLine].filter(Boolean);
+  const lines = deliveryAddressLines(deliveryAddressFromForm(form));
   summary.hidden = !lines.length;
   summary.innerHTML = lines.length ? `<strong>Destino</strong>${lines.map((line) => `<span>${escapeHtml(line)}</span>`).join("")}` : "";
 }
@@ -639,10 +739,13 @@ function applyCustomerSession(form) {
   const googleLoginButton = form.querySelector("[data-google-login]");
   if (loginTitle) loginTitle.textContent = loggedIn ? "Compra identificada" : "Entrar para comprar";
   if (googleLoginButton) googleLoginButton.hidden = loggedIn;
+  $("#customerLoginBox").hidden = loggedIn;
   $("#customerLoginStatus").textContent = loggedIn
     ? `Comprando como ${session.customer.name || session.customer.email}.`
     : "Entre ou crie sua conta para finalizar o pedido.";
   updateCheckoutAddressSummary(form);
+  if (loggedIn) maybeSeedCustomerAddress(form);
+  renderDeliveryAddressBook(form);
 }
 
 async function saveCustomerSession(form) {
@@ -832,7 +935,10 @@ function setupCepLookup(form) {
     if (zipInput.value.replace(/\D/g, "").length === 8) lookup();
   });
   form.elements.number?.addEventListener("input", () => updateCheckoutAddressSummary(form));
+  form.elements.complement?.addEventListener("input", () => updateCheckoutAddressSummary(form));
+  form.querySelector("[data-save-address]")?.addEventListener("click", () => saveCurrentDeliveryAddress(form));
   updateCheckoutAddressSummary(form);
+  renderDeliveryAddressBook(form);
 }
 
 function openCheckoutDetails() {

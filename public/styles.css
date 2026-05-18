@@ -1127,9 +1127,6 @@ nav {
 
   body.store-body:not(.admin-body) .cart > .section-head.compact {
     display: flex;
-    position: sticky;
-    top: 0;
-    z-index: 5;
     align-items: center;
     flex-direction: row;
     justify-content: space-between;
@@ -2798,9 +2795,6 @@ body.store-body:not(.admin-body) .cart {
 }
 
 .cart > .section-head.compact {
-  position: sticky;
-  top: 0;
-  z-index: 2;
   align-items: center;
   flex-direction: row;
   padding-bottom: 12px;
@@ -2891,6 +2885,53 @@ body.store-body:not(.admin-body) .cart {
   font-size: 0.9rem;
 }
 
+.checkout-address-book {
+  display: grid;
+  gap: 8px;
+}
+
+.checkout-address-book[hidden] {
+  display: none;
+}
+
+.checkout-address-card {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid #d9eadf;
+  border-radius: 8px;
+  color: var(--muted);
+  background: #f7faf7;
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.checkout-address-card.active {
+  border-color: var(--brand);
+  background: #eef9f1;
+}
+
+.checkout-address-card strong {
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+
+.checkout-address-card-actions {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.checkout-address-card-actions button {
+  min-height: 34px;
+  padding: 8px 10px;
+}
+
+.checkout-address-save[hidden] {
+  display: none;
+}
+
 .customer-login-box {
   display: grid;
   gap: 12px;
@@ -2926,6 +2967,10 @@ body.store-body:not(.admin-body) .cart {
 }
 
 .customer-login-actions button[hidden] {
+  display: none;
+}
+
+.customer-login-box[hidden] {
   display: none;
 }
 
@@ -7407,9 +7452,6 @@ pre {
 
   .cart > .section-head.compact {
     display: flex;
-    position: sticky;
-    top: 0;
-    z-index: 5;
     align-items: center;
     flex-direction: row;
     justify-content: space-between;
