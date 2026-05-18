@@ -40,6 +40,7 @@ const FREE_SHIPPING_MIN_SUBTOTAL = 100;
 const RELATED_ORIGIN_KEY = "basa_related_origin";
 const SUPPORT_CHAT_KEY = "basa_support_chat";
 const DELIVERY_ADDRESSES_KEY = "basa_delivery_addresses";
+const SELECTED_DELIVERY_ADDRESS_KEY = "basa_selected_delivery_address";
 
 function protectAppSurface() {
   const editableSelector = "input, textarea, select, option, [contenteditable='true']";
@@ -91,17 +92,27 @@ function customerAddressLabel(customer = {}) {
   return [streetLine, areaLine || (customer.zipCode ? `CEP ${customer.zipCode}` : "")].filter(Boolean).join(" | ");
 }
 
+function selectedDeliveryAddress() {
+  try {
+    const address = JSON.parse(localStorage.getItem(SELECTED_DELIVERY_ADDRESS_KEY) || "null");
+    return address?.zipCode ? address : null;
+  } catch {
+    return null;
+  }
+}
+
 function updateTopbarCustomerRow() {
   const row = $("#topbarCustomerRow");
   if (!row) return;
   const customer = state.customerSession?.customer || {};
   const logged = Boolean(state.customerSession?.loggedIn && customer.email);
-  const address = customerAddressLabel(customer);
+  const address = selectedDeliveryAddress();
+  const addressLabel = address ? deliveryAddressLines(address).slice(0, 2).join(" | ") : customerAddressLabel(customer);
   row.hidden = !logged;
   document.body.classList.toggle("topbar-profile-visible", logged);
   if (!logged) return;
   $("#topbarCustomerName").textContent = customerProfileLabel(customer);
-  $("#topbarCustomerAddress").textContent = address || "Endereço não cadastrado";
+  $("#topbarCustomerAddress").textContent = addressLabel || "Endereço não cadastrado";
 }
 
 function lockProductHorizontalScroll() {
@@ -986,8 +997,9 @@ function updateDeliveryAddressControls(form) {
   const addressForm = form.querySelector("[data-address-form]");
   const newButton = form.querySelector("[data-new-address]");
   const saveButton = form.querySelector("[data-save-address]");
+  const savedLimitReached = loadDeliveryAddresses().length >= 3;
   if (addressForm) addressForm.hidden = !manual;
-  if (newButton) newButton.hidden = manual;
+  if (newButton) newButton.hidden = manual || savedLimitReached;
   if (saveButton) saveButton.hidden = !canSaveDeliveryAddress(form);
 }
 
@@ -997,11 +1009,13 @@ function setDeliveryAddress(form, address = {}) {
   });
   form.dataset.ibge = address.ibge || "";
   form.dataset.addressMode = "saved";
+  localStorage.setItem(SELECTED_DELIVERY_ADDRESS_KEY, JSON.stringify(address));
   resetShippingCalculation();
   $("#shippingOptions").innerHTML = "<p>Calcule a entrega novamente após alterar o endereço.</p>";
   updateCheckoutAddressSummary(form);
   renderDeliveryAddressBook(form);
   updateDeliveryAddressControls(form);
+  updateTopbarCustomerRow();
   if (String(address.zipCode || "").replace(/\D/g, "").length === 8 && state.cart.length) quoteShipping();
 }
 
@@ -1011,11 +1025,13 @@ function startManualDeliveryAddress(form) {
   });
   form.dataset.ibge = "";
   form.dataset.addressMode = "manual";
+  localStorage.removeItem(SELECTED_DELIVERY_ADDRESS_KEY);
   resetShippingCalculation();
   $("#shippingOptions").innerHTML = "<p>Informe o CEP para calcular as opções de entrega.</p>";
   updateCheckoutAddressSummary(form);
   renderDeliveryAddressBook(form);
   updateDeliveryAddressControls(form);
+  updateTopbarCustomerRow();
 }
 
 function maybeSeedCustomerAddress(form) {
@@ -1054,6 +1070,13 @@ function renderDeliveryAddressBook(form) {
     button.addEventListener("click", () => {
       const next = loadDeliveryAddresses().filter((_, index) => index !== Number(button.dataset.removeAddress));
       saveDeliveryAddresses(next);
+      const selected = selectedDeliveryAddress();
+      const principal = accountDeliveryAddress();
+      const selectedStillExists = selected && ((principal && deliveryAddressKey(principal) === deliveryAddressKey(selected)) || next.some((address) => deliveryAddressKey(address) === deliveryAddressKey(selected)));
+      if (selected && !selectedStillExists) {
+        localStorage.removeItem(SELECTED_DELIVERY_ADDRESS_KEY);
+        updateTopbarCustomerRow();
+      }
       renderDeliveryAddressBook(form);
       updateDeliveryAddressControls(form);
     });
@@ -1075,9 +1098,11 @@ function saveCurrentDeliveryAddress(form) {
   }
   saveDeliveryAddresses([address, ...addresses]);
   form.dataset.addressMode = "saved";
+  localStorage.setItem(SELECTED_DELIVERY_ADDRESS_KEY, JSON.stringify(address));
   $("#checkoutStatus").textContent = "Endereço salvo para este carrinho.";
   renderDeliveryAddressBook(form);
   updateDeliveryAddressControls(form);
+  updateTopbarCustomerRow();
 }
 
 function updateCheckoutAddressSummary(form) {
@@ -1165,6 +1190,7 @@ function logoutCustomer(form) {
   state.customerSession = null;
   state.pendingOrders = [];
   localStorage.removeItem("basa_customer_session");
+  localStorage.removeItem(SELECTED_DELIVERY_ADDRESS_KEY);
   updateTopbarCustomerRow();
   customerFields(form).forEach((input) => {
     input.readOnly = false;
