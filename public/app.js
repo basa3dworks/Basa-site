@@ -651,16 +651,52 @@ function saveDeliveryAddresses(addresses) {
   localStorage.setItem(DELIVERY_ADDRESSES_KEY, JSON.stringify(addresses.slice(0, 3)));
 }
 
+function deliveryAddressExists(address) {
+  const key = deliveryAddressKey(address);
+  const principal = accountDeliveryAddress();
+  return (principal && deliveryAddressKey(principal) === key) || loadDeliveryAddresses().some((item) => deliveryAddressKey(item) === key);
+}
+
+function canSaveDeliveryAddress(form) {
+  const address = deliveryAddressFromForm(form);
+  return form.dataset.addressMode === "manual" && address.zipCode.length === 8 && Boolean(address.number) && Boolean(address.complement) && !deliveryAddressExists(address);
+}
+
+function updateDeliveryAddressControls(form) {
+  const manual = form.dataset.addressMode !== "saved";
+  const addressForm = form.querySelector("[data-address-form]");
+  const newButton = form.querySelector("[data-new-address]");
+  const saveButton = form.querySelector("[data-save-address]");
+  if (addressForm) addressForm.hidden = !manual;
+  if (newButton) newButton.hidden = manual;
+  if (saveButton) saveButton.hidden = !canSaveDeliveryAddress(form);
+}
+
 function setDeliveryAddress(form, address = {}) {
   ["zipCode", "street", "number", "neighborhood", "complement", "city", "state"].forEach((name) => {
     if (form.elements[name]) form.elements[name].value = address[name] || "";
   });
   form.dataset.ibge = address.ibge || "";
+  form.dataset.addressMode = "saved";
   resetShippingCalculation();
   $("#shippingOptions").innerHTML = "<p>Calcule a entrega novamente após alterar o endereço.</p>";
   updateCheckoutAddressSummary(form);
   renderDeliveryAddressBook(form);
+  updateDeliveryAddressControls(form);
   if (String(address.zipCode || "").replace(/\D/g, "").length === 8 && state.cart.length) quoteShipping();
+}
+
+function startManualDeliveryAddress(form) {
+  ["zipCode", "street", "number", "neighborhood", "complement", "city", "state"].forEach((name) => {
+    if (form.elements[name]) form.elements[name].value = "";
+  });
+  form.dataset.ibge = "";
+  form.dataset.addressMode = "manual";
+  resetShippingCalculation();
+  $("#shippingOptions").innerHTML = "<p>Informe o CEP para calcular as opções de entrega.</p>";
+  updateCheckoutAddressSummary(form);
+  renderDeliveryAddressBook(form);
+  updateDeliveryAddressControls(form);
 }
 
 function maybeSeedCustomerAddress(form) {
@@ -700,6 +736,7 @@ function renderDeliveryAddressBook(form) {
       const next = loadDeliveryAddresses().filter((_, index) => index !== Number(button.dataset.removeAddress));
       saveDeliveryAddresses(next);
       renderDeliveryAddressBook(form);
+      updateDeliveryAddressControls(form);
     });
   });
 }
@@ -718,8 +755,10 @@ function saveCurrentDeliveryAddress(form) {
     return;
   }
   saveDeliveryAddresses([address, ...addresses]);
+  form.dataset.addressMode = "saved";
   $("#checkoutStatus").textContent = "Endereço salvo para este carrinho.";
   renderDeliveryAddressBook(form);
+  updateDeliveryAddressControls(form);
 }
 
 function updateCheckoutAddressSummary(form) {
@@ -764,6 +803,7 @@ function applyCustomerSession(form) {
   updateCheckoutAddressSummary(form);
   if (loggedIn) maybeSeedCustomerAddress(form);
   renderDeliveryAddressBook(form);
+  updateDeliveryAddressControls(form);
 }
 
 async function saveCustomerSession(form) {
@@ -938,6 +978,7 @@ function setupCepLookup(form) {
       setAddressField("state", data.state);
       form.dataset.ibge = data.ibge || "";
       updateCheckoutAddressSummary(form);
+      updateDeliveryAddressControls(form);
       $("#checkoutStatus").textContent = "";
       quoteShipping();
     } catch (error) {
@@ -949,14 +990,26 @@ function setupCepLookup(form) {
   zipInput.addEventListener("blur", lookup);
   zipInput.addEventListener("change", lookup);
   zipInput.addEventListener("input", () => {
+    form.dataset.addressMode = "manual";
     updateCheckoutAddressSummary(form);
+    updateDeliveryAddressControls(form);
     if (zipInput.value.replace(/\D/g, "").length === 8) lookup();
   });
-  form.elements.number?.addEventListener("input", () => updateCheckoutAddressSummary(form));
-  form.elements.complement?.addEventListener("input", () => updateCheckoutAddressSummary(form));
+  form.elements.number?.addEventListener("input", () => {
+    form.dataset.addressMode = "manual";
+    updateCheckoutAddressSummary(form);
+    updateDeliveryAddressControls(form);
+  });
+  form.elements.complement?.addEventListener("input", () => {
+    form.dataset.addressMode = "manual";
+    updateCheckoutAddressSummary(form);
+    updateDeliveryAddressControls(form);
+  });
   form.querySelector("[data-save-address]")?.addEventListener("click", () => saveCurrentDeliveryAddress(form));
+  form.querySelector("[data-new-address]")?.addEventListener("click", () => startManualDeliveryAddress(form));
   updateCheckoutAddressSummary(form);
   renderDeliveryAddressBook(form);
+  updateDeliveryAddressControls(form);
 }
 
 function openCheckoutDetails() {

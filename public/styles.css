@@ -2932,6 +2932,16 @@ body.store-body:not(.admin-body) .cart {
   display: none;
 }
 
+.checkout-address-form {
+  display: grid;
+  gap: 12px;
+}
+
+.checkout-address-form[hidden],
+.checkout-address-new[hidden] {
+  display: none;
+}
+
 .customer-login-box {
   display: grid;
   gap: 12px;
