@@ -221,7 +221,7 @@ nav {
 .topbar-customer-row:not([hidden]) {
   min-width: 0;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   overflow: hidden;
   padding: 6px 10px;
   border-radius: 999px;
@@ -240,13 +240,23 @@ nav {
 }
 
 .topbar-customer-row strong {
-  flex: 0 1 auto;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  max-width: 46%;
   font-weight: 900;
 }
 
 .topbar-customer-row span {
   flex: 1 1 auto;
   opacity: 0.9;
+}
+
+.topbar-customer-row .profile-verified {
+  flex: 0 0 auto;
+  width: 13px;
+  height: 13px;
 }
 
 .menu-button,

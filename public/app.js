@@ -80,10 +80,8 @@ function customerProfileLabel(customer = {}) {
   return customer.displayName || customer.customerUsername || customer.name || "Cliente Basa";
 }
 
-function customerAddressLabel(customer = {}) {
-  const streetLine = [customer.street, customer.number].filter(Boolean).join(", ");
-  const areaLine = [customer.neighborhood, customer.city && customer.state ? `${customer.city}/${customer.state}` : customer.city || customer.state].filter(Boolean).join(" - ");
-  return [streetLine, areaLine || (customer.zipCode ? `CEP ${customer.zipCode}` : "")].filter(Boolean).join(" | ");
+function topbarAddressLabel(address = {}) {
+  return [address.street, address.number].filter(Boolean).join(", ");
 }
 
 function selectedDeliveryAddress() {
@@ -100,12 +98,12 @@ function updateTopbarCustomerRow() {
   if (!row) return;
   const customer = state.customerSession?.customer || {};
   const logged = Boolean(state.customerSession?.loggedIn && customer.email);
-  const address = selectedDeliveryAddress();
-  const addressLabel = address ? deliveryAddressLines(address).slice(0, 2).join(" | ") : customerAddressLabel(customer);
+  const address = selectedDeliveryAddress() || customer;
+  const addressLabel = topbarAddressLabel(address);
   row.hidden = !logged;
   document.body.classList.toggle("topbar-profile-visible", logged);
   if (!logged) return;
-  $("#topbarCustomerName").textContent = customerProfileLabel(customer);
+  $("#topbarCustomerName").innerHTML = `Olá ${escapeHtml(customerProfileLabel(customer))}${customer.profileVerified ? ' <span class="profile-verified topbar-verified" title="Perfil verificado" aria-label="Perfil verificado"></span>' : ""}`;
   $("#topbarCustomerAddress").textContent = addressLabel || "Endereço não cadastrado";
 }
 
