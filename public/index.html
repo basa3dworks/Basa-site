@@ -289,8 +289,8 @@
         <form id="checkoutForm" class="checkout-form">
           <details class="checkout-details" id="checkoutDetails">
             <summary>
-              <span>Dados do pedido e entrega</span>
-              <small>Endereço, cupom e envio</small>
+              <span>Dados de entrega</span>
+              <small>CEP, número e complemento</small>
             </summary>
             <div class="checkout-details-body">
           <div class="customer-login-box" id="customerLoginBox">
@@ -321,22 +321,25 @@
               <label>CEP<input name="zipCode" required inputmode="numeric" autocomplete="postal-code" placeholder="00000-000" data-customer-field></label>
               <label>Número<input name="number" required autocomplete="address-line2" placeholder="Ex: 107" data-customer-field></label>
             </div>
-            <label>Rua<input name="street" required autocomplete="address-line1" placeholder="Rua, avenida..." data-customer-field></label>
-            <div class="checkout-grid">
-              <label>Bairro<input name="neighborhood" required data-customer-field></label>
-              <label>Complemento<input name="complement" autocomplete="address-line3" placeholder="Apto, bloco, casa..." data-customer-field></label>
+            <label>Complemento<input name="complement" autocomplete="address-line3" placeholder="Apto, bloco, casa..." data-customer-field></label>
+            <div class="checkout-hidden-customer" aria-hidden="true">
+              <input name="street" autocomplete="address-line1" data-customer-field>
+              <input name="neighborhood" data-customer-field>
+              <input name="city" autocomplete="address-level2" data-customer-field>
+              <input name="state" maxlength="2" autocomplete="address-level1" data-customer-field>
             </div>
-            <div class="checkout-grid">
-              <label>Cidade<input name="city" required autocomplete="address-level2" data-customer-field></label>
-              <label>UF<input name="state" required maxlength="2" autocomplete="address-level1" data-customer-field></label>
+          </section>
+            </div>
+          </details>
+          <section class="shipping-choice shipping-choice-public">
+            <div class="section-head compact">
+              <h3>Entrega</h3>
             </div>
             <label>Cupom<input name="coupon" autocomplete="off" placeholder="Ex: FRETE3D"></label>
             <div id="shippingOptions" class="shipping-options">
               <p>Informe o CEP para calcular as opções de entrega.</p>
             </div>
           </section>
-            </div>
-          </details>
           <div class="totals" id="cartTotals"></div>
           <button class="primary-button" type="submit" id="checkoutSubmitButton">Finalizar pedido</button>
           <p class="form-status" id="checkoutStatus"></p>

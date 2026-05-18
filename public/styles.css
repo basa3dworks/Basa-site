@@ -2929,6 +2929,13 @@ body.store-body:not(.admin-body) .cart {
   gap: 10px;
 }
 
+.shipping-choice-public {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
 .shipping-options {
   display: grid;
   gap: 9px;

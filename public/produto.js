@@ -932,13 +932,13 @@ function applyCustomerSession(form) {
     input.readOnly = false;
   });
   $("#saveCustomerButton").hidden = loggedIn;
-  $("#debugCustomerButton").hidden = loggedIn;
+  if ($("#debugCustomerButton")) $("#debugCustomerButton").hidden = loggedIn;
   $("#logoutCustomerButton").hidden = !loggedIn;
   $("#checkoutSubmitButton").disabled = false;
   $("#customerLoginBox").classList.toggle("logged", loggedIn);
   $("#customerLoginStatus").textContent = loggedIn
     ? `Cliente identificado: ${session.customer.name || session.customer.email}.`
-    : "Preencha seus dados e salve o cadastro para finalizar o pedido.";
+    : "Entre ou crie sua conta para finalizar o pedido.";
 }
 
 async function saveCustomerSession(form) {
@@ -1521,8 +1521,8 @@ async function init() {
   refreshSupportChat(false);
   setInterval(() => refreshSupportChat(false), 60000);
   setupCheckoutDetails($("#checkoutForm"));
-  $("#saveCustomerButton").addEventListener("click", () => saveCustomerSession($("#checkoutForm")));
-  $("#debugCustomerButton").addEventListener("click", () => useDebugCustomer($("#checkoutForm")));
+  $("#saveCustomerButton").addEventListener("click", () => { window.location.href = "/conta.html"; });
+  $("#debugCustomerButton")?.addEventListener("click", () => useDebugCustomer($("#checkoutForm")));
   $("#logoutCustomerButton").addEventListener("click", () => logoutCustomer($("#checkoutForm")));
   setupCepLookup($("#checkoutForm"));
   $("#checkoutForm").elements.coupon.addEventListener("input", () => {
