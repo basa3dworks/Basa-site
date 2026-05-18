@@ -118,6 +118,53 @@ def _parse_dt(value):
         return None
 
 
+def _aware_dt(value):
+    parsed = _parse_dt(value)
+    if not parsed:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def _campaign_is_running(campaign, now=None):
+    campaign = campaign or {}
+    if not campaign.get("active"):
+        return False
+    now = now or datetime.now(timezone.utc)
+    starts_at = _aware_dt(campaign.get("startsAt"))
+    ends_at = _aware_dt(campaign.get("endsAt"))
+    if starts_at and now < starts_at:
+        return False
+    if ends_at and now > ends_at:
+        return False
+    return True
+
+
+def _campaign_discount_percent(product, now=None):
+    campaign = (product or {}).get("campaign") or {}
+    if not _campaign_is_running(campaign, now):
+        return 0.0
+    return max(0.0, min(95.0, _number_or_zero(campaign.get("discountPercent"))))
+
+
+def _campaign_pricing(product, now=None):
+    product = product or {}
+    base_price = _money(product.get("price"))
+    discount = _campaign_discount_percent(product, now)
+    if not discount:
+        return {
+            "price": base_price,
+            "compareAtPrice": _money(product.get("compareAtPrice")),
+            "campaignDiscountPercent": 0.0,
+        }
+    return {
+        "price": _money(base_price * (1 - discount / 100)),
+        "compareAtPrice": base_price,
+        "campaignDiscountPercent": discount,
+    }
+
+
 def _send_email_sync(subject, message, recipient):
     if not recipient:
         return False
@@ -344,13 +391,17 @@ def _public_product(product, db):
     favorite_count = int(product.get("favoriteCount") or 0) + sum(
         1 for customer in db.get("customers", []) if product.get("id") in customer.get("favorites", [])
     )
+    pricing = _campaign_pricing(product)
     payload = dict(product)
     payload.update(
         {
+            "price": pricing["price"],
             "soldCount": int(float(product.get("soldCount") or 0)) + order_sold + social_sold,
             "favoriteCount": favorite_count,
             "gallery": product.get("gallery") or [product.get("image")],
-            "regularPrice": product.get("price"),
+            "regularPrice": _money(product.get("price")),
+            "compareAtPrice": pricing["compareAtPrice"],
+            "campaignDiscountPercent": pricing["campaignDiscountPercent"],
             "rating": {"average": rating_average, "count": len(rated_reviews)},
             "publicReviews": [
                 {
@@ -761,7 +812,8 @@ def _cart_totals(db, items, shipping_option=None, coupon=None, zip_code=""):
         if not product:
             continue
         quantity = max(1, int(float(item.get("quantity") or 1)))
-        unit_price = float(product.get("price") or 0)
+        pricing = _campaign_pricing(product)
+        unit_price = pricing["price"]
         total = round(unit_price * quantity, 2)
         item_count += quantity
         subtotal += total
@@ -775,6 +827,8 @@ def _cart_totals(db, items, shipping_option=None, coupon=None, zip_code=""):
             "category": product.get("category"),
             "quantity": quantity,
             "unitPrice": unit_price,
+            "regularUnitPrice": _money(product.get("price")),
+            "campaignDiscountPercent": pricing["campaignDiscountPercent"],
             "total": total,
             "variant": item.get("variant") or {},
             "productionDays": _production_days_from_product(product),
