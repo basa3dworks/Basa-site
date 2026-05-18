@@ -2869,6 +2869,28 @@ body.store-body:not(.admin-body) .cart {
   line-height: 1.35;
 }
 
+.checkout-address-summary {
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid #d9eadf;
+  border-radius: 8px;
+  color: var(--muted);
+  background: #f3fbf6;
+  font-size: 0.84rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.checkout-address-summary[hidden] {
+  display: none;
+}
+
+.checkout-address-summary strong {
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+
 .customer-login-box {
   display: grid;
   gap: 12px;

@@ -913,6 +913,24 @@ function customerFields(form) {
   return [...form.querySelectorAll("[data-customer-field]")];
 }
 
+function updateCheckoutAddressSummary(form) {
+  const summary = form?.querySelector("[data-address-summary]");
+  if (!summary) return;
+  const value = (name) => String(form.elements[name]?.value || "").trim();
+  const zip = value("zipCode").replace(/\D/g, "");
+  const street = value("street");
+  const number = value("number");
+  const neighborhood = value("neighborhood");
+  const city = value("city");
+  const stateValue = value("state");
+  const lineOne = [street, number].filter(Boolean).join(", ");
+  const lineTwo = [neighborhood, city && stateValue ? `${city}/${stateValue}` : city || stateValue].filter(Boolean).join(" - ");
+  const zipLine = zip.length === 8 ? `CEP ${zip.replace(/^(\d{5})(\d{3})$/, "$1-$2")}` : "";
+  const lines = [lineOne, lineTwo, zipLine].filter(Boolean);
+  summary.hidden = !lines.length;
+  summary.innerHTML = lines.length ? `<strong>Endereço da entrega</strong>${lines.map((line) => `<span>${escapeHtml(line)}</span>`).join("")}` : "";
+}
+
 function applyCustomerSession(form) {
   const session = state.customerSession;
   if (session?.customer) {
@@ -939,6 +957,7 @@ function applyCustomerSession(form) {
   $("#customerLoginStatus").textContent = loggedIn
     ? `Cliente identificado: ${session.customer.name || session.customer.email}.`
     : "Entre ou crie sua conta para finalizar o pedido.";
+  updateCheckoutAddressSummary(form);
 }
 
 async function saveCustomerSession(form) {
@@ -1076,6 +1095,7 @@ function setupCepLookup(form) {
       setAddressField("city", data.city);
       setAddressField("state", data.state);
       form.dataset.ibge = data.ibge || "";
+      updateCheckoutAddressSummary(form);
       $("#checkoutStatus").textContent = "";
       quoteShipping();
     } catch (error) {
@@ -1087,8 +1107,11 @@ function setupCepLookup(form) {
   zipInput.addEventListener("blur", lookup);
   zipInput.addEventListener("change", lookup);
   zipInput.addEventListener("input", () => {
+    updateCheckoutAddressSummary(form);
     if (zipInput.value.replace(/\D/g, "").length === 8) lookup();
   });
+  form.elements.number?.addEventListener("input", () => updateCheckoutAddressSummary(form));
+  updateCheckoutAddressSummary(form);
 }
 
 function openCheckoutDetails() {
