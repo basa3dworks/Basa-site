@@ -12,6 +12,7 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from django.conf import settings
 from django.core.signing import BadSignature, TimestampSigner
@@ -43,6 +44,7 @@ MELHOR_ENVIO_USER_AGENT = os.environ.get("MELHOR_ENVIO_USER_AGENT", "Basa 3D Wor
 CHAT_INACTIVE_CLOSE_HOURS = max(1.0, float(os.environ.get("CHAT_INACTIVE_CLOSE_HOURS", "24") or 24))
 PROFILE_NAME_COOLDOWN_DAYS = 30
 PROFILE_NAME_RE = re.compile(r"^[a-z0-9._]{1,15}$")
+LOCAL_TZ = ZoneInfo(os.environ.get("TIME_ZONE", "America/Sao_Paulo"))
 signer = TimestampSigner(key=SESSION_SECRET, salt="basa-admin")
 
 
@@ -123,7 +125,7 @@ def _aware_dt(value):
     if not parsed:
         return None
     if parsed.tzinfo is None:
-        return parsed.replace(tzinfo=timezone.utc)
+        return parsed.replace(tzinfo=LOCAL_TZ).astimezone(timezone.utc)
     return parsed.astimezone(timezone.utc)
 
 
