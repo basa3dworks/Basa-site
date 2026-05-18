@@ -862,12 +862,18 @@ nav {
     display: none;
   }
 
-  body.store-body:not(.admin-body) .product-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+  body.store-body:not(.admin-body) .product-grid:has(.product-card) {
+    display: block;
+    column-count: 2;
+    column-gap: 8px;
   }
 
   body.store-body:not(.admin-body) .product-card {
+    display: inline-grid;
+    width: 100%;
+    margin: 0 0 8px;
+    break-inside: avoid;
+    page-break-inside: avoid;
     overflow: hidden;
     border: 1px solid #e6e8eb;
     border-radius: 8px;
@@ -7162,12 +7168,18 @@ pre {
     display: none;
   }
 
-  .product-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+  .product-grid:has(.product-card) {
+    display: block;
+    column-count: 2;
+    column-gap: 8px;
   }
 
   .product-card {
+    display: inline-grid;
+    width: 100%;
+    margin: 0 0 8px;
+    break-inside: avoid;
+    page-break-inside: avoid;
     overflow: hidden;
     border: 1px solid #e6e8eb;
     border-radius: 8px;
