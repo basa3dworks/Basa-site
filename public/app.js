@@ -609,7 +609,7 @@ function updateCheckoutAddressSummary(form) {
   const zipLine = zip.length === 8 ? `CEP ${zip.replace(/^(\d{5})(\d{3})$/, "$1-$2")}` : "";
   const lines = [lineOne, lineTwo, zipLine].filter(Boolean);
   summary.hidden = !lines.length;
-  summary.innerHTML = lines.length ? `<strong>Endereço da entrega</strong>${lines.map((line) => `<span>${escapeHtml(line)}</span>`).join("")}` : "";
+  summary.innerHTML = lines.length ? `<strong>Destino</strong>${lines.map((line) => `<span>${escapeHtml(line)}</span>`).join("")}` : "";
 }
 
 function applyCustomerSession(form) {
@@ -635,8 +635,12 @@ function applyCustomerSession(form) {
   $("#logoutCustomerButton").hidden = !loggedIn;
   $("#checkoutSubmitButton").disabled = false;
   $("#customerLoginBox").classList.toggle("logged", loggedIn);
+  const loginTitle = $("#customerLoginBox h3");
+  const googleLoginButton = form.querySelector("[data-google-login]");
+  if (loginTitle) loginTitle.textContent = loggedIn ? "Compra identificada" : "Entrar para comprar";
+  if (googleLoginButton) googleLoginButton.hidden = loggedIn;
   $("#customerLoginStatus").textContent = loggedIn
-    ? `Comprando como ${session.customer.name || session.customer.email}. Você pode mudar o CEP só para este pedido.`
+    ? `Comprando como ${session.customer.name || session.customer.email}.`
     : "Entre ou crie sua conta para finalizar o pedido.";
   updateCheckoutAddressSummary(form);
 }
