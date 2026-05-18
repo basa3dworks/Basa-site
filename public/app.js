@@ -903,38 +903,45 @@ function renderProducts() {
   products = products
     .filter((product) => !search || normalizeSearch(`${product.name} ${product.description} ${product.category} ${productMeta(product)}`).includes(search))
     .sort((a, b) => state.catalogFeed === "trending" ? trendScore(b) - trendScore(a) : productScore(b) - productScore(a));
-  $("#productGrid").innerHTML = products.length ? products.map((product) => `
-    <article class="product-card">
-      <a class="product-image-link" href="/produto.html?slug=${product.slug}">
-        <img src="${product.image}" alt="${product.name}">
-        <span class="product-badge ${campaignBadgeClass(product)}">${campaignLabel(product)}</span>
-      </a>
-      <button class="favorite-button ${isFavorite(product.id) ? "active" : ""}" type="button" data-favorite="${product.id}" aria-label="Favoritar ${product.name}">
-        <span aria-hidden="true">${isFavorite(product.id) ? "&#9829;" : "&#9825;"}</span>
-        ${favoriteCountLabel(product)}
-      </button>
-      <div class="product-body">
-        <p class="eyebrow">${product.category}</p>
-        <div class="product-social-proof">${productMeta(product)}</div>
-        <h3><a class="product-title-link" href="/produto.html?slug=${product.slug}">${product.name}</a></h3>
-        ${ratingMarkup(product)}
-        ${flashOfferMarkup(product)}
-        <p>${product.description}</p>
-        <span class="product-variant-note">${productPiecesLabel(product)}</span>
-        <div class="product-actions">
-          <div class="price-block">
-            ${product.compareAtPrice ? `<span class="old-price">${money(product.compareAtPrice)}</span>` : ""}
-            <div class="price-line">
-              <strong class="price"><span>${moneyParts(product.price).main}</span><sup>${moneyParts(product.price).cents}</sup></strong>
-              ${discountPercent(product) ? `<span class="discount-pill">${discountPercent(product)}% OFF</span>` : ""}
+  const productCard = (product) => `
+      <article class="product-card">
+        <a class="product-image-link" href="/produto.html?slug=${product.slug}">
+          <img src="${product.image}" alt="${product.name}">
+          <span class="product-badge ${campaignBadgeClass(product)}">${campaignLabel(product)}</span>
+        </a>
+        <button class="favorite-button ${isFavorite(product.id) ? "active" : ""}" type="button" data-favorite="${product.id}" aria-label="Favoritar ${product.name}">
+          <span aria-hidden="true">${isFavorite(product.id) ? "&#9829;" : "&#9825;"}</span>
+          ${favoriteCountLabel(product)}
+        </button>
+        <div class="product-body">
+          <p class="eyebrow">${product.category}</p>
+          <div class="product-social-proof">${productMeta(product)}</div>
+          <h3><a class="product-title-link" href="/produto.html?slug=${product.slug}">${product.name}</a></h3>
+          ${ratingMarkup(product)}
+          ${flashOfferMarkup(product)}
+          <p>${product.description}</p>
+          <span class="product-variant-note">${productPiecesLabel(product)}</span>
+          <div class="product-actions">
+            <div class="price-block">
+              ${product.compareAtPrice ? `<span class="old-price">${money(product.compareAtPrice)}</span>` : ""}
+              <div class="price-line">
+                <strong class="price"><span>${moneyParts(product.price).main}</span><sup>${moneyParts(product.price).cents}</sup></strong>
+                ${discountPercent(product) ? `<span class="discount-pill">${discountPercent(product)}% OFF</span>` : ""}
+              </div>
             </div>
           </div>
+          <span class="shipping-note">${shippingCardLabel(product)}</span>
+          <span class="stock-note">${stockLabel(product.stock)}</span>
         </div>
-        <span class="shipping-note">${shippingCardLabel(product)}</span>
-        <span class="stock-note">${stockLabel(product.stock)}</span>
-      </div>
-    </article>
-  `).join("") : `<div class="empty-catalog"><strong>Nenhum produto por aqui ainda.</strong><span>${state.catalogFeed === "favorites" ? "Favorite alguns itens para montar sua vitrine." : "Tente outra categoria ou busca."}</span></div>`;
+      </article>
+    `;
+  const columns = products.reduce((acc, product, index) => {
+    acc[index % 2].push(productCard(product));
+    return acc;
+  }, [[], []]);
+  $("#productGrid").innerHTML = products.length
+    ? columns.map((items) => `<div class="product-grid-column">${items.join("")}</div>`).join("")
+    : `<div class="empty-catalog"><strong>Nenhum produto por aqui ainda.</strong><span>${state.catalogFeed === "favorites" ? "Favorite alguns itens para montar sua vitrine." : "Tente outra categoria ou busca."}</span></div>`;
 
   document.querySelectorAll("[data-favorite]").forEach((button) => {
     button.addEventListener("click", () => toggleFavorite(button.dataset.favorite));
