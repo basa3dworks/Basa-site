@@ -1041,9 +1041,7 @@ function renderShippingOptions() {
   }
 
   const promo = freeShippingPromo($("#checkoutForm"));
-  const shippingMessage = promo.eligible ? `Frete gr\u00e1tis liberado por ${promo.reason}.` : comboProgressMessage();
   $("#shippingOptions").innerHTML = `
-    ${shippingMessage ? `<p class="${promo.eligible ? "promo-note" : "combo-note"}">${shippingMessage}</p>` : ""}
     ${state.shippingQuotes.map((quote) => `
     <label class="shipping-option">
       <input type="radio" name="shippingOption" value="${shippingQuoteId(quote)}" ${shippingQuoteId(state.selectedShipping) === shippingQuoteId(quote) ? "checked" : ""}>
@@ -1343,9 +1341,7 @@ function renderCart() {
     </div>
   `).join("") : "<p>Seu carrinho está vazio.</p>";
 
-  const progressMessage = promo.eligible ? `Frete gr\u00e1tis liberado por ${promo.reason}` : comboProgressMessage();
   $("#cartTotals").innerHTML = `
-    ${progressMessage ? `<span class="combo-progress">${progressMessage}</span>` : ""}
     <span>Subtotal <strong>${money(subtotal)}</strong></span>
     <span>Frete <strong>${deliveryLabel}</strong></span>
     <span>Total <strong>${totalLabel}</strong></span>
