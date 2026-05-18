@@ -613,6 +613,23 @@ function deliveryAddressKey(address = {}) {
   return [address.zipCode, address.number, address.complement].map((value) => String(value || "").trim().toLowerCase()).join("|");
 }
 
+function accountDeliveryAddress() {
+  const customer = state.customerSession?.customer || {};
+  const zipCode = String(customer.zipCode || "").replace(/\D/g, "");
+  if (zipCode.length !== 8 || !customer.number) return null;
+  return {
+    zipCode,
+    street: customer.street || "",
+    number: customer.number || "",
+    neighborhood: customer.neighborhood || "",
+    complement: customer.complement || "",
+    city: customer.city || "",
+    state: String(customer.state || "").toUpperCase(),
+    ibge: customer.ibge || "",
+    principal: true
+  };
+}
+
 function deliveryAddressLines(address = {}) {
   const zip = String(address.zipCode || "").replace(/\D/g, "");
   const lineOne = [address.street, address.number].filter(Boolean).join(", ");
@@ -647,35 +664,36 @@ function setDeliveryAddress(form, address = {}) {
 }
 
 function maybeSeedCustomerAddress(form) {
-  const address = deliveryAddressFromForm(form);
-  if (address.zipCode.length !== 8 || !address.number) return;
-  const addresses = loadDeliveryAddresses();
-  if (addresses.some((item) => deliveryAddressKey(item) === deliveryAddressKey(address))) return;
-  if (addresses.length >= 3) return;
-  saveDeliveryAddresses([address, ...addresses]);
+  const address = accountDeliveryAddress();
+  if (!address) return;
+  const formAddress = deliveryAddressFromForm(form);
+  if (!formAddress.zipCode || deliveryAddressKey(formAddress) === "||") setDeliveryAddress(form, address);
 }
 
 function renderDeliveryAddressBook(form) {
   const book = form?.querySelector("[data-address-book]");
   if (!book) return;
-  const addresses = loadDeliveryAddresses();
+  const principal = accountDeliveryAddress();
+  const savedAddresses = loadDeliveryAddresses().filter((address) => !principal || deliveryAddressKey(address) !== deliveryAddressKey(principal));
+  const addresses = principal ? [principal, ...savedAddresses] : savedAddresses;
   const currentKey = deliveryAddressKey(deliveryAddressFromForm(form));
   book.hidden = !addresses.length;
   book.innerHTML = addresses.map((address, index) => {
     const active = deliveryAddressKey(address) === currentKey;
+    const savedIndex = address.principal ? "" : loadDeliveryAddresses().findIndex((item) => deliveryAddressKey(item) === deliveryAddressKey(address));
     return `
       <article class="checkout-address-card ${active ? "active" : ""}">
-        <strong>${active ? "Destino atual" : `Endereço ${index + 1}`}</strong>
+        <strong>${address.principal ? "Destino principal" : active ? "Destino atual" : `Endereço ${index + 1}`}</strong>
         ${deliveryAddressLines(address).map((line) => `<span>${escapeHtml(line)}</span>`).join("")}
         <div class="checkout-address-card-actions">
           <button class="ghost-button" type="button" data-use-address="${index}">Usar este endereço</button>
-          <button class="ghost-button" type="button" data-remove-address="${index}">Remover</button>
+          ${address.principal ? "" : `<button class="ghost-button" type="button" data-remove-address="${savedIndex}">Remover</button>`}
         </div>
       </article>
     `;
   }).join("");
   book.querySelectorAll("[data-use-address]").forEach((button) => {
-    button.addEventListener("click", () => setDeliveryAddress(form, loadDeliveryAddresses()[Number(button.dataset.useAddress)]));
+    button.addEventListener("click", () => setDeliveryAddress(form, addresses[Number(button.dataset.useAddress)]));
   });
   book.querySelectorAll("[data-remove-address]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -889,7 +907,7 @@ function comboProgressMessage() {
   if (!cartQuantity()) return "Adicione produtos ao carrinho para calcular o frete.";
   if (state.shippingBenefit?.message) return state.shippingBenefit.message;
   if (hasActiveCartFreeShippingBenefit()) return "Frete Gr\u00e1tis ativo neste pedido.";
-  return "Calcule a entrega para ver o valor do frete.";
+  return "";
 }
 
 function setupCepLookup(form) {
@@ -1023,8 +1041,9 @@ function renderShippingOptions() {
   }
 
   const promo = freeShippingPromo($("#checkoutForm"));
+  const shippingMessage = promo.eligible ? `Frete gr\u00e1tis liberado por ${promo.reason}.` : comboProgressMessage();
   $("#shippingOptions").innerHTML = `
-    <p class="${promo.eligible ? "promo-note" : "combo-note"}">${promo.eligible ? `Frete gr\u00e1tis liberado por ${promo.reason}.` : comboProgressMessage()}</p>
+    ${shippingMessage ? `<p class="${promo.eligible ? "promo-note" : "combo-note"}">${shippingMessage}</p>` : ""}
     ${state.shippingQuotes.map((quote) => `
     <label class="shipping-option">
       <input type="radio" name="shippingOption" value="${shippingQuoteId(quote)}" ${shippingQuoteId(state.selectedShipping) === shippingQuoteId(quote) ? "checked" : ""}>
@@ -1324,10 +1343,11 @@ function renderCart() {
     </div>
   `).join("") : "<p>Seu carrinho está vazio.</p>";
 
+  const progressMessage = promo.eligible ? `Frete gr\u00e1tis liberado por ${promo.reason}` : comboProgressMessage();
   $("#cartTotals").innerHTML = `
-    <span class="combo-progress">${promo.eligible ? `Frete gr\u00e1tis liberado por ${promo.reason}` : comboProgressMessage()}</span>
+    ${progressMessage ? `<span class="combo-progress">${progressMessage}</span>` : ""}
     <span>Subtotal <strong>${money(subtotal)}</strong></span>
-    <span>Entrega <strong>${deliveryLabel}</strong></span>
+    <span>Frete <strong>${deliveryLabel}</strong></span>
     <span>Total <strong>${totalLabel}</strong></span>
   `;
 
