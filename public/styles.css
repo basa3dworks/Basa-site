@@ -2839,6 +2839,14 @@ body.store-body:not(.admin-body) .cart {
   padding: 14px;
 }
 
+.delivery-helper {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
 .customer-login-box {
   display: grid;
   gap: 12px;
