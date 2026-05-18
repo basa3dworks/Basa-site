@@ -3282,6 +3282,10 @@ body.store-body:not(.admin-body) .customer-drawer {
   color: var(--brand);
 }
 
+.support-panel .form-status:empty {
+  display: none;
+}
+
 .support-chat-thread {
   max-height: 260px;
   display: grid;
