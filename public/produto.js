@@ -336,8 +336,12 @@ function renderRelatedProducts() {
   const grid = $("#relatedProductGrid");
   if (!grid) return;
   const products = state.relatedProducts.slice(0, state.relatedVisible);
+  const columns = products.reduce((acc, product, index) => {
+    acc[index % 2].push(relatedProductCard(product));
+    return acc;
+  }, [[], []]);
   grid.innerHTML = products.length
-    ? products.map(relatedProductCard).join("")
+    ? columns.map((items) => `<div class="related-product-grid-column">${items.join("")}</div>`).join("")
     : `<p class="product-empty-note">Ainda n\u00e3o h\u00e1 produtos relacionados cadastrados.</p>`;
 }
 

@@ -5197,6 +5197,13 @@ body.store-body:not(.admin-body) .customer-drawer {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+  align-items: start;
+}
+
+.related-product-grid-column {
+  display: grid;
+  align-content: start;
+  gap: 10px;
 }
 
 .related-product-card {
@@ -5228,7 +5235,6 @@ body.store-body:not(.admin-body) .customer-drawer {
 }
 
 .related-product-card strong {
-  min-height: 34px;
   display: -webkit-box;
   overflow: hidden;
   -webkit-box-orient: vertical;
