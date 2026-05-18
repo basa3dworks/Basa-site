@@ -75,6 +75,14 @@ def _number_or_zero(value):
         return 0.0
 
 
+def _bool_value(value):
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value == 1
+    return str(value or "").strip().lower() in {"true", "1", "on", "yes", "sim"}
+
+
 def _digits(value):
     return re.sub(r"\D", "", str(value or ""))
 
@@ -922,7 +930,7 @@ def _product_payload(body, existing=None):
             "widthCm": float(body.get("widthCm") or existing.get("shipping", {}).get("widthCm") or 12),
             "heightCm": float(body.get("heightCm") or existing.get("shipping", {}).get("heightCm") or 8),
             "lengthCm": float(body.get("lengthCm") or existing.get("shipping", {}).get("lengthCm") or 18),
-            "sellerPaysShipping": bool(body.get("sellerPaysShipping", existing.get("shipping", {}).get("sellerPaysShipping", False))),
+            "sellerPaysShipping": _bool_value(body.get("sellerPaysShipping", existing.get("shipping", {}).get("sellerPaysShipping", False))),
             "freeShippingMinQuantity": int(float(body.get("freeShippingMinQuantity") or existing.get("shipping", {}).get("freeShippingMinQuantity") or 0)),
         },
         "campaign": existing.get("campaign"),
