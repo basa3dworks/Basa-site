@@ -289,6 +289,14 @@ function setPublicTopbarPanelMode(isPanelOpen) {
   menuButton.classList.toggle("is-back", isPanelOpen);
 }
 
+function hasPublicOverlayOpen() {
+  return Boolean(
+    $("#cartPanel")?.classList.contains("open") ||
+    $("#customerPanel")?.classList.contains("open") ||
+    $("#supportPanel")?.classList.contains("open")
+  );
+}
+
 function openCustomerPanel() {
   updateCustomerPanelSession();
   $("#customerPanel").classList.add("open");
@@ -299,7 +307,7 @@ function openCustomerPanel() {
 function closeCustomerPanel() {
   $("#customerPanel").classList.remove("open");
   $("#customerPanel").setAttribute("aria-hidden", "true");
-  setPublicTopbarPanelMode($("#cartPanel")?.classList.contains("open"));
+  setPublicTopbarPanelMode(hasPublicOverlayOpen());
 }
 
 function openQuotePanel() {
@@ -326,12 +334,14 @@ async function openSupportPanel() {
   updateSupportIdentityFields();
   panel.classList.add("open");
   panel.setAttribute("aria-hidden", "false");
+  setPublicTopbarPanelMode(true);
   await refreshSupportChat(true);
 }
 
 function closeSupportPanel() {
   $("#supportPanel").classList.remove("open");
   $("#supportPanel").setAttribute("aria-hidden", "true");
+  setPublicTopbarPanelMode(hasPublicOverlayOpen());
 }
 
 function openCartPanel() {
@@ -344,7 +354,7 @@ function openCartPanel() {
 function closeCartPanel() {
   $("#cartPanel").classList.remove("open");
   $("#cartPanel").setAttribute("aria-hidden", "true");
-  setPublicTopbarPanelMode($("#customerPanel")?.classList.contains("open"));
+  setPublicTopbarPanelMode(hasPublicOverlayOpen());
 }
 
 function closePublicPanels(except = "") {
@@ -1435,6 +1445,10 @@ async function init() {
   $("#mobileMenuButton")?.addEventListener("click", () => {
     if ($("#cartPanel")?.classList.contains("open")) {
       closeCartPanel();
+      return;
+    }
+    if ($("#supportPanel")?.classList.contains("open")) {
+      closeSupportPanel();
       return;
     }
     if ($("#customerPanel")?.classList.contains("open")) {
