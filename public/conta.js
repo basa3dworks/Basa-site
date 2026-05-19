@@ -8,6 +8,7 @@ const state = {
 
 const $ = (selector) => document.querySelector(selector);
 const money = (value) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(value || 0));
+const SELECTED_DELIVERY_ADDRESS_KEY = "basa_selected_delivery_address";
 const escapeHtml = (value) => String(value || "")
   .replaceAll("&", "&amp;")
   .replaceAll("<", "&lt;")
@@ -47,10 +48,17 @@ function customerProfileLabel(customer = {}) {
   return customer.displayName || customer.customerUsername || customer.name || "Cliente Basa";
 }
 
-function customerAddressLabel(customer = {}) {
-  const streetLine = [customer.street, customer.number].filter(Boolean).join(", ");
-  const areaLine = [customer.neighborhood, customer.city && customer.state ? `${customer.city}/${customer.state}` : customer.city || customer.state].filter(Boolean).join(" - ");
-  return [streetLine, areaLine || (customer.zipCode ? `CEP ${customer.zipCode}` : "")].filter(Boolean).join(" | ");
+function topbarAddressLabel(address = {}) {
+  return [address.street, address.number].filter(Boolean).join(", ");
+}
+
+function selectedDeliveryAddress() {
+  try {
+    const address = JSON.parse(localStorage.getItem(SELECTED_DELIVERY_ADDRESS_KEY) || "null");
+    return address?.zipCode ? address : null;
+  } catch {
+    return null;
+  }
 }
 
 function updateTopbarCustomerRow() {
@@ -58,12 +66,12 @@ function updateTopbarCustomerRow() {
   if (!row) return;
   const customer = state.session?.customer || {};
   const logged = Boolean(state.session?.loggedIn && customer.email);
-  const address = customerAddressLabel(customer);
+  const addressLabel = topbarAddressLabel(selectedDeliveryAddress() || customer);
   row.hidden = !logged;
   document.body.classList.toggle("topbar-profile-visible", logged);
   if (!logged) return;
-  $("#topbarCustomerName").textContent = customerProfileLabel(customer);
-  $("#topbarCustomerAddress").textContent = address || "Endereço não cadastrado";
+  $("#topbarCustomerName").innerHTML = `Ol\u00e1 ${escapeHtml(customerProfileLabel(customer))}${customer.profileVerified ? ' <span class="profile-verified topbar-verified" title="Perfil verificado" aria-label="Perfil verificado"></span>' : ""}`;
+  $("#topbarCustomerAddress").textContent = addressLabel || "Endere\u00e7o n\u00e3o cadastrado";
 }
 
 function favoriteIds() {

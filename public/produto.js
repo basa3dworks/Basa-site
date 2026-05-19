@@ -911,7 +911,9 @@ function renderPendingPaymentBanner() {
       <button class="pending-payment-close" type="button" data-pending-close="${order.id}" aria-label="Fechar aviso">×</button>
     </div>
   `;
-  document.body.insertBefore(banner, document.querySelector("main"));
+  const main = document.querySelector("main");
+  if (!main) return;
+  main.prepend(banner);
   banner.querySelector("[data-pending-snooze]")?.addEventListener("click", () => snoozePendingPayment(order.id));
   banner.querySelector("[data-pending-close]")?.addEventListener("click", () => snoozePendingPayment(order.id));
   banner.querySelector("[data-pending-view-orders]")?.addEventListener("click", () => {
