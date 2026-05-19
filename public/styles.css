@@ -257,6 +257,8 @@ nav {
 }
 
 .topbar-customer-row .profile-verified {
+  position: relative;
+  display: inline-block;
   flex: 0 0 auto;
   width: 13px;
   height: 13px;
@@ -6040,11 +6042,13 @@ body.store-body:not(.admin-body) .customer-drawer {
 }
 
 .topbar-customer-row .profile-verified::before {
-  width: 5.25px;
-  height: 3px;
-  border-left-width: 1.8px;
-  border-bottom-width: 1.8px;
-  transform: translate(0, -0.25px) rotate(-45deg);
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: center / 7.5px 6.5px no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 10'%3E%3Cpath d='M1.5 5.1 4.7 8.2 10.5 1.7' fill='none' stroke='%23fff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  transform: none;
 }
 
 .account-card .profile-verified,
