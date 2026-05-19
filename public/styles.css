@@ -6031,11 +6031,20 @@ body.store-body:not(.admin-body) .customer-drawer {
 
 .profile-verified::before {
   content: "";
-  width: 7px;
-  height: 4px;
-  border-left: 2.5px solid #fff;
-  border-bottom: 2.5px solid #fff;
-  transform: translateY(-1px) rotate(-45deg);
+  width: 7.5px;
+  height: 4.5px;
+  border-left: 2.25px solid #fff;
+  border-bottom: 2.25px solid #fff;
+  transform: translate(0, -0.5px) rotate(-45deg);
+  transform-origin: 50% 50%;
+}
+
+.topbar-customer-row .profile-verified::before {
+  width: 5.25px;
+  height: 3px;
+  border-left-width: 1.8px;
+  border-bottom-width: 1.8px;
+  transform: translate(0, -0.25px) rotate(-45deg);
 }
 
 .account-card .profile-verified,
