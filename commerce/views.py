@@ -1363,6 +1363,13 @@ def public_page(request, page="index.html"):
     return FileResponse(file_path.open("rb"), content_type="text/html; charset=utf-8")
 
 
+def react_preview(request):
+    file_path = PUBLIC_DIR / "react-app" / "index.html"
+    if not file_path.exists():
+        raise Http404()
+    return FileResponse(file_path.open("rb"), content_type="text/html; charset=utf-8")
+
+
 def public_asset(request, asset_path):
     safe_parts = [part for part in Path(asset_path).parts if part not in {"", ".", ".."}]
     file_path = (PUBLIC_DIR / Path(*safe_parts)).resolve()
