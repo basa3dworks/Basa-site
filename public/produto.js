@@ -62,9 +62,15 @@ const discountPercent = (product) => {
   if (!product.compareAtPrice || product.compareAtPrice <= product.price) return 0;
   return Math.round((1 - product.price / product.compareAtPrice) * 100);
 };
-const productPiecesLabel = (product) => {
-  const pieces = Number(product.variants?.piecesIncluded || 1);
-  return product.variants?.bundleType === "kit" || pieces > 1 ? `Kit com ${pieces} pe\u00e7as` : "1 pe\u00e7a";
+const productPiecesQuantityLabel = (product, quantity = 1) => {
+  const piecesPerUnit = Math.max(1, Number(product.variants?.piecesIncluded || 1));
+  const totalPieces = piecesPerUnit * Math.max(1, Number(quantity || 1));
+  if (piecesPerUnit > 1 || product.variants?.bundleType === "kit") {
+    return totalPieces === piecesPerUnit
+      ? `Kit com ${piecesPerUnit} ${piecesPerUnit === 1 ? "pe\u00e7a" : "pe\u00e7as"}`
+      : `${totalPieces} pe\u00e7as no total`;
+  }
+  return `${totalPieces} ${totalPieces === 1 ? "pe\u00e7a" : "pe\u00e7as"}`;
 };
 const productStockLabel = (product) => {
   const stock = Math.max(0, Number(product.stock || 0));
@@ -701,6 +707,12 @@ function selectedColor() {
 
 function productQuantity() {
   return Math.max(1, Number($("#productQuantityInput")?.value || 1));
+}
+
+function updateProductPiecesSummary() {
+  const target = $("#productPiecesSummary");
+  if (!target || !state.product) return;
+  target.textContent = productPiecesQuantityLabel(state.product, productQuantity());
 }
 
 function resetShippingCalculation() {
@@ -1479,7 +1491,7 @@ function renderProduct() {
         ${productShippingLabel(product) ? `<p class="free-shipping-callout">${productShippingLabel(product)}</p>` : ""}
         <div class="product-options">
           <div class="product-option-header">
-            <span>${productPiecesLabel(product)}</span>
+            <span id="productPiecesSummary">${productPiecesQuantityLabel(product, 1)}</span>
             <strong>${productStockLabel(product)}</strong>
           </div>
           ${product.variants?.colors?.length ? `
@@ -1515,13 +1527,13 @@ function renderProduct() {
           <button class="primary-button buy-now-button" data-buy-now="${product.id}">Comprar agora</button>
           <button class="secondary-link add-cart-button" data-add="${product.id}"><span class="material-symbols-rounded" aria-hidden="true">add_shopping_cart</span>Adicionar ao carrinho</button>
         </div>
-        <div class="product-description-after-actions">
-          <p class="lead">${product.longDescription || product.description}</p>
-        </div>
         <div class="payment-info">
           <strong>Pagamento seguro via Mercado Pago</strong>
           <span>Pix e cart\u00f5es de cr\u00e9dito aceitos no checkout.</span>
           <span>Seus dados de pagamento s\u00e3o processados em ambiente protegido.</span>
+        </div>
+        <div class="product-description-after-actions">
+          <p class="lead">${product.longDescription || product.description}</p>
         </div>
       </div>
     </section>
@@ -1563,6 +1575,8 @@ function renderProduct() {
   document.querySelectorAll("[data-buy-now]").forEach((button) => {
     button.addEventListener("click", () => buyNow(button.dataset.buyNow));
   });
+  $("#productQuantityInput")?.addEventListener("change", updateProductPiecesSummary);
+  updateProductPiecesSummary();
   document.querySelectorAll("[data-media-index]").forEach((button) => {
     button.addEventListener("click", () => {
       const item = mediaItems[Number(button.dataset.mediaIndex)];
