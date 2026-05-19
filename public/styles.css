@@ -2534,6 +2534,18 @@ body.lightbox-open {
   line-height: 1.65;
 }
 
+.product-description-after-actions {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.product-description-after-actions .lead {
+  margin: 0;
+  font-size: 0.96rem;
+  line-height: 1.55;
+}
+
 .detail-social-proof {
   margin-top: 6px;
   color: var(--muted);
@@ -2615,19 +2627,39 @@ body.lightbox-open {
 
 .product-detail-copy .hero-actions {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 12px;
+  grid-template-columns: 1fr;
+  gap: 10px;
 }
 
 .product-detail-copy .primary-button,
 .product-detail-copy .secondary-link {
   width: 100%;
   min-width: 0;
-  min-height: 52px;
+  min-height: 50px;
   padding: 0 14px;
   text-align: center;
   white-space: normal;
   line-height: 1.15;
+}
+
+.product-buy-actions .buy-now-button {
+  color: #fff;
+  background: #3483fa;
+  box-shadow: 0 10px 22px rgba(52, 131, 250, 0.18);
+}
+
+.product-buy-actions .add-cart-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border: 0;
+  color: #3483fa;
+  background: #eaf3ff;
+}
+
+.product-buy-actions .add-cart-button .material-symbols-rounded {
+  font-size: 1.35rem;
 }
 
 .payment-info {
@@ -3236,9 +3268,9 @@ label {
 
 .product-options {
   display: grid;
-  gap: 10px;
-  margin: 0 0 18px;
-  padding: 14px;
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #f7faf7;
@@ -3249,6 +3281,19 @@ label {
   font-weight: 900;
 }
 
+.product-option-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.product-option-header strong {
+  color: #111;
+  font-size: 0.82rem;
+  text-align: right;
+}
+
 .color-choice-group {
   min-width: 0;
   margin: 0;
@@ -3257,7 +3302,7 @@ label {
 }
 
 .color-choice-group legend {
-  margin: 0 0 8px;
+  margin: 0 0 6px;
   color: var(--ink);
   font-size: 0.86rem;
   font-weight: 900;
@@ -3266,14 +3311,14 @@ label {
 .color-choice-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 8px;
 }
 
 .color-choice {
   display: grid;
   justify-items: center;
-  gap: 6px;
-  width: 64px;
+  gap: 4px;
+  width: 48px;
   cursor: pointer;
 }
 
@@ -3284,8 +3329,8 @@ label {
 }
 
 .color-swatch {
-  width: 42px;
-  height: 42px;
+  width: 34px;
+  height: 34px;
   border: 2px solid #fff;
   border-radius: 50%;
   background: var(--swatch-color);
@@ -3321,17 +3366,32 @@ label {
   white-space: nowrap;
 }
 
+.compact-quantity {
+  min-height: 46px;
+  justify-content: space-between;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: #f0f1ef;
+  font-size: 1rem;
+}
+
 .quantity-inline select {
   appearance: none;
   border: 0;
-  padding: 0 18px 0 0;
+  flex: 1;
+  min-width: 0;
+  padding: 0;
   color: var(--ink);
-  background:
-    linear-gradient(45deg, transparent 50%, #3483fa 50%) right 7px center / 6px 6px no-repeat,
-    linear-gradient(135deg, #3483fa 50%, transparent 50%) right 3px center / 6px 6px no-repeat;
+  background: transparent;
   font: inherit;
   font-weight: 900;
   cursor: pointer;
+}
+
+.compact-quantity .material-symbols-rounded {
+  flex: 0 0 auto;
+  color: #3483fa;
+  font-size: 1.35rem;
 }
 
 .quantity-inline small {

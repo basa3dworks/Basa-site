@@ -813,6 +813,12 @@ function addToCart(productId) {
   resetShippingCalculation();
   saveCart();
   $("#cartPanel").classList.add("open");
+  $("#cartPanel").setAttribute("aria-hidden", "false");
+}
+
+function buyNow(productId) {
+  addToCart(productId);
+  $("#checkoutForm")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function setCartQuantity(productId, color, quantity) {
@@ -1461,7 +1467,6 @@ function renderProduct() {
         <h1>${product.name}</h1>
         ${ratingMarkup(product, "detail-rating")}
         ${detailFlashOffer(product)}
-        <p class="lead">${product.longDescription || product.description}</p>
         <div class="detail-price">
           <div class="price-block detail-price-block">
             ${product.compareAtPrice ? `<span class="old-price">${money(product.compareAtPrice)}</span>` : ""}
@@ -1473,7 +1478,10 @@ function renderProduct() {
         </div>
         ${productShippingLabel(product) ? `<p class="free-shipping-callout">${productShippingLabel(product)}</p>` : ""}
         <div class="product-options">
-          <span>${productPiecesLabel(product)}</span>
+          <div class="product-option-header">
+            <span>${productPiecesLabel(product)}</span>
+            <strong>${productStockLabel(product)}</strong>
+          </div>
           ${product.variants?.colors?.length ? `
             <fieldset class="color-choice-group" aria-label="Cor">
               <legend>Cor</legend>
@@ -1492,18 +1500,23 @@ function renderProduct() {
               </div>
             </fieldset>
           ` : ""}
-          <label class="quantity-inline">Quantidade:
+          <label class="quantity-inline compact-quantity">Quantidade:
             <select id="productQuantityInput" aria-label="Quantidade">
               ${Array.from({ length: Math.max(1, Math.min(Number(product.stock || 1), 20)) }, (_, index) => {
                 const quantity = index + 1;
-                return `<option value="${quantity}">${quantity} ${quantity === 1 ? "unidade" : "unidades"}</option>`;
+                const remaining = Math.max(0, Number(product.stock || 0) - quantity);
+                return `<option value="${quantity}">${quantity} (+${remaining} ${remaining === 1 ? "dispon\u00edvel" : "dispon\u00edveis"})</option>`;
               }).join("")}
             </select>
+            <span class="material-symbols-rounded" aria-hidden="true">chevron_right</span>
           </label>
-          <p class="product-stock-badge">${productStockLabel(product)}</p>
         </div>
-        <div class="hero-actions">
-          <button class="primary-button" data-add="${product.id}">Adicionar ao carrinho</button>
+        <div class="hero-actions product-buy-actions">
+          <button class="primary-button buy-now-button" data-buy-now="${product.id}">Comprar agora</button>
+          <button class="secondary-link add-cart-button" data-add="${product.id}"><span class="material-symbols-rounded" aria-hidden="true">add_shopping_cart</span>Adicionar ao carrinho</button>
+        </div>
+        <div class="product-description-after-actions">
+          <p class="lead">${product.longDescription || product.description}</p>
         </div>
         <div class="payment-info">
           <strong>Pagamento seguro via Mercado Pago</strong>
@@ -1546,6 +1559,9 @@ function renderProduct() {
 
   document.querySelectorAll("[data-add]").forEach((button) => {
     button.addEventListener("click", () => addToCart(button.dataset.add));
+  });
+  document.querySelectorAll("[data-buy-now]").forEach((button) => {
+    button.addEventListener("click", () => buyNow(button.dataset.buyNow));
   });
   document.querySelectorAll("[data-media-index]").forEach((button) => {
     button.addEventListener("click", () => {
