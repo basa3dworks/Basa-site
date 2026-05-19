@@ -971,6 +971,7 @@ function renderPeopleLists() {
             <small>@${escapeHtml(customer.displayName || account.username || "")} | ${personStatusLabel(account.status)}</small>
           </div>
           <div class="story-admin-actions">
+            <button class="ghost-button table-action" type="button" data-start-chat-customer="${account.id}">Chat</button>
             <button class="ghost-button table-action" type="button" data-edit-customer="${account.id}">Editar</button>
             <button class="ghost-button table-action" type="button" data-delete-customer="${account.id}">Excluir</button>
           </div>
@@ -997,6 +998,30 @@ function renderPeopleLists() {
   document.querySelectorAll("[data-delete-affiliate]").forEach((button) => button.addEventListener("click", () => deleteAffiliate(button.dataset.deleteAffiliate)));
   document.querySelectorAll("[data-edit-customer]").forEach((button) => button.addEventListener("click", () => editCustomer(button.dataset.editCustomer)));
   document.querySelectorAll("[data-delete-customer]").forEach((button) => button.addEventListener("click", () => deleteCustomer(button.dataset.deleteCustomer)));
+  document.querySelectorAll("[data-start-chat-customer]").forEach((button) => button.addEventListener("click", () => openStartChatForCustomer(button.dataset.startChatCustomer)));
+}
+
+function customerChatLabel(account) {
+  const customer = account.customer || {};
+  const name = customer.displayName || customer.name || account.username || "Cliente";
+  const email = customer.email || "";
+  return `${name}${email ? ` | ${email}` : ""}`;
+}
+
+function renderStartChatCustomerOptions(selectedId = "") {
+  const select = $("#adminStartChatCustomer");
+  if (!select) return;
+  const customers = currentCustomers.filter((account) => account.customer?.email);
+  select.innerHTML = customers.length
+    ? `<option value="">Selecione um cliente</option>${customers.map((account) => `<option value="${account.id}" ${account.id === selectedId ? "selected" : ""}>${escapeHtml(customerChatLabel(account))}</option>`).join("")}`
+    : '<option value="">Nenhum cliente com e-mail</option>';
+}
+
+function openStartChatForCustomer(customerId) {
+  renderStartChatCustomerOptions(customerId);
+  jumpAdminPanel("chat");
+  $("#adminStartChatForm")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  $("#adminStartChatForm")?.elements.message?.focus();
 }
 
 function renderAdminDashboard() {
@@ -2023,6 +2048,27 @@ async function updateCustomRequest(event) {
   renderAdminRequests();
 }
 
+async function startAdminChat(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const status = $("#adminStartChatStatus");
+  const body = Object.fromEntries(new FormData(form).entries());
+  if (status) status.textContent = "Criando conversa...";
+  try {
+    const result = await api("/api/admin/chats", {
+      method: "POST",
+      body: JSON.stringify(body)
+    });
+    currentRequests = result.customRequests || [];
+    form.elements.message.value = "";
+    if (status) status.textContent = "Conversa iniciada. O cliente verá a mensagem no chat.";
+    chatStatusFilter = "waiting_customer";
+    renderAdminRequests();
+  } catch (error) {
+    if (status) status.textContent = error.message;
+  }
+}
+
 async function api(path, options = {}) {
   let response;
   try {
@@ -2108,6 +2154,7 @@ async function loadDashboard() {
   renderProductsTable();
   renderOrdersList();
   renderPeopleLists();
+  renderStartChatCustomerOptions();
   renderAdminRequests();
 }
 
@@ -2349,6 +2396,7 @@ document.querySelectorAll("[data-chat-status]").forEach((button) => {
   });
 });
 $("#requestSearchInput").addEventListener("input", renderAdminRequests);
+$("#adminStartChatForm")?.addEventListener("submit", startAdminChat);
 $("#peopleSearchInput").addEventListener("input", renderPeopleLists);
 document.querySelectorAll("[data-customer-status]").forEach((button) => {
   button.addEventListener("click", () => {

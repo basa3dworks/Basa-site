@@ -458,7 +458,8 @@ function renderSupportChat(request, markSeen = false) {
 }
 
 async function refreshSupportChat(markSeen = false) {
-  const chat = supportChatState();
+  const customerEmail = state.customerSession?.customer?.email || "";
+  const chat = supportChatState() || (customerEmail ? { email: customerEmail, seenAdminCount: 0 } : null);
   if (!chat?.email) return null;
   const response = await fetch(`/api/custom-requests?email=${encodeURIComponent(chat.email)}`);
   const data = await response.json().catch(() => ({}));

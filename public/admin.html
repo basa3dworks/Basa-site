@@ -483,6 +483,17 @@
             <button type="button" data-chat-status="waiting_customer">Aguardando cliente</button>
             <button type="button" data-chat-status="closed">Encerradas</button>
           </div>
+          <form id="adminStartChatForm" class="stack-form admin-start-chat-form">
+            <h3>Iniciar conversa</h3>
+            <label>Cliente
+              <select name="customerId" id="adminStartChatCustomer" required></select>
+            </label>
+            <label>Mensagem
+              <textarea name="message" rows="3" required placeholder="Escreva a primeira mensagem para o cliente."></textarea>
+            </label>
+            <button class="primary-button" type="submit">Iniciar chat</button>
+            <p class="form-status" id="adminStartChatStatus"></p>
+          </form>
           <div class="panel-head compact">
             <div>
               <h3>Conversas com clientes</h3>

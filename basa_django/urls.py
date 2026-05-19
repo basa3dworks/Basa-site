@@ -42,6 +42,7 @@ urlpatterns = [
     path("api/admin/sellers", views.api_admin_sellers),
     path("api/admin/sellers/<str:seller_id>", views.api_admin_seller_detail),
     path("api/admin/orders/<str:order_id>", views.api_admin_order_detail),
+    path("api/admin/chats", views.api_admin_chats),
     path("api/admin/custom-requests/<str:request_id>", views.api_admin_custom_request_detail),
     path("api/admin/products", views.api_admin_products),
     path("api/admin/products/<str:product_id>/campaign", views.api_admin_product_campaign),

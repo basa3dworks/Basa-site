@@ -2688,6 +2688,61 @@ def api_admin_order_detail(request, order_id):
 
 
 @csrf_exempt
+def api_admin_chats(request):
+    error = _require_admin(request)
+    if error:
+        return error
+    if request.method != "POST":
+        return JsonResponse({"error": "Metodo nao permitido."}, status=405)
+    body = _json_body(request)
+    message = str(body.get("message", "")).strip()
+    if not message:
+        return JsonResponse({"error": "Escreva a primeira mensagem."}, status=400)
+    customer_id = str(body.get("customerId", "")).strip()
+    email = str(body.get("email", "")).strip().lower()
+    db = read_db()
+    account = next((
+        item for item in db.get("customers", [])
+        if (customer_id and item.get("id") == customer_id) or (email and _customer_email(item) == email)
+    ), None)
+    if not account:
+        return JsonResponse({"error": "Cliente nao encontrado."}, status=404)
+    customer = _safe_customer_account(account).get("customer", {})
+    email = str(customer.get("email", "")).strip().lower()
+    if not email:
+        return JsonResponse({"error": "Cliente sem e-mail cadastrado."}, status=400)
+    chats = [
+        item for item in db.setdefault("customRequests", [])
+        if (item.get("kind") == "chat" or str(item.get("title", "")).startswith("Atendimento"))
+        and str(item.get("customer", {}).get("email", "")).strip().lower() == email
+    ]
+    chat = next((item for item in chats if item.get("status") != "closed"), None)
+    if chat:
+        chat["kind"] = "chat"
+        chat.setdefault("messages", []).append({"id": f"msg-{secrets.token_hex(6)}", "author": "admin", "text": message, "createdAt": _now()})
+        chat["status"] = "waiting_customer"
+        chat["updatedAt"] = _now()
+    else:
+        chat = {
+            "id": f"ENC-{int(datetime.now().timestamp() * 1000)}",
+            "createdAt": _now(),
+            "updatedAt": _now(),
+            "kind": "chat",
+            "status": "waiting_customer",
+            "title": "Atendimento pelo chat",
+            "idea": message,
+            "budget": "",
+            "deadline": "",
+            "customer": customer,
+            "attachment": None,
+            "messages": [{"id": f"msg-{secrets.token_hex(6)}", "author": "admin", "text": message, "createdAt": _now()}],
+        }
+        db.setdefault("customRequests", []).insert(0, chat)
+    write_db(db)
+    return JsonResponse({"request": chat, "customRequests": db.get("customRequests", [])}, status=201)
+
+
+@csrf_exempt
 def api_admin_custom_request_detail(request, request_id):
     error = _require_admin(request)
     if error:

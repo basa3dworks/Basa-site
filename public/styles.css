@@ -3626,6 +3626,18 @@ body.store-body:not(.admin-body) .customer-drawer {
   background: #f8fcf9;
 }
 
+.admin-start-chat-form {
+  margin: 14px 0;
+  padding: 14px;
+  border: 1px solid #bfe8d4;
+  border-radius: 8px;
+  background: #f8fcf9;
+}
+
+.admin-start-chat-form h3 {
+  margin: 0;
+}
+
 .favorite-item {
   display: grid;
   grid-template-columns: 64px minmax(0, 1fr) auto;
