@@ -748,8 +748,11 @@ function updateSupportIdentityFields() {
 
 function supportRequestFromList(requests, chat) {
   if (!chat?.email) return null;
-  return requests.find((request) => request.id === chat.id)
-    || requests.find((request) => String(request.title || "").startsWith("Atendimento"));
+  const chats = requests
+    .filter((request) => request.kind === "chat" || String(request.title || "").startsWith("Atendimento"))
+    .sort((a, b) => Date.parse(b.updatedAt || b.createdAt || 0) - Date.parse(a.updatedAt || a.createdAt || 0));
+  const saved = chats.find((request) => request.id === chat.id && request.status !== "closed");
+  return saved || chats.find((request) => request.status !== "closed") || chats[0] || null;
 }
 
 function renderSupportChat(request, markSeen = false) {
@@ -773,7 +776,7 @@ function renderSupportChat(request, markSeen = false) {
   `).join("");
   thread.scrollTop = thread.scrollHeight;
   const adminCount = messages.filter((message) => message.author === "admin").length;
-  const seenAdminCount = Number(chat.seenAdminCount || 0);
+  const seenAdminCount = chat.id === request.id ? Number(chat.seenAdminCount || 0) : 0;
   const unread = Math.max(0, adminCount - seenAdminCount);
   if (markSeen) {
     saveSupportChatState({ ...chat, id: request.id, email: request.customer?.email || chat.email, seenAdminCount: adminCount });
@@ -794,7 +797,8 @@ async function refreshSupportChat(markSeen = false) {
   if (!response.ok) return null;
   const request = supportRequestFromList(data.requests || [], chat);
   if (request) {
-    saveSupportChatState({ ...chat, id: request.id, email: request.customer?.email || chat.email, seenAdminCount: chat.seenAdminCount || 0 });
+    const seenAdminCount = chat.id === request.id ? chat.seenAdminCount || 0 : 0;
+    saveSupportChatState({ ...chat, id: request.id, email: request.customer?.email || chat.email, seenAdminCount });
     renderSupportChat(request, markSeen);
   }
   return request;
