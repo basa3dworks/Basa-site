@@ -1978,6 +1978,7 @@ function requestCard(request) {
         </select>
         <input name="message" placeholder="${isChat ? "Responder no chat do cliente" : "Mensagem para o cliente"}">
         <button class="primary-button" type="submit">${isChat ? "Responder" : "Atualizar"}</button>
+        ${isChat ? `<button class="danger-button table-action" type="button" data-delete-chat="${request.id}">Excluir conversa</button>` : ""}
       </form>
     </article>
   `;
@@ -2034,6 +2035,9 @@ function renderAdminRequests() {
   document.querySelectorAll("[data-admin-request]").forEach((form) => {
     form.addEventListener("submit", updateCustomRequest);
   });
+  document.querySelectorAll("[data-delete-chat]").forEach((button) => {
+    button.addEventListener("click", () => deleteChatRequest(button.dataset.deleteChat));
+  });
 }
 
 async function updateCustomRequest(event) {
@@ -2043,6 +2047,17 @@ async function updateCustomRequest(event) {
   const result = await api(`/api/admin/custom-requests/${encodeURIComponent(form.dataset.adminRequest)}`, {
     method: "PATCH",
     body: JSON.stringify(body)
+  });
+  currentRequests = result.customRequests || [];
+  renderAdminRequests();
+}
+
+async function deleteChatRequest(requestId) {
+  const request = currentRequests.find((item) => item.id === requestId);
+  const customer = request?.customer?.name || request?.customer?.email || "cliente";
+  if (!confirm(`Excluir a conversa com ${customer}? Ela também sumirá do chat do cliente.`)) return;
+  const result = await api(`/api/admin/custom-requests/${encodeURIComponent(requestId)}`, {
+    method: "DELETE"
   });
   currentRequests = result.customRequests || [];
   renderAdminRequests();

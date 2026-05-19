@@ -2749,9 +2749,14 @@ def api_admin_custom_request_detail(request, request_id):
         return error
     body = _json_body(request)
     db = read_db()
-    item = next((request_item for request_item in db.get("customRequests", []) if request_item.get("id") == request_id), None)
+    requests = db.setdefault("customRequests", [])
+    item = next((request_item for request_item in requests if request_item.get("id") == request_id), None)
     if not item:
         return JsonResponse({"error": "Encomenda nao encontrada."}, status=404)
+    if request.method == "DELETE":
+        requests.remove(item)
+        write_db(db)
+        return JsonResponse({"request": item, "customRequests": db.get("customRequests", [])})
     kind = item.get("kind") or ("chat" if str(item.get("title", "")).startswith("Atendimento") else "custom")
     item["kind"] = kind
     previous_status = item.get("status")

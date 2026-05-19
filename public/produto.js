@@ -751,6 +751,10 @@ function saveSupportChatState(chat) {
   localStorage.setItem(SUPPORT_CHAT_KEY, JSON.stringify(chat));
 }
 
+function clearSupportChatState() {
+  localStorage.removeItem(SUPPORT_CHAT_KEY);
+}
+
 function updateSupportIdentityFields() {
   const known = Boolean(state.customerSession?.customer?.email || supportChatState()?.email);
   document.querySelectorAll("[data-support-identity]").forEach((field) => {
@@ -812,6 +816,9 @@ async function refreshSupportChat(markSeen = false) {
     const seenAdminCount = chat.id === request.id ? chat.seenAdminCount || 0 : 0;
     saveSupportChatState({ ...chat, id: request.id, email: request.customer?.email || chat.email, seenAdminCount });
     renderSupportChat(request, markSeen);
+  } else {
+    clearSupportChatState();
+    renderSupportChat(null);
   }
   return request;
 }
