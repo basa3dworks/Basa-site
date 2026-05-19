@@ -36,6 +36,77 @@
     return { average, count };
   }
 
+  function normalizeTerm(value) {
+    return String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+  }
+
+  function productTerms(product) {
+    const specs = product.specs || {};
+    const values = [
+      product.category,
+      product.name,
+      product.description,
+      product.longDescription,
+      ...(product.tags || []),
+      ...(product.highlights || []),
+      ...Object.keys(specs),
+      ...Object.values(specs)
+    ];
+    return new Set(normalizeTerm(values.join(" "))
+      .split(/[^a-z0-9]+/)
+      .filter((term) => term.length > 2 && !["para", "com", "uma", "das", "dos", "que", "por", "sem", "produto", "produtos"].includes(term)));
+  }
+
+  function relatedScore(baseProduct, candidate) {
+    if (!candidate || candidate.id === baseProduct.id) return -1;
+    let score = 0;
+    if (normalizeTerm(candidate.category) === normalizeTerm(baseProduct.category)) score += 60;
+    const baseTags = new Set((baseProduct.tags || []).map(normalizeTerm).filter(Boolean));
+    (candidate.tags || []).forEach((tag) => {
+      if (baseTags.has(normalizeTerm(tag))) score += 28;
+    });
+    const baseTerms = productTerms(baseProduct);
+    productTerms(candidate).forEach((term) => {
+      if (baseTerms.has(term)) score += 4;
+    });
+    score += Math.min(16, Number(candidate.soldCount || candidate.soldUnits || 0) / 3);
+    score += Math.min(10, Number(candidate.favoriteCount || 0));
+    score += Number(candidate.rating?.average || 0) * 2;
+    return score;
+  }
+
+  function relatedProducts(baseProduct, products) {
+    const ranked = products
+      .filter((candidate) => candidate.id !== baseProduct.id && candidate.status !== "inactive")
+      .map((candidate) => ({ product: candidate, score: relatedScore(baseProduct, candidate) }))
+      .sort((a, b) => b.score - a.score || Number(b.product.soldCount || 0) - Number(a.product.soldCount || 0));
+    return [
+      ...ranked.filter((item) => item.score > 0).map((item) => item.product),
+      ...ranked.filter((item) => item.score <= 0).map((item) => item.product)
+    ];
+  }
+
+  function reviewMediaItems(review) {
+    return (review.media || review.photos || [])
+      .map((item, index) => {
+        const src = typeof item === "string" ? item : item?.url || item?.src;
+        if (!src) return null;
+        return {
+          src,
+          type: /\.(mp4|webm|mov|m4v)$/i.test(String(src).split("?")[0]) ? "video" : "image",
+          label: `Midia ${index + 1}`
+        };
+      })
+      .filter(Boolean);
+  }
+
+  function reviewName(review) {
+    return review.customerName || review.profileName || "Cliente Basa";
+  }
+
   function productSlug(product) {
     return encodeURIComponent(product.slug || product.id || "");
   }
@@ -157,6 +228,83 @@
     );
   }
 
+  function ProductNav() {
+    return h("nav", { className: "react-product-nav", "aria-label": "Navegacao do produto" },
+      h("a", { href: "#produto-inicio" }, "Inicio"),
+      h("a", { href: "#produto-comentarios" }, "Comentarios"),
+      h("a", { href: "#produto-relacionados" }, "Relacionados")
+    );
+  }
+
+  function MediaLightbox({ items, index, onClose, setIndex }) {
+    if (!items?.length) return null;
+    const item = items[index] || items[0];
+    const previous = () => setIndex((index - 1 + items.length) % items.length);
+    const next = () => setIndex((index + 1) % items.length);
+    return h("div", { className: "react-lightbox", role: "dialog", "aria-modal": "true" },
+      h("button", { className: "react-lightbox-close", type: "button", onClick: onClose, "aria-label": "Fechar" },
+        h("span", { className: "material-symbols-rounded" }, "close")
+      ),
+      items.length > 1 && h("button", { className: "react-lightbox-arrow left", type: "button", onClick: previous, "aria-label": "Anterior" },
+        h("span", { className: "material-symbols-rounded" }, "chevron_left")
+      ),
+      h("div", { className: "react-lightbox-media" }, item.type === "video"
+        ? h("video", { src: item.src, controls: true, playsInline: true })
+        : h("img", { src: item.src, alt: item.label || "Midia do comentario" })
+      ),
+      items.length > 1 && h("button", { className: "react-lightbox-arrow right", type: "button", onClick: next, "aria-label": "Proxima" },
+        h("span", { className: "material-symbols-rounded" }, "chevron_right")
+      ),
+      h("span", { className: "react-lightbox-count" }, `${index + 1} / ${items.length}`)
+    );
+  }
+
+  function ReviewsSection({ product, openMedia }) {
+    const reviews = product.publicReviews || [];
+    return h("section", { className: "react-detail-card react-reviews", id: "produto-comentarios" },
+      h("small", null, "Comentarios"),
+      h("h2", null, "Quem comprou conta"),
+      reviews.length
+        ? h("div", { className: "react-review-list" }, reviews.slice(0, 8).map((review, reviewIndex) => {
+          const media = reviewMediaItems(review);
+          const name = reviewName(review);
+          return h("article", { className: "react-review-card", key: review.id || reviewIndex },
+            h("div", { className: "react-review-head" },
+              review.customerAvatar
+                ? h("img", { className: "react-review-avatar", src: review.customerAvatar, alt: name })
+                : h("span", { className: "react-review-avatar" }, name.charAt(0).toUpperCase() || "B"),
+              h("strong", null, name),
+              review.profileVerified ? h("span", { className: "react-verified-badge", "aria-label": "Perfil verificado" }) : null,
+              review.rating ? h("em", null, `${Number(review.rating).toFixed(1)} *`) : null
+            ),
+            review.comment ? h("p", null, review.comment) : null,
+            media.length ? h("div", { className: "react-review-media" },
+              media.map((item, mediaIndex) => h("button", {
+                key: item.src,
+                type: "button",
+                onClick: () => openMedia(media, mediaIndex),
+                "aria-label": `Abrir ${item.label}`
+              }, item.type === "video"
+                ? h(React.Fragment, null, h("video", { src: item.src, muted: true, playsInline: true, preload: "metadata" }), h("span", { className: "material-symbols-rounded" }, "play_arrow"))
+                : h("img", { src: item.src, alt: item.label })
+              ))
+            ) : null
+          );
+        }))
+        : h("p", { className: "react-empty" }, "Ainda nao ha comentarios deste produto.")
+    );
+  }
+
+  function RelatedSection({ product, products }) {
+    const related = relatedProducts(product, products).slice(0, 12);
+    return h("section", { className: "react-section react-related-section", id: "produto-relacionados" },
+      h("h2", null, "Relacionados"),
+      related.length
+        ? h("div", { className: "react-product-grid" }, related.map((item) => h(ProductCard, { key: item.id, product: item })))
+        : h("p", { className: "react-empty" }, "Ainda nao ha produtos relacionados cadastrados.")
+    );
+  }
+
   function ProductDetail({ products, loading, setCount }) {
     const wantedSlug = getQuery("slug") || "";
     const product = products.find((item) => String(item.slug || item.id) === wantedSlug) || null;
@@ -166,12 +314,14 @@
     const [selectedColor, setSelectedColor] = useState(0);
     const [quantity, setQuantity] = useState(1);
     const [notice, setNotice] = useState("");
+    const [lightbox, setLightbox] = useState(null);
 
     useEffect(() => {
       setSelectedImage(0);
       setSelectedColor(0);
       setQuantity(1);
       setNotice("");
+      setLightbox(null);
     }, [wantedSlug]);
 
     if (loading) {
@@ -200,8 +350,11 @@
       setNotice(buyNow ? "Produto pronto no carrinho para finalizar." : "Produto adicionado ao carrinho.");
     };
 
+    const openMedia = (items, index) => setLightbox({ items, index });
+
     return h("main", { className: "react-product-page" },
-      h("section", { className: "react-gallery" },
+      h(ProductNav),
+      h("section", { className: "react-gallery", id: "produto-inicio" },
         h("div", { className: "react-main-media" }, image
           ? h("img", { src: image, alt: product.name })
           : h("span", null, "Imagem do produto")
@@ -264,7 +417,15 @@
           h("span", null, "Pix e cartoes de credito aceitos no checkout.")
         ),
         product.description && h("p", { className: "react-description" }, product.description)
-      )
+      ),
+      h(ReviewsSection, { product, openMedia }),
+      h(RelatedSection, { product, products }),
+      lightbox && h(MediaLightbox, {
+        items: lightbox.items,
+        index: lightbox.index,
+        onClose: () => setLightbox(null),
+        setIndex: (index) => setLightbox({ ...lightbox, index })
+      })
     );
   }
 

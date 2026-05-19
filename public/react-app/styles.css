@@ -244,6 +244,31 @@ main {
   background: var(--soft);
 }
 
+.react-product-nav {
+  position: sticky;
+  top: 64px;
+  z-index: 8;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin: -12px -12px 0;
+  border-bottom: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.react-product-nav a {
+  display: grid;
+  min-height: 42px;
+  place-items: center;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.react-product-nav a:focus,
+.react-product-nav a:hover {
+  color: var(--brand);
+}
+
 .react-gallery,
 .react-detail-card {
   min-width: 0;
@@ -477,4 +502,189 @@ main {
 
 .react-description {
   margin: 0;
+}
+
+.react-reviews h2,
+.react-related-section h2 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.react-review-list {
+  display: grid;
+  gap: 10px;
+}
+
+.react-review-card {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.react-review-head {
+  display: grid;
+  grid-template-columns: 38px minmax(0, auto) 18px 1fr;
+  gap: 8px;
+  align-items: center;
+}
+
+.react-review-head strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.react-review-head em {
+  justify-self: end;
+  color: #f5b301;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.react-review-avatar {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--brand);
+  font-weight: 900;
+  object-fit: cover;
+}
+
+.react-verified-badge {
+  position: relative;
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: #1da1f2;
+}
+
+.react-verified-badge::after {
+  position: absolute;
+  top: 3px;
+  left: 4px;
+  width: 7px;
+  height: 4px;
+  border-bottom: 2px solid #fff;
+  border-left: 2px solid #fff;
+  content: "";
+  transform: rotate(-45deg);
+}
+
+.react-review-card p,
+.react-empty {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.react-review-media {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+}
+
+.react-review-media button {
+  position: relative;
+  display: grid;
+  flex: 0 0 72px;
+  aspect-ratio: 1 / 1;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8faf8;
+}
+
+.react-review-media img,
+.react-review-media video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.react-review-media .material-symbols-rounded {
+  position: absolute;
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 999px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.52);
+}
+
+.react-related-section {
+  padding-bottom: 48px;
+}
+
+.react-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(13, 30, 25, 0.92);
+}
+
+.react-lightbox-media {
+  display: grid;
+  width: min(520px, 100%);
+  max-height: 78vh;
+  place-items: center;
+}
+
+.react-lightbox-media img,
+.react-lightbox-media video {
+  max-width: 100%;
+  max-height: 78vh;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.react-lightbox-close,
+.react-lightbox-arrow {
+  position: fixed;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  color: var(--brand);
+  background: #fff;
+}
+
+.react-lightbox-close {
+  top: 18px;
+  right: 18px;
+}
+
+.react-lightbox-arrow.left {
+  left: 14px;
+}
+
+.react-lightbox-arrow.right {
+  right: 14px;
+}
+
+.react-lightbox-count {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  padding: 6px 12px;
+  border-radius: 999px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.18);
+  font-weight: 900;
+  transform: translateX(-50%);
 }
