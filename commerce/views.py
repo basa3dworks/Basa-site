@@ -1363,7 +1363,7 @@ def public_page(request, page="index.html"):
     return FileResponse(file_path.open("rb"), content_type="text/html; charset=utf-8")
 
 
-def react_preview(request):
+def react_preview(request, react_path=None):
     file_path = PUBLIC_DIR / "react-app" / "index.html"
     if not file_path.exists():
         raise Http404()

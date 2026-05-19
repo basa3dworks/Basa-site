@@ -5,6 +5,7 @@ from commerce import views
 urlpatterns = [
     path("", views.public_page, {"page": "index.html"}),
     path("react", views.react_preview),
+    path("react/<path:react_path>", views.react_preview),
     path("<str:page>.html", views.public_page),
     path("api/session", views.api_session),
     path("api/login", views.api_login),
