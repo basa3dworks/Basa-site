@@ -214,6 +214,22 @@
     return item.image || productImage(product || {}) || "";
   }
 
+  function requestStatusLabel(status) {
+    return {
+      new: "Nova",
+      waiting_admin: "Aguardando Basa",
+      waiting_customer: "Aguardando cliente",
+      in_review: "Em analise",
+      quoted: "Orcada",
+      approved: "Aprovada",
+      in_production: "Em producao",
+      shipped: "Enviada",
+      completed: "Concluida",
+      closed: "Encerrada",
+      canceled: "Cancelada"
+    }[status] || status || "Nova";
+  }
+
   function defaultAccountForm(session = null) {
     const customer = session?.customer || {};
     return {
@@ -744,6 +760,7 @@
               h("span", null, customer.email || "")
             ),
             h("a", { className: "react-secondary-link", href: "/react/pedidos" }, "Meus pedidos"),
+            h("a", { className: "react-secondary-link", href: "/react/encomendas" }, "Encomendas"),
             h("a", { className: "react-primary-link", href: nextUrl }, nextUrl.includes("carrinho") ? "Voltar ao carrinho" : "Continuar"),
             h("button", { type: "button", className: "react-danger-button", onClick: logout }, "Sair")
           ),
@@ -798,6 +815,170 @@
             h("button", { type: "submit", disabled: submitting }, submitting ? "Entrando..." : "Entrar ou criar conta")
           ),
           status ? h("p", { className: "react-account-status" }, status) : null
+        )
+    );
+  }
+
+  function RequestsPage() {
+    const [session, setSession] = useState(customerSession());
+    const [requests, setRequests] = useState([]);
+    const [form, setForm] = useState({ title: "", idea: "", budget: "", deadline: "" });
+    const [replyText, setReplyText] = useState({});
+    const [status, setStatus] = useState("");
+    const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
+    const customer = session?.customer || null;
+
+    const loadRequests = () => {
+      if (!customer?.email) {
+        setRequests([]);
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
+      fetch(`/api/custom-requests?email=${encodeURIComponent(customer.email)}`)
+        .then(async (response) => {
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(data.error || "Nao foi possivel carregar encomendas.");
+          setRequests((data.requests || []).filter((item) => item.kind !== "chat"));
+          setStatus("");
+        })
+        .catch((error) => {
+          setStatus(error.message || "Nao foi possivel carregar encomendas.");
+          setRequests([]);
+        })
+        .finally(() => setLoading(false));
+    };
+
+    useEffect(loadRequests, [customer?.email]);
+
+    const updateForm = (field, value) => {
+      setForm((current) => ({ ...current, [field]: value }));
+    };
+
+    const submitRequest = async (event) => {
+      event.preventDefault();
+      if (!customer || submitting) return;
+      setSubmitting(true);
+      setStatus("Enviando encomenda...");
+      try {
+        const response = await fetch("/api/custom-requests", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            customer,
+            title: form.title || "Encomenda sob medida",
+            idea: form.idea,
+            budget: form.budget,
+            deadline: form.deadline
+          })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || "Nao foi possivel enviar a encomenda.");
+        setRequests((current) => [data.request, ...current]);
+        setForm({ title: "", idea: "", budget: "", deadline: "" });
+        setStatus("Encomenda enviada. A Basa responde por aqui.");
+      } catch (error) {
+        setStatus(error.message || "Nao foi possivel enviar a encomenda.");
+      } finally {
+        setSubmitting(false);
+      }
+    };
+
+    const sendMessage = async (requestId) => {
+      const text = String(replyText[requestId] || "").trim();
+      if (!customer?.email || !text) return;
+      setStatus("Enviando mensagem...");
+      try {
+        const response = await fetch(`/api/custom-requests/${encodeURIComponent(requestId)}/messages`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ email: customer.email, text })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || "Nao foi possivel enviar a mensagem.");
+        setRequests((current) => current.map((item) => item.id === requestId ? data.request : item));
+        setReplyText((current) => ({ ...current, [requestId]: "" }));
+        setStatus("Mensagem enviada.");
+      } catch (error) {
+        setStatus(error.message || "Nao foi possivel enviar a mensagem.");
+      }
+    };
+
+    return h("main", { className: "react-requests-page" },
+      h("section", { className: "react-account-hero" },
+        h("small", null, "Sob medida"),
+        h("h1", null, "Encomendas"),
+        h("p", null, customer ? "Envie uma ideia e acompanhe a resposta da Basa por aqui." : "Entre para pedir uma encomenda sob medida.")
+      ),
+      !customer
+        ? h("section", { className: "react-account-card" },
+          h("p", null, "Sua conta nao esta conectada neste aparelho."),
+          h("a", { className: "react-primary-link", href: "/react/conta?next=/react/encomendas" }, "Entrar ou criar conta")
+        )
+        : h(React.Fragment, null,
+          h("section", { className: "react-account-card" },
+            h("form", { className: "react-account-form", onSubmit: submitRequest },
+              h("label", null,
+                h("span", null, "Titulo"),
+                h("input", { value: form.title, onChange: (event) => updateForm("title", event.target.value), placeholder: "Ex: Suporte personalizado" })
+              ),
+              h("label", null,
+                h("span", null, "Sua ideia"),
+                h("textarea", { required: true, value: form.idea, onChange: (event) => updateForm("idea", event.target.value), placeholder: "Conte medidas, uso, cor desejada e referencias." })
+              ),
+              h("div", { className: "react-account-grid" },
+                h("label", null,
+                  h("span", null, "Orcamento"),
+                  h("input", { value: form.budget, onChange: (event) => updateForm("budget", event.target.value), placeholder: "Ex: ate R$ 150" })
+                ),
+                h("label", null,
+                  h("span", null, "Prazo"),
+                  h("input", { value: form.deadline, onChange: (event) => updateForm("deadline", event.target.value), placeholder: "Ex: 10 dias" })
+                )
+              ),
+              h("button", { type: "submit", disabled: submitting }, submitting ? "Enviando..." : "Enviar encomenda")
+            )
+          ),
+          status ? h("p", { className: "react-account-status" }, status) : null,
+          loading
+            ? h("section", { className: "react-detail-card" }, h("p", null, "Carregando encomendas..."))
+            : requests.length
+              ? h("section", { className: "react-requests-list" },
+                requests.map((request) => h("article", { className: "react-request-card", key: request.id },
+                  h("div", { className: "react-request-head" },
+                    h("div", null,
+                      h("strong", null, request.title || "Encomenda sob medida"),
+                      h("span", null, `${request.id} | ${requestStatusLabel(request.status)}`)
+                    ),
+                    h("small", null, request.createdAt ? new Date(request.createdAt).toLocaleDateString("pt-BR") : "")
+                  ),
+                  h("p", null, request.idea),
+                  request.budget || request.deadline ? h("div", { className: "react-request-meta" },
+                    request.budget ? h("span", null, h("b", null, "Orcamento"), request.budget) : null,
+                    request.deadline ? h("span", null, h("b", null, "Prazo"), request.deadline) : null
+                  ) : null,
+                  h("div", { className: "react-request-messages" },
+                    (request.messages || []).slice(-4).map((message) => h("span", { className: message.author === "admin" ? "admin" : "", key: message.id || `${request.id}-${message.createdAt}` },
+                      h("b", null, message.author === "admin" ? "Basa: " : "Voce: "),
+                      message.text
+                    ))
+                  ),
+                  h("div", { className: "react-request-reply" },
+                    h("input", {
+                      value: replyText[request.id] || "",
+                      onChange: (event) => setReplyText((current) => ({ ...current, [request.id]: event.target.value })),
+                      placeholder: "Responder nesta encomenda"
+                    }),
+                    h("button", { type: "button", onClick: () => sendMessage(request.id) }, "Enviar")
+                  )
+                ))
+              )
+              : h("section", { className: "react-empty-cart" },
+                h("span", { className: "material-symbols-rounded" }, "inventory_2"),
+                h("h2", null, "Nenhuma encomenda ainda"),
+                h("p", null, "Envie uma ideia para acompanhar o atendimento aqui.")
+              )
         )
     );
   }
@@ -1345,6 +1526,7 @@
     const isCartPage = window.location.pathname.startsWith("/react/carrinho");
     const isAccountPage = window.location.pathname.startsWith("/react/conta");
     const isOrdersPage = window.location.pathname.startsWith("/react/pedidos");
+    const isRequestsPage = window.location.pathname.startsWith("/react/encomendas");
 
     if (isProductPage) {
       return h(React.Fragment, null,
@@ -1371,6 +1553,13 @@
       return h(React.Fragment, null,
         h(Topbar, { count, detail: true }),
         h(OrdersPage, { products })
+      );
+    }
+
+    if (isRequestsPage) {
+      return h(React.Fragment, null,
+        h(Topbar, { count, detail: true }),
+        h(RequestsPage)
       );
     }
 

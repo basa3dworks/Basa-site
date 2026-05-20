@@ -28,7 +28,8 @@ a {
 }
 
 button,
-input {
+input,
+textarea {
   font: inherit;
 }
 
@@ -1117,6 +1118,18 @@ main {
   font-weight: 800;
 }
 
+.react-account-form textarea {
+  width: 100%;
+  min-height: 118px;
+  resize: vertical;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  color: var(--ink);
+  background: #fff;
+  font-weight: 800;
+}
+
 .react-account-form label small {
   color: var(--muted);
   font-weight: 800;
@@ -1181,7 +1194,15 @@ main {
   padding: 16px 14px 28px;
 }
 
-.react-orders-list {
+.react-requests-page {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  padding: 16px 14px 28px;
+}
+
+.react-orders-list,
+.react-requests-list {
   display: grid;
   gap: 12px;
 }
@@ -1301,6 +1322,114 @@ main {
   padding-top: 10px;
 }
 
+.react-request-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.react-request-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.react-request-head div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.react-request-head strong,
+.react-request-head span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.react-request-head span,
+.react-request-head small,
+.react-request-card p {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.react-request-card p {
+  margin: 0;
+  line-height: 1.4;
+}
+
+.react-request-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.react-request-meta span {
+  display: grid;
+  gap: 2px;
+  padding: 10px;
+  border-radius: 8px;
+  color: var(--muted);
+  background: var(--soft);
+  font-weight: 800;
+}
+
+.react-request-meta b {
+  color: var(--ink);
+}
+
+.react-request-messages {
+  display: grid;
+  gap: 6px;
+}
+
+.react-request-messages span {
+  justify-self: start;
+  max-width: 92%;
+  padding: 9px 10px;
+  border-radius: 8px;
+  color: var(--muted);
+  background: var(--soft);
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.react-request-messages span.admin {
+  justify-self: end;
+  color: #0f5264;
+  background: #e9f6fb;
+}
+
+.react-request-reply {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.react-request-reply input {
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 12px;
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.react-request-reply button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 8px;
+  padding: 0 14px;
+  color: #fff;
+  background: var(--brand);
+  font-weight: 900;
+}
+
 @media (max-width: 420px) {
   .react-order-main {
     grid-template-columns: 58px minmax(0, 1fr);
@@ -1311,6 +1440,11 @@ main {
   }
 
   .react-order-facts {
+    grid-template-columns: 1fr;
+  }
+
+  .react-request-meta,
+  .react-request-reply {
     grid-template-columns: 1fr;
   }
 }
