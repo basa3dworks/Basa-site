@@ -85,6 +85,41 @@
     }
   }
 
+  function favoriteKey() {
+    const email = customerSession()?.customer?.email || "guest";
+    return `basa_favorites_${email}`;
+  }
+
+  function favoriteIds() {
+    try {
+      return JSON.parse(localStorage.getItem(favoriteKey()) || "[]");
+    } catch {
+      return [];
+    }
+  }
+
+  function saveFavoriteIds(ids) {
+    localStorage.setItem(favoriteKey(), JSON.stringify([...new Set(ids.map(String))]));
+  }
+
+  function isFavorite(productId) {
+    return favoriteIds().includes(String(productId));
+  }
+
+  function favoriteCount(product) {
+    return Number(product.favoriteCount || 0) + (isFavorite(product.id) ? 1 : 0);
+  }
+
+  function toggleFavorite(productId) {
+    const id = String(productId || "");
+    if (!id) return false;
+    const ids = favoriteIds();
+    const active = ids.includes(id);
+    saveFavoriteIds(active ? ids.filter((item) => item !== id) : [...ids, id]);
+    window.dispatchEvent(new Event("basa-favorites-change"));
+    return !active;
+  }
+
   function productImage(product) {
     return product.image || product.images?.[0]?.url || product.media?.[0]?.url || "";
   }
@@ -657,16 +692,34 @@
     );
   }
 
-  function ProductCard({ product }) {
+  function ProductCard({ product, onFavoriteChange }) {
     const rating = productRating(product);
     const img = productImage(product);
     const badge = campaignLabel(product);
     const discount = discountPercent(product);
     const price = moneyParts(product.price);
+    const [favorite, setFavorite] = useState(() => isFavorite(product.id));
+    const likes = favoriteCount(product);
+    const handleFavorite = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const next = toggleFavorite(product.id);
+      setFavorite(next);
+      onFavoriteChange?.();
+    };
     return h("a", { className: "react-product-card", href: `/react/produto?slug=${productSlug(product)}` },
       h("div", { className: "react-product-image" }, img
         ? h("img", { src: img, alt: product.name })
         : h("span", null, "Imagem"),
+        h("button", {
+          className: favorite ? "react-favorite-button active" : "react-favorite-button",
+          type: "button",
+          onClick: handleFavorite,
+          "aria-label": favorite ? `Remover ${product.name} dos favoritos` : `Favoritar ${product.name}`
+        },
+          h("span", { className: "material-symbols-rounded", "aria-hidden": "true" }, favorite ? "favorite" : "favorite"),
+          likes ? h("small", null, likes) : null
+        ),
         badge ? h("span", { className: `react-product-badge ${campaignBadgeClass(product)}` },
           campaignIcon(product) ? h("span", { className: "material-symbols-rounded", "aria-hidden": "true" }, campaignIcon(product)) : null,
           badge
@@ -968,27 +1021,36 @@
     );
   }
 
-  function ProductGrid({ products, feed }) {
+  function ProductGrid({ products, feed, favoriteVersion }) {
     const visibleProducts = useMemo(() => {
       const active = products.filter((product) => product.status !== "inactive");
       if (feed.startsWith("category:")) {
         const category = feed.replace("category:", "");
         return active.filter((product) => product.category === category);
       }
+      if (feed === "favorites") {
+        const favorites = favoriteIds();
+        return active.filter((product) => favorites.includes(String(product.id)));
+      }
       if (feed === "trending") {
         return [...active].sort((a, b) => Number(b.soldUnits || b.soldCount || 0) - Number(a.soldUnits || a.soldCount || 0));
       }
       return [...active].sort((a, b) => productSortScore(b) - productSortScore(a));
-    }, [products, feed]);
+    }, [products, feed, favoriteVersion]);
     const title = feed.startsWith("category:")
       ? feed.replace("category:", "")
       : feed === "trending" ? "Tendencia" : feed === "favorites" ? "Favoritos" : "Produtos em destaque";
 
     return h("section", { className: "react-section" },
       h("h2", null, title),
-      h("div", { className: "react-product-grid" },
-        visibleProducts.slice(0, 12).map((product) => h(ProductCard, { key: product.id, product }))
-      )
+      visibleProducts.length
+        ? h("div", { className: "react-product-grid" },
+          visibleProducts.slice(0, 12).map((product) => h(ProductCard, { key: product.id, product }))
+        )
+        : h("div", { className: "react-empty-list" },
+          h("strong", null, feed === "favorites" ? "Nenhum favorito ainda." : "Nenhum produto por aqui ainda."),
+          h("span", null, feed === "favorites" ? "Toque no coracao dos produtos para montar sua vitrine." : "Tente outra categoria ou busca.")
+        )
     );
   }
 
@@ -2173,6 +2235,7 @@
     const [loading, setLoading] = useState(true);
     const [feed, setFeed] = useState("for-you");
     const [count, setCount] = useState(cartCount());
+    const [favoriteVersion, setFavoriteVersion] = useState(0);
 
     useEffect(() => {
       let active = true;
@@ -2199,6 +2262,12 @@
     useEffect(() => {
       const interval = setInterval(() => setCount(cartCount()), 1000);
       return () => clearInterval(interval);
+    }, []);
+
+    useEffect(() => {
+      const updateFavorites = () => setFavoriteVersion((version) => version + 1);
+      window.addEventListener("basa-favorites-change", updateFavorites);
+      return () => window.removeEventListener("basa-favorites-change", updateFavorites);
     }, []);
 
     const isProductPage = window.location.pathname.startsWith("/react/produto");
@@ -2266,7 +2335,7 @@
         !loading ? h(StorySection, { stories, products }) : null,
         loading
           ? h("section", { className: "react-section" }, h("p", null, "Carregando produtos..."))
-          : h(ProductGrid, { products, feed })
+          : h(ProductGrid, { products, feed, favoriteVersion })
       )
     );
   }
