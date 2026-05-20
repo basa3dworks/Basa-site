@@ -163,6 +163,57 @@
     return customer.displayName || customer.name || customer.email || "Cliente Basa";
   }
 
+  function orderStatusLabel(status) {
+    return {
+      created: "Criado",
+      awaiting_payment: "Aguardando pagamento",
+      paid: "Pago",
+      in_production: "Em producao",
+      shipped: "Enviado",
+      completed: "Concluido",
+      canceled: "Cancelado"
+    }[status] || status || "Criado";
+  }
+
+  function paymentExpiryLabel(order) {
+    if (!order?.payment?.expiresAt) return "";
+    const expiresAt = new Date(order.payment.expiresAt).getTime();
+    if (!Number.isFinite(expiresAt)) return "";
+    const remainingMs = expiresAt - Date.now();
+    if (remainingMs <= 0) return "expira em instantes";
+    const hours = Math.ceil(remainingMs / 3600000);
+    return hours >= 24 ? `expira em ${Math.ceil(hours / 24)} dia(s)` : `expira em ${hours}h`;
+  }
+
+  function orderPrimaryItem(order) {
+    return order?.items?.[0] || {};
+  }
+
+  function orderPaymentLabel(order) {
+    const payment = order?.payment || {};
+    return payment.method || payment.type || payment.provider || "Mercado Pago";
+  }
+
+  function orderShippingLabel(order) {
+    const option = order?.shippingOption || {};
+    const name = option.displayName || [option.carrier, option.service].filter(Boolean).join(" ");
+    if (name) return name;
+    return Number(order?.shipping || 0) > 0 ? "Frete calculado" : "Frete gratis";
+  }
+
+  function orderDeliveryLabel(order) {
+    const option = order?.shippingOption || {};
+    const deliveryDays = Number(option.deliveryDays || option.delivery_time || 0);
+    const productionDays = Math.max(...(order?.items || []).map((item) => Number(item.productionDays || item.product?.productionDays || 0)), 0);
+    const totalDays = deliveryDays + productionDays;
+    return totalDays ? `${totalDays} dias uteis` : "Prazo a confirmar";
+  }
+
+  function orderItemImage(item, products = []) {
+    const product = products.find((candidate) => String(candidate.id) === String(item.productId || item.id));
+    return item.image || productImage(product || {}) || "";
+  }
+
   function defaultAccountForm(session = null) {
     const customer = session?.customer || {};
     return {
@@ -692,6 +743,7 @@
               h("strong", null, safeCustomerName(customer)),
               h("span", null, customer.email || "")
             ),
+            h("a", { className: "react-secondary-link", href: "/react/pedidos" }, "Meus pedidos"),
             h("a", { className: "react-primary-link", href: nextUrl }, nextUrl.includes("carrinho") ? "Voltar ao carrinho" : "Continuar"),
             h("button", { type: "button", className: "react-danger-button", onClick: logout }, "Sair")
           ),
@@ -747,6 +799,129 @@
           ),
           status ? h("p", { className: "react-account-status" }, status) : null
         )
+    );
+  }
+
+  function OrdersPage({ products }) {
+    const [session, setSession] = useState(customerSession());
+    const [orders, setOrders] = useState([]);
+    const [status, setStatus] = useState("");
+    const [loading, setLoading] = useState(true);
+    const customer = session?.customer || null;
+
+    const loadOrders = () => {
+      if (!customer?.email) {
+        setOrders([]);
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
+      fetch(`/api/customer/orders?email=${encodeURIComponent(customer.email)}`)
+        .then(async (response) => {
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(data.error || "Nao foi possivel carregar pedidos.");
+          if (data.account) {
+            const nextSession = {
+              loggedIn: true,
+              username: data.account.username,
+              customer: data.account.customer,
+              updatedAt: new Date().toISOString()
+            };
+            localStorage.setItem(CUSTOMER_SESSION_KEY, JSON.stringify(nextSession));
+            setSession(nextSession);
+          }
+          setOrders(data.orders || []);
+          setStatus("");
+        })
+        .catch((error) => {
+          setStatus(error.message || "Nao foi possivel carregar pedidos.");
+          setOrders([]);
+        })
+        .finally(() => setLoading(false));
+    };
+
+    useEffect(loadOrders, [customer?.email]);
+
+    const cancelOrder = async (orderId) => {
+      if (!customer?.email || !orderId) return;
+      if (!window.confirm("Deseja desistir desta compra pendente?")) return;
+      setStatus("Cancelando pedido...");
+      try {
+        const response = await fetch(`/api/customer/orders/${encodeURIComponent(orderId)}`, {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ email: customer.email, action: "cancel_payment" })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || "Nao foi possivel cancelar este pedido.");
+        setOrders((current) => current.map((order) => order.id === orderId ? data.order : order));
+        setStatus("Pedido cancelado.");
+      } catch (error) {
+        setStatus(error.message || "Nao foi possivel cancelar este pedido.");
+      }
+    };
+
+    return h("main", { className: "react-orders-page" },
+      h("section", { className: "react-account-hero" },
+        h("small", null, "Compras"),
+        h("h1", null, "Meus pedidos"),
+        h("p", null, customer ? "Acompanhe pagamentos, entrega e detalhes dos seus pedidos." : "Entre para ver seus pedidos.")
+      ),
+      !customer
+        ? h("section", { className: "react-account-card" },
+          h("p", null, "Sua conta nao esta conectada neste aparelho."),
+          h("a", { className: "react-primary-link", href: "/react/conta?next=/react/pedidos" }, "Entrar ou criar conta")
+        )
+        : loading
+          ? h("section", { className: "react-detail-card" }, h("p", null, "Carregando seus pedidos..."))
+          : orders.length
+            ? h("section", { className: "react-orders-list" },
+              status ? h("p", { className: "react-account-status" }, status) : null,
+              orders.map((order) => {
+                const item = orderPrimaryItem(order);
+                const image = orderItemImage(item, products);
+                const pending = order.status === "awaiting_payment" && order.payment?.checkoutUrl;
+                return h("article", { className: `react-order-card ${pending ? "pending" : ""}`, key: order.id },
+                  h("div", { className: "react-order-main" },
+                    h("div", { className: "react-order-thumb" },
+                      image ? h("img", { src: image, alt: item.name || order.id }) : h("span", null, "Imagem")
+                    ),
+                    h("div", null,
+                      h("strong", null, item.name || order.id),
+                      h("span", null, order.id),
+                      h("small", null, `${orderStatusLabel(order.status)} | ${order.createdAt ? new Date(order.createdAt).toLocaleString("pt-BR") : ""}`)
+                    ),
+                    h("b", null, money(order.total))
+                  ),
+                  h("div", { className: "react-order-facts" },
+                    h("span", null, h("b", null, "Pagamento"), orderPaymentLabel(order)),
+                    h("span", null, h("b", null, "Frete"), orderShippingLabel(order)),
+                    h("span", null, h("b", null, "Prazo"), orderDeliveryLabel(order))
+                  ),
+                  pending ? h("div", { className: "react-order-actions" },
+                    h("small", null, paymentExpiryLabel(order) || "Aguardando pagamento"),
+                    h("a", { className: "react-primary-link", href: order.payment.checkoutUrl }, "Concluir pagamento"),
+                    h("button", { type: "button", className: "react-danger-button", onClick: () => cancelOrder(order.id) }, "Desistir da compra")
+                  ) : null,
+                  h("details", { className: "react-order-details" },
+                    h("summary", null, "Ver detalhes"),
+                    h("div", null,
+                      h("span", null, h("b", null, "Itens"), (order.items || []).map((line) => `${Number(line.quantity || 1)}x ${line.name || line.productId}`).join(" | ")),
+                      h("span", null, h("b", null, "Subtotal"), money(order.subtotal)),
+                      Number(order.discount || 0) > 0 ? h("span", null, h("b", null, "Desconto"), money(order.discount)) : null,
+                      h("span", null, h("b", null, "Frete"), money(order.shipping)),
+                      h("span", null, h("b", null, "Total"), money(order.total))
+                    )
+                  )
+                );
+              })
+            )
+            : h("section", { className: "react-empty-cart" },
+              h("span", { className: "material-symbols-rounded" }, "receipt_long"),
+              h("h2", null, "Nenhum pedido ainda"),
+              h("p", null, "Quando voce comprar, seus pedidos aparecem aqui."),
+              h("a", { className: "react-buy", href: "/react" }, "Ver produtos")
+            )
     );
   }
 
@@ -1169,6 +1344,7 @@
     const isProductPage = window.location.pathname.startsWith("/react/produto");
     const isCartPage = window.location.pathname.startsWith("/react/carrinho");
     const isAccountPage = window.location.pathname.startsWith("/react/conta");
+    const isOrdersPage = window.location.pathname.startsWith("/react/pedidos");
 
     if (isProductPage) {
       return h(React.Fragment, null,
@@ -1188,6 +1364,13 @@
       return h(React.Fragment, null,
         h(Topbar, { count, detail: true }),
         h(AccountPage)
+      );
+    }
+
+    if (isOrdersPage) {
+      return h(React.Fragment, null,
+        h(Topbar, { count, detail: true }),
+        h(OrdersPage, { products })
       );
     }
 

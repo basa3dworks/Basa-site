@@ -990,15 +990,25 @@ main {
 }
 
 .react-account-cta,
-.react-primary-link {
+.react-primary-link,
+.react-secondary-link {
   display: grid;
   min-height: 48px;
   place-items: center;
   border-radius: 8px;
-  color: #fff;
-  background: var(--brand);
   font-weight: 900;
   text-align: center;
+}
+
+.react-account-cta,
+.react-primary-link {
+  color: #fff;
+  background: var(--brand);
+}
+
+.react-secondary-link {
+  color: var(--ink);
+  background: #eff5f1;
 }
 
 .react-account-page {
@@ -1162,6 +1172,147 @@ main {
 .react-account-status {
   margin: 0;
   line-height: 1.35;
+}
+
+.react-orders-page {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  padding: 16px 14px 28px;
+}
+
+.react-orders-list {
+  display: grid;
+  gap: 12px;
+}
+
+.react-order-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.react-order-card.pending {
+  border-color: #bfe5d4;
+  background: #f4fbf7;
+}
+
+.react-order-main {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.react-order-thumb {
+  display: grid;
+  width: 64px;
+  height: 64px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.react-order-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.react-order-main div:nth-child(2) {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.react-order-main strong,
+.react-order-main span,
+.react-order-main small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.react-order-main span,
+.react-order-main small {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.react-order-main b {
+  white-space: nowrap;
+}
+
+.react-order-facts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.react-order-facts span,
+.react-order-details div span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 10px;
+  border-radius: 8px;
+  color: var(--muted);
+  background: var(--soft);
+  font-weight: 800;
+}
+
+.react-order-facts b,
+.react-order-details b {
+  color: var(--ink);
+}
+
+.react-order-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.react-order-actions small {
+  color: var(--muted);
+  font-weight: 900;
+}
+
+.react-order-details {
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.react-order-details summary {
+  cursor: pointer;
+  color: var(--brand);
+  font-weight: 900;
+}
+
+.react-order-details div {
+  display: grid;
+  gap: 8px;
+  padding-top: 10px;
+}
+
+@media (max-width: 420px) {
+  .react-order-main {
+    grid-template-columns: 58px minmax(0, 1fr);
+  }
+
+  .react-order-main > b {
+    grid-column: 2;
+  }
+
+  .react-order-facts {
+    grid-template-columns: 1fr;
+  }
 }
 
 .react-empty-cart {
