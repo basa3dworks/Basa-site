@@ -834,6 +834,56 @@ main {
   color: var(--ink);
 }
 
+.react-address-book {
+  display: grid;
+  gap: 8px;
+}
+
+.react-address-book article {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  background: #fff;
+  font-weight: 800;
+}
+
+.react-address-book article.active {
+  border-color: var(--brand);
+  background: #eefaf3;
+}
+
+.react-address-book strong {
+  color: var(--ink);
+}
+
+.react-address-actions,
+.react-address-extra-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.react-address-actions button,
+.react-address-extra-actions button {
+  flex: 1;
+  min-height: 40px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--ink);
+  background: #eff5f1;
+  font-weight: 900;
+}
+
+.react-address-actions button:last-child:not(:first-child) {
+  flex: 0 0 auto;
+  min-width: 88px;
+  color: #a83232;
+  background: #fff0f0;
+}
+
 .react-coupon-ok,
 .react-coupon-error,
 .react-cart-status {

@@ -3,6 +3,8 @@
   const { useEffect, useMemo, useState } = React;
   const CART_KEY = "basa_cart";
   const CUSTOMER_SESSION_KEY = "basa_customer_session";
+  const DELIVERY_ADDRESSES_KEY = "basa_delivery_addresses";
+  const SELECTED_DELIVERY_ADDRESS_KEY = "basa_selected_delivery_address";
 
   function money(value) {
     return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(value || 0));
@@ -158,6 +160,75 @@
 
   function shippingQuoteId(quote) {
     return String(quote?.id || `${quote?.carrier || ""}-${quote?.service || ""}-${quote?.price || ""}`);
+  }
+
+  function cleanZip(value) {
+    return String(value || "").replace(/\D/g, "").slice(0, 8);
+  }
+
+  function addressKey(address = {}) {
+    return [address.zipCode, address.number, address.complement].map((value) => String(value || "").trim().toLowerCase()).join("|");
+  }
+
+  function addressLines(address = {}) {
+    const zip = cleanZip(address.zipCode);
+    const lineOne = [address.street, address.number].filter(Boolean).join(", ");
+    const lineTwo = [address.neighborhood, address.city && address.state ? `${address.city}/${address.state}` : address.city || address.state].filter(Boolean).join(" - ");
+    const complement = address.complement ? `Complemento: ${address.complement}` : "";
+    const zipLine = zip.length === 8 ? `CEP ${zip.replace(/^(\d{5})(\d{3})$/, "$1-$2")}` : "";
+    return [lineOne, lineTwo, complement, zipLine].filter(Boolean);
+  }
+
+  function accountDeliveryAddress() {
+    const customer = customerSession()?.customer || {};
+    const zipCode = cleanZip(customer.zipCode);
+    if (zipCode.length !== 8 || !customer.number) return null;
+    return {
+      zipCode,
+      number: customer.number || "",
+      complement: customer.complement || "",
+      street: customer.street || "",
+      neighborhood: customer.neighborhood || "",
+      city: customer.city || "",
+      state: String(customer.state || "").toUpperCase(),
+      ibge: customer.ibge || "",
+      principal: true
+    };
+  }
+
+  function loadDeliveryAddresses() {
+    try {
+      return JSON.parse(localStorage.getItem(DELIVERY_ADDRESSES_KEY) || "[]").filter((address) => address?.zipCode).slice(0, 3);
+    } catch {
+      return [];
+    }
+  }
+
+  function saveDeliveryAddresses(addresses) {
+    localStorage.setItem(DELIVERY_ADDRESSES_KEY, JSON.stringify(addresses.slice(0, 3)));
+  }
+
+  function selectedDeliveryAddress() {
+    try {
+      return JSON.parse(localStorage.getItem(SELECTED_DELIVERY_ADDRESS_KEY) || "null");
+    } catch {
+      return null;
+    }
+  }
+
+  function initialCartAddress() {
+    const selected = selectedDeliveryAddress();
+    if (selected?.zipCode) return selected;
+    return accountDeliveryAddress() || {
+      zipCode: "",
+      number: "",
+      complement: "",
+      street: "",
+      neighborhood: "",
+      city: "",
+      state: "",
+      ibge: ""
+    };
   }
 
   function saveCart(items) {
@@ -490,19 +561,9 @@
     const [items, setItems] = useState(cartItems());
     const [coupon, setCoupon] = useState("");
     const [couponResult, setCouponResult] = useState(null);
-    const [address, setAddress] = useState(() => {
-      const customer = customerSession()?.customer || {};
-      return {
-        zipCode: String(customer.zipCode || "").replace(/\D/g, ""),
-        number: customer.number || "",
-        complement: customer.complement || "",
-        street: customer.street || "",
-        neighborhood: customer.neighborhood || "",
-        city: customer.city || "",
-        state: customer.state || "",
-        ibge: customer.ibge || ""
-      };
-    });
+    const [address, setAddress] = useState(initialCartAddress);
+    const [addressMode, setAddressMode] = useState(() => selectedDeliveryAddress() || accountDeliveryAddress() ? "saved" : "manual");
+    const [savedAddresses, setSavedAddresses] = useState(loadDeliveryAddresses);
     const [quotes, setQuotes] = useState([]);
     const [selectedQuoteId, setSelectedQuoteId] = useState("");
     const [shippingBenefit, setShippingBenefit] = useState(null);
@@ -587,6 +648,19 @@
     }, [coupon, items]);
 
     const enriched = items.map((item) => enrichCartItem(item, products));
+    const principalAddress = accountDeliveryAddress();
+    const addressOptions = [
+      ...(principalAddress ? [principalAddress] : []),
+      ...savedAddresses.filter((item) => !principalAddress || addressKey(item) !== addressKey(principalAddress))
+    ];
+    const activeAddressKey = addressKey(address);
+    const isManual = addressMode === "manual";
+    const canSaveAddress = isManual
+      && cleanZip(address.zipCode).length === 8
+      && Boolean(address.number)
+      && Boolean(address.complement)
+      && !addressOptions.some((item) => addressKey(item) === addressKey(address))
+      && savedAddresses.length < 3;
     const subtotal = enriched.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0);
     const allFreeShipping = enriched.length > 0 && enriched.every((item) => item.sellerPaysShipping);
     const selectedQuote = quotes.find((quote) => shippingQuoteId(quote) === selectedQuoteId) || null;
@@ -615,7 +689,53 @@
     };
 
     const updateAddress = (field, value) => {
+      setAddressMode("manual");
+      localStorage.removeItem(SELECTED_DELIVERY_ADDRESS_KEY);
       setAddress((current) => ({ ...current, [field]: field === "state" ? value.toUpperCase() : value }));
+    };
+
+    const useAddress = (nextAddress) => {
+      setAddress({ ...nextAddress });
+      setAddressMode("saved");
+      localStorage.setItem(SELECTED_DELIVERY_ADDRESS_KEY, JSON.stringify(nextAddress));
+      setCartStatus("");
+    };
+
+    const startNewAddress = () => {
+      setAddress({
+        zipCode: "",
+        number: "",
+        complement: "",
+        street: "",
+        neighborhood: "",
+        city: "",
+        state: "",
+        ibge: ""
+      });
+      setAddressMode("manual");
+      localStorage.removeItem(SELECTED_DELIVERY_ADDRESS_KEY);
+      setCartStatus("Digite um novo CEP para calcular a entrega.");
+    };
+
+    const saveCurrentAddress = () => {
+      if (!canSaveAddress) return;
+      const normalized = { ...address, zipCode: cleanZip(address.zipCode), principal: false };
+      const next = [normalized, ...savedAddresses.filter((item) => addressKey(item) !== addressKey(normalized))].slice(0, 3);
+      saveDeliveryAddresses(next);
+      setSavedAddresses(next);
+      useAddress(normalized);
+      setCartStatus("Endereco salvo para este carrinho.");
+    };
+
+    const removeSavedAddress = (addressToRemove) => {
+      const next = savedAddresses.filter((item) => addressKey(item) !== addressKey(addressToRemove));
+      saveDeliveryAddresses(next);
+      setSavedAddresses(next);
+      if (activeAddressKey === addressKey(addressToRemove)) {
+        const fallback = principalAddress || next[0];
+        if (fallback) useAddress(fallback);
+        else startNewAddress();
+      }
     };
 
     const lookupCep = async () => {
@@ -730,7 +850,7 @@
                   h("span", null, "CEP"),
                   h("input", {
                     value: address.zipCode,
-                    onChange: (event) => updateAddress("zipCode", event.target.value.replace(/\D/g, "").slice(0, 8)),
+                    onChange: (event) => updateAddress("zipCode", cleanZip(event.target.value)),
                     onBlur: lookupCep,
                     placeholder: "01128010",
                     inputMode: "numeric"
@@ -753,12 +873,28 @@
                   })
                 )
               ),
-              (address.street || address.city) && h("div", { className: "react-destination-card" },
+              addressOptions.length ? h("div", { className: "react-address-book" },
+                addressOptions.map((item, index) => {
+                  const active = addressKey(item) === activeAddressKey;
+                  return h("article", { className: active ? "active" : "", key: `${addressKey(item)}-${index}` },
+                    h("strong", null, item.principal ? "Destino principal" : active ? "Destino atual" : `Endereco ${index + 1}`),
+                    addressLines(item).map((line) => h("span", { key: line }, line)),
+                    h("div", { className: "react-address-actions" },
+                      h("button", { type: "button", onClick: () => useAddress(item) }, "Usar este endereco"),
+                      !item.principal ? h("button", { type: "button", onClick: () => removeSavedAddress(item) }, "Remover") : null
+                    )
+                  );
+                })
+              ) : null,
+              addressLines(address).length ? h("div", { className: "react-destination-card" },
                 h("strong", null, "Destino"),
-                h("span", null, [address.street, address.number].filter(Boolean).join(", ")),
-                h("span", null, [address.neighborhood, address.city && address.state ? `${address.city}/${address.state}` : address.city || address.state].filter(Boolean).join(" - ")),
-                address.complement ? h("span", null, `Complemento: ${address.complement}`) : null,
-                h("span", null, `CEP ${String(address.zipCode || "").replace(/^(\d{5})(\d{3})$/, "$1-$2")}`)
+                addressLines(address).map((line) => h("span", { key: line }, line))
+              ) : null,
+              h("div", { className: "react-address-extra-actions" },
+                addressMode !== "manual" && savedAddresses.length < 3
+                  ? h("button", { type: "button", onClick: startNewAddress }, "Usar outro endereco")
+                  : null,
+                canSaveAddress ? h("button", { type: "button", onClick: saveCurrentAddress }, "Salvar este endereco") : null
               ),
               h("label", null,
                 h("span", null, "Cupom"),
