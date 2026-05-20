@@ -96,6 +96,154 @@ main {
   font-weight: 900;
 }
 
+.react-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  align-items: start;
+  justify-items: center;
+  padding-top: 68px;
+  background: rgba(18, 78, 59, 0.28);
+}
+
+.react-menu-panel {
+  display: grid;
+  width: min(520px, calc(100% - 20px));
+  max-height: calc(100vh - 86px);
+  overflow-y: auto;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 0 0 12px 12px;
+  background: #fff;
+  box-shadow: 0 24px 48px rgba(18, 34, 31, 0.18);
+}
+
+.react-menu-profile {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--soft);
+}
+
+.react-menu-profile div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.react-menu-profile strong {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+.react-menu-profile strong,
+.react-menu-profile span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.react-menu-profile span {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.react-menu-home,
+.react-menu-links a,
+.react-menu-logout {
+  display: grid;
+  align-items: center;
+  min-height: 58px;
+  border-radius: 8px;
+  font-weight: 900;
+}
+
+.react-menu-home {
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 10px;
+  padding: 0 12px;
+  color: #fff;
+  background: var(--brand);
+}
+
+.react-menu-home .material-symbols-rounded,
+.react-menu-links .material-symbols-rounded,
+.react-menu-logout .material-symbols-rounded {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 999px;
+}
+
+.react-menu-home .material-symbols-rounded {
+  color: var(--brand);
+  background: #fff;
+}
+
+.react-menu-links {
+  display: grid;
+  gap: 8px;
+}
+
+.react-menu-links a {
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  background: #fff;
+}
+
+.react-menu-links .material-symbols-rounded {
+  color: var(--brand);
+  background: #eaf6ef;
+}
+
+.react-menu-links div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.react-menu-links strong,
+.react-menu-links small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.react-menu-links small {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.react-menu-links b {
+  color: var(--brand);
+}
+
+.react-menu-logout {
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 10px;
+  border: 1px solid #f0d2d2;
+  padding: 10px 12px;
+  color: #a83232;
+  background: #fff0f0;
+  text-align: left;
+}
+
+.react-menu-logout .material-symbols-rounded {
+  color: #a83232;
+  background: #ffe0e0;
+}
+
 .react-tabs {
   position: sticky;
   top: 64px;

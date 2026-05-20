@@ -405,20 +405,80 @@
   }
 
   function Topbar({ count, detail }) {
-    return h("header", { className: "react-topbar" },
-      detail
-        ? h("a", { className: "round-icon", href: "/react", "aria-label": "Voltar" }, h("span", { className: "material-symbols-rounded" }, "arrow_back"))
-        : h("button", { className: "round-icon", "aria-label": "Menu" }, h("span", { className: "material-symbols-rounded" }, "menu")),
-      h("label", { className: "react-search" },
-        h("input", { placeholder: "Buscar na Basa 3D Works", readOnly: true })
+    const [menuOpen, setMenuOpen] = useState(false);
+    const session = customerSession();
+    const customer = session?.customer || null;
+    const closeMenu = () => setMenuOpen(false);
+    const logout = () => {
+      localStorage.removeItem(CUSTOMER_SESSION_KEY);
+      localStorage.removeItem(SELECTED_DELIVERY_ADDRESS_KEY);
+      closeMenu();
+      window.location.href = "/react/conta";
+    };
+    const menuItems = customer
+      ? [
+        ["account_circle", "Perfil e dados", "Cadastro, foto e endereco.", "/react/perfil"],
+        ["receipt_long", "Pedidos", "Compras, pagamentos e entrega.", "/react/pedidos"],
+        ["inventory_2", "Encomendas", "Solicitacoes sob medida.", "/react/encomendas"],
+        ["forum", "Chat", "Fale com a Basa.", "/react/chat"],
+        ["shopping_bag", "Carrinho", "Itens e entrega.", "/react/carrinho"]
+      ]
+      : [
+        ["login", "Entrar", "Acesse ou crie sua conta.", "/react/conta"],
+        ["forum", "Chat", "Entre para falar conosco.", "/react/chat"],
+        ["shopping_bag", "Carrinho", "Itens e entrega.", "/react/carrinho"]
+      ];
+
+    return h(React.Fragment, null,
+      h("header", { className: "react-topbar" },
+        detail
+          ? h("a", { className: "round-icon", href: "/react", "aria-label": "Voltar" }, h("span", { className: "material-symbols-rounded" }, "arrow_back"))
+          : h("button", {
+            className: "round-icon",
+            "aria-label": menuOpen ? "Fechar menu" : "Menu",
+            "aria-expanded": menuOpen ? "true" : "false",
+            onClick: () => setMenuOpen((current) => !current)
+          }, h("span", { className: "material-symbols-rounded" }, menuOpen ? "close" : "menu")),
+        h("label", { className: "react-search" },
+          h("input", { placeholder: "Buscar na Basa 3D Works", readOnly: true })
+        ),
+        h("a", { className: "round-icon", href: "/react/chat", "aria-label": "Chat" },
+          h("span", { className: "material-symbols-rounded" }, "forum")
+        ),
+        h("a", { className: "round-icon cart-icon", href: "/react/carrinho", "aria-label": "Carrinho" },
+          h("span", { className: "material-symbols-rounded" }, "shopping_bag"),
+          h("b", null, count)
+        )
       ),
-      h("a", { className: "round-icon", href: "/react/chat", "aria-label": "Chat" },
-        h("span", { className: "material-symbols-rounded" }, "forum")
-      ),
-      h("a", { className: "round-icon cart-icon", href: "/react/carrinho", "aria-label": "Carrinho" },
-        h("span", { className: "material-symbols-rounded" }, "shopping_bag"),
-        h("b", null, count)
-      )
+      !detail && menuOpen ? h("div", { className: "react-menu-backdrop", onClick: closeMenu },
+        h("nav", { className: "react-menu-panel", onClick: (event) => event.stopPropagation(), "aria-label": "Menu da loja" },
+          h("div", { className: "react-menu-profile" },
+            customer ? avatarNode(customer, "react-profile-avatar") : h("span", { className: "react-profile-avatar" }, "B"),
+            h("div", null,
+              h("strong", null, customer ? safeCustomerName(customer) : "Minha Basa", customer ? verifiedBadge(customer) : null),
+              h("span", null, customer?.email || "Entre para acompanhar compras.")
+            )
+          ),
+          h("a", { className: "react-menu-home", href: "/react", onClick: closeMenu },
+            h("span", { className: "material-symbols-rounded" }, "storefront"),
+            h("strong", null, "Loja")
+          ),
+          h("div", { className: "react-menu-links" },
+            menuItems.map(([icon, title, text, href]) => h("a", { href, key: href, onClick: closeMenu },
+              h("span", { className: "material-symbols-rounded" }, icon),
+              h("div", null,
+                h("strong", null, title),
+                h("small", null, text)
+              ),
+              h("b", null, ">")
+            ))
+          ),
+          customer ? h("button", { type: "button", className: "react-menu-logout", onClick: logout },
+            h("span", { className: "material-symbols-rounded" }, "logout"),
+            h("strong", null, "Sair")
+          ) : null
+        )
+      ) : null
     );
   }
 
