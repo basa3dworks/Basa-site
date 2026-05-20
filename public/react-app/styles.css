@@ -314,6 +314,10 @@ main {
   top: 106px;
 }
 
+.react-topbar.has-customer-row + .react-tabs + .react-category-panel {
+  top: 148px;
+}
+
 .react-tabs button {
   border: 0;
   color: var(--muted);
@@ -322,8 +326,97 @@ main {
   white-space: nowrap;
 }
 
+.react-tabs .react-more-tab {
+  position: sticky;
+  right: 0;
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 999px;
+  color: var(--ink);
+  background: #fff;
+  box-shadow: -8px 0 12px #fff;
+}
+
+.react-tabs .react-more-tab.is-open .material-symbols-rounded {
+  transform: rotate(180deg);
+}
+
 .react-tabs button.active {
   color: var(--brand);
+}
+
+.react-category-panel {
+  position: sticky;
+  top: 106px;
+  z-index: 8;
+  display: grid;
+  width: min(520px, 100%);
+  gap: 12px;
+  margin: 0 auto;
+  padding: 12px;
+  border-bottom: 1px solid var(--line);
+  background: #fff;
+}
+
+.react-interest-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.react-interest-head strong {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--ink);
+}
+
+.react-interest-head span {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.react-interest-head button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  color: var(--ink);
+  background: #f7faf8;
+}
+
+.react-interest-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px 10px;
+}
+
+.react-interest-chips button {
+  border: 0;
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: var(--ink);
+  background: #f7faf8;
+  font-weight: 900;
+}
+
+.react-interest-chips button.active {
+  color: var(--brand);
+}
+
+.react-print-ideas {
+  justify-self: start;
+  border-radius: 999px;
+  padding: 10px 16px;
+  color: #fff;
+  background: var(--brand);
+  font-weight: 900;
 }
 
 main {
@@ -452,27 +545,45 @@ main {
 }
 
 .react-product-nav {
-  position: sticky;
+  position: fixed;
   top: 64px;
   z-index: 8;
+  left: 50%;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  margin: -12px -12px 0;
+  width: min(520px, 100%);
   border-bottom: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.96);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -8px);
+  transition: opacity 160ms ease, transform 160ms ease;
 }
 
-.react-product-nav a {
+.react-topbar.has-customer-row + .react-product-page .react-product-nav {
+  top: 106px;
+}
+
+.react-product-nav.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, 0);
+}
+
+.react-product-nav button {
   display: grid;
   min-height: 42px;
   place-items: center;
+  border: 0;
   color: var(--muted);
+  background: transparent;
   font-size: 0.78rem;
   font-weight: 900;
 }
 
-.react-product-nav a:focus,
-.react-product-nav a:hover {
+.react-product-nav button.active,
+.react-product-nav button:focus,
+.react-product-nav button:hover {
   color: var(--brand);
 }
 

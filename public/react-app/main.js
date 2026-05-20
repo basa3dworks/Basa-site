@@ -473,19 +473,64 @@
     );
   }
 
-  function FeedTabs({ feed, setFeed }) {
+  function FeedTabs({ feed, setFeed, products }) {
+    const [open, setOpen] = useState(false);
+    const categories = useMemo(() => {
+      return [...new Set((products || []).map((product) => product.category).filter(Boolean))];
+    }, [products]);
     const tabs = [
       ["for-you", "Para voce"],
       ["trending", "Tendencia"],
       ["favorites", "Favoritos"]
     ];
-    return h("nav", { className: "react-tabs" },
-      tabs.map(([id, label]) => h("button", {
-        key: id,
-        className: feed === id ? "active" : "",
-        type: "button",
-        onClick: () => setFeed(id)
-      }, label))
+    const chooseFeed = (id) => {
+      setFeed(id);
+      setOpen(false);
+    };
+    const primaryCategory = categories[0];
+    return h(React.Fragment, null,
+      h("nav", { className: "react-tabs" },
+        tabs.map(([id, label]) => h("button", {
+          key: id,
+          className: feed === id ? "active" : "",
+          type: "button",
+          onClick: () => chooseFeed(id)
+        }, label)),
+        primaryCategory ? h("button", {
+          className: feed === `category:${primaryCategory}` ? "active" : "",
+          type: "button",
+          onClick: () => chooseFeed(`category:${primaryCategory}`)
+        }, primaryCategory) : null,
+        h("button", {
+          className: open ? "react-more-tab is-open" : "react-more-tab",
+          type: "button",
+          "aria-expanded": open ? "true" : "false",
+          onClick: () => setOpen((current) => !current)
+        }, h("span", { className: "material-symbols-rounded" }, "expand_more"))
+      ),
+      open ? h("section", { className: "react-category-panel" },
+        h("div", { className: "react-interest-head" },
+          h("strong", null, "Meus interesses", h("span", null, "Toque para entrar")),
+          h("button", { type: "button", onClick: () => setOpen(false), "aria-label": "Fechar categorias" },
+            h("span", { className: "material-symbols-rounded" }, "expand_less")
+          )
+        ),
+        h("div", { className: "react-interest-chips" },
+          tabs.map(([id, label]) => h("button", {
+            key: id,
+            className: feed === id ? "active" : "",
+            type: "button",
+            onClick: () => chooseFeed(id)
+          }, label)),
+          categories.map((category) => h("button", {
+            key: category,
+            className: feed === `category:${category}` ? "active" : "",
+            type: "button",
+            onClick: () => chooseFeed(`category:${category}`)
+          }, category))
+        ),
+        h("a", { className: "react-print-ideas", href: "/react/encomendas" }, "Imprima suas ideias")
+      ) : null
     );
   }
 
@@ -509,11 +554,19 @@
     );
   }
 
-  function ProductNav() {
-    return h("nav", { className: "react-product-nav", "aria-label": "Navegacao do produto" },
-      h("a", { href: "#produto-inicio" }, "Inicio"),
-      h("a", { href: "#produto-comentarios" }, "Comentarios"),
-      h("a", { href: "#produto-relacionados" }, "Relacionados")
+  function ProductNav({ visible, activeTab, onTabClick }) {
+    const tabs = [
+      ["intro", "produto-inicio", "Inicio"],
+      ["comments", "produto-comentarios", "Comentarios"],
+      ["related", "produto-relacionados", "Relacionados"]
+    ];
+    return h("nav", { className: visible ? "react-product-nav is-visible" : "react-product-nav", "aria-label": "Navegacao do produto" },
+      tabs.map(([id, target, label]) => h("button", {
+        key: id,
+        className: activeTab === id ? "active" : "",
+        type: "button",
+        onClick: () => onTabClick(target, id)
+      }, label))
     );
   }
 
@@ -542,7 +595,7 @@
 
   function ReviewsSection({ product, openMedia }) {
     const reviews = product.publicReviews || [];
-    return h("section", { className: "react-detail-card react-reviews", id: "produto-comentarios" },
+    return h("section", { className: "react-detail-card react-reviews", id: "produto-comentarios", "data-product-section": "comments" },
       h("small", null, "Comentarios"),
       h("h2", null, "Quem comprou conta"),
       reviews.length
@@ -578,7 +631,7 @@
 
   function RelatedSection({ product, products }) {
     const related = relatedProducts(product, products).slice(0, 12);
-    return h("section", { className: "react-section react-related-section", id: "produto-relacionados" },
+    return h("section", { className: "react-section react-related-section", id: "produto-relacionados", "data-product-section": "related" },
       h("h2", null, "Relacionados"),
       related.length
         ? h("div", { className: "react-product-grid" }, related.map((item) => h(ProductCard, { key: item.id, product: item })))
@@ -596,6 +649,8 @@
     const [quantity, setQuantity] = useState(1);
     const [notice, setNotice] = useState("");
     const [lightbox, setLightbox] = useState(null);
+    const [productNavVisible, setProductNavVisible] = useState(false);
+    const [activeProductTab, setActiveProductTab] = useState("intro");
 
     useEffect(() => {
       setSelectedImage(0);
@@ -603,7 +658,35 @@
       setQuantity(1);
       setNotice("");
       setLightbox(null);
+      setProductNavVisible(false);
+      setActiveProductTab("intro");
     }, [wantedSlug]);
+
+    useEffect(() => {
+      if (!product) return undefined;
+      const updateProductNav = () => {
+        const topbar = document.querySelector(".react-topbar");
+        const detail = document.querySelector("[data-product-section='intro']");
+        const comments = document.getElementById("produto-comentarios");
+        const related = document.getElementById("produto-relacionados");
+        const topbarHeight = topbar?.getBoundingClientRect().height || 0;
+        const commentsTop = comments?.getBoundingClientRect().top ?? Number.POSITIVE_INFINITY;
+        const detailBottom = detail?.getBoundingClientRect().bottom ?? Number.POSITIVE_INFINITY;
+        setProductNavVisible(commentsTop <= window.innerHeight * 0.72 || detailBottom <= topbarHeight + 18);
+        const marker = topbarHeight + 56;
+        let active = "intro";
+        if (comments && comments.getBoundingClientRect().top <= marker) active = "comments";
+        if (related && related.getBoundingClientRect().top <= marker) active = "related";
+        setActiveProductTab(active);
+      };
+      updateProductNav();
+      window.addEventListener("scroll", updateProductNav, { passive: true });
+      window.addEventListener("resize", updateProductNav);
+      return () => {
+        window.removeEventListener("scroll", updateProductNav);
+        window.removeEventListener("resize", updateProductNav);
+      };
+    }, [product?.id, wantedSlug]);
 
     if (loading) {
       return h("main", { className: "react-product-page" },
@@ -636,9 +719,20 @@
     };
 
     const openMedia = (items, index) => setLightbox({ items, index });
+    const scrollProductSection = (target, tab) => {
+      const section = document.getElementById(target);
+      const topbar = document.querySelector(".react-topbar");
+      const nav = document.querySelector(".react-product-nav");
+      if (!section) return;
+      setProductNavVisible(true);
+      setActiveProductTab(tab);
+      const offset = (topbar?.getBoundingClientRect().height || 0) + (nav?.getBoundingClientRect().height || 0) + 8;
+      const y = window.scrollY + section.getBoundingClientRect().top - offset;
+      window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
+    };
 
     return h("main", { className: "react-product-page" },
-      h(ProductNav),
+      h(ProductNav, { visible: productNavVisible, activeTab: activeProductTab, onTabClick: scrollProductSection }),
       h("section", { className: "react-gallery", id: "produto-inicio" },
         h("div", { className: "react-main-media" }, image
           ? h("img", { src: image, alt: product.name })
@@ -653,7 +747,7 @@
           }, h("img", { src, alt: `${product.name} ${index + 1}` })))
         )
       ),
-      h("section", { className: "react-detail-card" },
+      h("section", { className: "react-detail-card", "data-product-section": "intro" },
         h("small", null, product.category || "Produto"),
         h("h1", null, product.name),
         rating && h("div", { className: "react-rating product-rating" },
@@ -717,14 +811,21 @@
   function ProductGrid({ products, feed }) {
     const visibleProducts = useMemo(() => {
       const active = products.filter((product) => product.status !== "inactive");
+      if (feed.startsWith("category:")) {
+        const category = feed.replace("category:", "");
+        return active.filter((product) => product.category === category);
+      }
       if (feed === "trending") {
         return [...active].sort((a, b) => Number(b.soldUnits || 0) - Number(a.soldUnits || 0));
       }
       return active;
     }, [products, feed]);
+    const title = feed.startsWith("category:")
+      ? feed.replace("category:", "")
+      : feed === "trending" ? "Tendencia" : feed === "favorites" ? "Favoritos" : "Produtos em destaque";
 
     return h("section", { className: "react-section" },
-      h("h2", null, feed === "trending" ? "Tendencia" : feed === "favorites" ? "Favoritos" : "Produtos em destaque"),
+      h("h2", null, title),
       h("div", { className: "react-product-grid" },
         visibleProducts.slice(0, 12).map((product) => h(ProductCard, { key: product.id, product }))
       )
@@ -1928,7 +2029,7 @@
 
     return h(React.Fragment, null,
       h(Topbar, { count, detail: false }),
-      h(FeedTabs, { feed, setFeed }),
+      h(FeedTabs, { feed, setFeed, products }),
       h("main", null,
         h(Hero),
         loading
