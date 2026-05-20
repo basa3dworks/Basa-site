@@ -884,15 +884,15 @@
               ),
               h("label", null,
                 h("span", null, "CEP"),
-                h("input", { value: form.zipCode, onChange: (event) => updateForm("zipCode", cleanZip(event.target.value)), onBlur: lookupCep, inputMode: "numeric", placeholder: "01128010" })
+                h("input", { value: form.zipCode, onChange: (event) => updateForm("zipCode", cleanZip(event.target.value)), onBlur: lookupCep, inputMode: "numeric", placeholder: "Digite seu CEP" })
               ),
               h("label", null,
                 h("span", null, "Numero"),
-                h("input", { value: form.number, onChange: (event) => updateForm("number", event.target.value), placeholder: "107" })
+                h("input", { value: form.number, onChange: (event) => updateForm("number", event.target.value), placeholder: "Numero da residencia" })
               ),
               h("label", null,
                 h("span", null, "Complemento"),
-                h("input", { value: form.complement, onChange: (event) => updateForm("complement", event.target.value), placeholder: "Apto 154" })
+                h("input", { value: form.complement, onChange: (event) => updateForm("complement", event.target.value), placeholder: "Apto, bloco ou referencia" })
               )
             ),
             form.street ? h("div", { className: "react-destination-card" },
