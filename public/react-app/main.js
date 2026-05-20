@@ -4,6 +4,7 @@
   const CART_KEY = "basa_cart";
   const CUSTOMER_SESSION_KEY = "basa_customer_session";
   const SUPPORT_CHAT_KEY = "basa_support_chat";
+  const STORY_DURATION_MS = 6500;
 
   function money(value) {
     return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(value || 0));
@@ -80,6 +81,17 @@
 
   function productImage(product) {
     return product.image || product.images?.[0]?.url || product.media?.[0]?.url || "";
+  }
+
+  function storyProduct(story, products = []) {
+    if (story?.product?.slug || story?.product?.id) return story.product;
+    return products.find((product) => String(product.id) === String(story?.productId)) || null;
+  }
+
+  function storyPreview(story, products = []) {
+    const product = storyProduct(story, products);
+    if (story?.mediaType === "video") return story.posterUrl || productImage(product || {}) || "";
+    return story?.mediaUrl || productImage(product || {}) || "";
   }
 
   function productImages(product) {
@@ -968,6 +980,70 @@
       h("div", { className: "react-product-grid" },
         visibleProducts.slice(0, 12).map((product) => h(ProductCard, { key: product.id, product }))
       )
+    );
+  }
+
+  function StoryViewer({ stories, products, index, onClose, setIndex }) {
+    const story = stories[index];
+    const product = storyProduct(story, products);
+    const productSlugValue = product?.slug || product?.id || "";
+    const next = () => setIndex((current) => current < stories.length - 1 ? current + 1 : -1);
+    const previous = () => setIndex((current) => current > 0 ? current - 1 : stories.length - 1);
+
+    useEffect(() => {
+      if (index < 0) return undefined;
+      const timer = setTimeout(next, STORY_DURATION_MS);
+      return () => clearTimeout(timer);
+    }, [index]);
+
+    if (!story) return null;
+    return h("div", { className: "react-story-viewer", role: "dialog", "aria-modal": "true" },
+      h("button", { className: "react-story-close", type: "button", onClick: onClose, "aria-label": "Fechar story" },
+        h("span", { className: "material-symbols-rounded" }, "close")
+      ),
+      h("article", { className: "react-story-card" },
+        story.mediaType === "video" && story.mediaUrl
+          ? h("video", { src: story.mediaUrl, autoPlay: true, muted: true, loop: true, playsInline: true })
+          : h("img", { src: story.mediaUrl || storyPreview(story, products), alt: story.title || "Story Basa 3D" }),
+        h("div", { className: "react-story-progress" },
+          stories.map((item, itemIndex) => h("span", { key: item.id || itemIndex, className: itemIndex < index ? "done" : itemIndex === index ? "active" : "" },
+            h("i", { key: `${index}-${itemIndex}` })
+          ))
+        ),
+        h("button", { className: "react-story-hit prev", type: "button", onClick: previous, "aria-label": "Story anterior" }),
+        h("button", { className: "react-story-hit next", type: "button", onClick: next, "aria-label": "Proximo story" }),
+        h("div", { className: "react-story-content" },
+          h("p", null, "Bastidores"),
+          h("h2", null, story.title || "Bastidor Basa"),
+          story.caption ? h("span", null, story.caption) : null,
+          productSlugValue ? h("a", { href: `/react/produto?slug=${encodeURIComponent(productSlugValue)}` }, "Ver produto relacionado") : null
+        )
+      )
+    );
+  }
+
+  function StorySection({ stories, products }) {
+    const activeStories = (stories || []).filter((story) => story?.active !== false && (story.mediaUrl || storyPreview(story, products))).slice(0, 10);
+    const [activeIndex, setActiveIndex] = useState(-1);
+    if (!activeStories.length) return null;
+    return h("section", { className: "react-stories-section", "aria-label": "Stories da producao" },
+      h("div", { className: "react-stories-head" },
+        h("small", null, "Bastidores"),
+        h("h2", null, "Dia a dia da producao")
+      ),
+      h("div", { className: "react-stories-row" },
+        activeStories.map((story, index) => {
+          const preview = storyPreview(story, products);
+          return h("button", { key: story.id || index, className: "react-story-bubble", type: "button", onClick: () => setActiveIndex(index) },
+            h("span", null,
+              preview ? h("img", { src: preview, alt: story.title || "Story Basa 3D" }) : null,
+              story.mediaType === "video" ? h("i", null, "Video") : null
+            ),
+            h("strong", null, story.title || "Bastidor")
+          );
+        })
+      ),
+      activeIndex >= 0 ? h(StoryViewer, { stories: activeStories, products, index: activeIndex, setIndex: setActiveIndex, onClose: () => setActiveIndex(-1) }) : null
     );
   }
 
@@ -2084,6 +2160,7 @@
 
   function App() {
     const [products, setProducts] = useState([]);
+    const [stories, setStories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [feed, setFeed] = useState("for-you");
     const [count, setCount] = useState(cartCount());
@@ -2093,10 +2170,16 @@
       fetch("/api/products")
         .then((response) => response.json())
         .then((data) => {
-          if (active) setProducts(data.products || []);
+          if (active) {
+            setProducts(data.products || []);
+            setStories(data.stories || []);
+          }
         })
         .catch(() => {
-          if (active) setProducts([]);
+          if (active) {
+            setProducts([]);
+            setStories([]);
+          }
         })
         .finally(() => {
           if (active) setLoading(false);
@@ -2171,6 +2254,7 @@
       h(FeedTabs, { feed, setFeed, products }),
       h("main", null,
         h(Hero),
+        !loading ? h(StorySection, { stories, products }) : null,
         loading
           ? h("section", { className: "react-section" }, h("p", null, "Carregando produtos..."))
           : h(ProductGrid, { products, feed })
