@@ -1768,7 +1768,7 @@
                     value: address.zipCode,
                     onChange: (event) => updateAddress("zipCode", cleanZip(event.target.value)),
                     onBlur: lookupCep,
-                    placeholder: "01128010",
+                    placeholder: "Digite o CEP",
                     inputMode: "numeric"
                   })
                 ),
@@ -1777,7 +1777,7 @@
                   h("input", {
                     value: address.number,
                     onChange: (event) => updateAddress("number", event.target.value),
-                    placeholder: "107"
+                    placeholder: "Numero da residencia"
                   })
                 ),
                 h("label", null,
@@ -1785,7 +1785,7 @@
                   h("input", {
                     value: address.complement,
                     onChange: (event) => updateAddress("complement", event.target.value),
-                    placeholder: "Apto 154"
+                    placeholder: "Apto, bloco ou referencia"
                   })
                 )
               ),
