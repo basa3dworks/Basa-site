@@ -51,11 +51,64 @@ main {
   top: 0;
   z-index: 10;
   display: grid;
+  gap: 8px;
+  padding: 12px 12px 10px;
+  background: var(--brand);
+}
+
+.react-topbar-main {
+  display: grid;
   grid-template-columns: 42px minmax(0, 1fr) 42px 42px;
   gap: 8px;
   align-items: center;
-  padding: 12px 12px 10px;
-  background: var(--brand);
+}
+
+.react-customer-row {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-height: 30px;
+  border-radius: 999px;
+  padding: 5px 12px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.react-customer-hello {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.react-customer-hello strong,
+.react-customer-address {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.react-customer-address {
+  justify-self: end;
+  max-width: 100%;
+  opacity: 0.92;
+}
+
+.react-customer-row .react-verified-badge {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+}
+
+.react-customer-row .react-verified-badge::after {
+  top: 3px;
+  left: 4px;
+  width: 6px;
+  height: 3px;
 }
 
 .round-icon {
@@ -99,12 +152,16 @@ main {
 .react-menu-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 20;
+  z-index: 9;
   display: grid;
   align-items: start;
   justify-items: center;
   padding-top: 68px;
   background: rgba(18, 78, 59, 0.28);
+}
+
+.react-topbar.has-customer-row + .react-menu-backdrop {
+  padding-top: 110px;
 }
 
 .react-menu-panel {
@@ -254,6 +311,10 @@ main {
   padding: 10px 12px;
   border-bottom: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.94);
+}
+
+.react-topbar.has-customer-row + .react-tabs {
+  top: 106px;
 }
 
 .react-tabs button {
@@ -981,56 +1042,6 @@ main {
 
 .react-destination-card strong {
   color: var(--ink);
-}
-
-.react-address-book {
-  display: grid;
-  gap: 8px;
-}
-
-.react-address-book article {
-  display: grid;
-  gap: 4px;
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  color: var(--muted);
-  background: #fff;
-  font-weight: 800;
-}
-
-.react-address-book article.active {
-  border-color: var(--brand);
-  background: #eefaf3;
-}
-
-.react-address-book strong {
-  color: var(--ink);
-}
-
-.react-address-actions,
-.react-address-extra-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 6px;
-}
-
-.react-address-actions button,
-.react-address-extra-actions button {
-  flex: 1;
-  min-height: 40px;
-  border: 0;
-  border-radius: 8px;
-  color: var(--ink);
-  background: #eff5f1;
-  font-weight: 900;
-}
-
-.react-address-actions button:last-child:not(:first-child) {
-  flex: 0 0 auto;
-  min-width: 88px;
-  color: #a83232;
-  background: #fff0f0;
 }
 
 .react-coupon-ok,

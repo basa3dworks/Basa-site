@@ -4,8 +4,6 @@
   const CART_KEY = "basa_cart";
   const CUSTOMER_SESSION_KEY = "basa_customer_session";
   const SUPPORT_CHAT_KEY = "basa_support_chat";
-  const DELIVERY_ADDRESSES_KEY = "basa_delivery_addresses";
-  const SELECTED_DELIVERY_ADDRESS_KEY = "basa_selected_delivery_address";
 
   function money(value) {
     return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(value || 0));
@@ -310,10 +308,6 @@
     return String(value || "").replace(/\D/g, "").slice(0, 8);
   }
 
-  function addressKey(address = {}) {
-    return [address.zipCode, address.number, address.complement].map((value) => String(value || "").trim().toLowerCase()).join("|");
-  }
-
   function addressLines(address = {}) {
     const zip = cleanZip(address.zipCode);
     const lineOne = [address.street, address.number].filter(Boolean).join(", ");
@@ -321,6 +315,10 @@
     const complement = address.complement ? `Complemento: ${address.complement}` : "";
     const zipLine = zip.length === 8 ? `CEP ${zip.replace(/^(\d{5})(\d{3})$/, "$1-$2")}` : "";
     return [lineOne, lineTwo, complement, zipLine].filter(Boolean);
+  }
+
+  function topbarAddressLabel(address = {}) {
+    return [address.street, address.number].filter(Boolean).join(", ");
   }
 
   function accountDeliveryAddress() {
@@ -340,29 +338,7 @@
     };
   }
 
-  function loadDeliveryAddresses() {
-    try {
-      return JSON.parse(localStorage.getItem(DELIVERY_ADDRESSES_KEY) || "[]").filter((address) => address?.zipCode).slice(0, 3);
-    } catch {
-      return [];
-    }
-  }
-
-  function saveDeliveryAddresses(addresses) {
-    localStorage.setItem(DELIVERY_ADDRESSES_KEY, JSON.stringify(addresses.slice(0, 3)));
-  }
-
-  function selectedDeliveryAddress() {
-    try {
-      return JSON.parse(localStorage.getItem(SELECTED_DELIVERY_ADDRESS_KEY) || "null");
-    } catch {
-      return null;
-    }
-  }
-
   function initialCartAddress() {
-    const selected = selectedDeliveryAddress();
-    if (selected?.zipCode) return selected;
     return accountDeliveryAddress() || {
       zipCode: "",
       number: "",
@@ -408,10 +384,11 @@
     const [menuOpen, setMenuOpen] = useState(false);
     const session = customerSession();
     const customer = session?.customer || null;
+    const mainAddress = accountDeliveryAddress();
+    const addressLabel = topbarAddressLabel(mainAddress || {});
     const closeMenu = () => setMenuOpen(false);
     const logout = () => {
       localStorage.removeItem(CUSTOMER_SESSION_KEY);
-      localStorage.removeItem(SELECTED_DELIVERY_ADDRESS_KEY);
       closeMenu();
       window.location.href = "/react/conta";
     };
@@ -430,25 +407,31 @@
       ];
 
     return h(React.Fragment, null,
-      h("header", { className: "react-topbar" },
-        detail
-          ? h("a", { className: "round-icon", href: "/react", "aria-label": "Voltar" }, h("span", { className: "material-symbols-rounded" }, "arrow_back"))
-          : h("button", {
-            className: "round-icon",
-            "aria-label": menuOpen ? "Fechar menu" : "Menu",
-            "aria-expanded": menuOpen ? "true" : "false",
-            onClick: () => setMenuOpen((current) => !current)
-          }, h("span", { className: "material-symbols-rounded" }, menuOpen ? "close" : "menu")),
-        h("label", { className: "react-search" },
-          h("input", { placeholder: "Buscar na Basa 3D Works", readOnly: true })
+      h("header", { className: customer ? "react-topbar has-customer-row" : "react-topbar" },
+        h("div", { className: "react-topbar-main" },
+          detail
+            ? h("a", { className: "round-icon", href: "/react", "aria-label": "Voltar" }, h("span", { className: "material-symbols-rounded" }, "arrow_back"))
+            : h("button", {
+              className: "round-icon",
+              "aria-label": menuOpen ? "Fechar menu" : "Menu",
+              "aria-expanded": menuOpen ? "true" : "false",
+              onClick: () => setMenuOpen((current) => !current)
+            }, h("span", { className: "material-symbols-rounded" }, menuOpen ? "close" : "menu")),
+          h("label", { className: "react-search" },
+            h("input", { placeholder: "Buscar na Basa 3D Works", readOnly: true })
+          ),
+          h("a", { className: "round-icon", href: "/react/chat", "aria-label": "Chat" },
+            h("span", { className: "material-symbols-rounded" }, "forum")
+          ),
+          h("a", { className: "round-icon cart-icon", href: "/react/carrinho", "aria-label": "Carrinho" },
+            h("span", { className: "material-symbols-rounded" }, "shopping_bag"),
+            h("b", null, count)
+          )
         ),
-        h("a", { className: "round-icon", href: "/react/chat", "aria-label": "Chat" },
-          h("span", { className: "material-symbols-rounded" }, "forum")
-        ),
-        h("a", { className: "round-icon cart-icon", href: "/react/carrinho", "aria-label": "Carrinho" },
-          h("span", { className: "material-symbols-rounded" }, "shopping_bag"),
-          h("b", null, count)
-        )
+        customer ? h("div", { className: "react-customer-row" },
+          h("span", { className: "react-customer-hello" }, "Ola ", h("strong", null, safeCustomerName(customer)), verifiedBadge(customer)),
+          h("span", { className: "react-customer-address" }, addressLabel || "Endereco principal")
+        ) : null
       ),
       !detail && menuOpen ? h("div", { className: "react-menu-backdrop", onClick: closeMenu },
         h("nav", { className: "react-menu-panel", onClick: (event) => event.stopPropagation(), "aria-label": "Menu da loja" },
@@ -832,7 +815,6 @@
           updatedAt: new Date().toISOString()
         };
         localStorage.setItem(CUSTOMER_SESSION_KEY, JSON.stringify(nextSession));
-        localStorage.removeItem(SELECTED_DELIVERY_ADDRESS_KEY);
         setSession(nextSession);
         setForm(defaultAccountForm(nextSession));
         setStatus(data.created ? "Cadastro criado. Agora voce pode finalizar a compra." : "Login confirmado.");
@@ -845,7 +827,6 @@
 
     const logout = () => {
       localStorage.removeItem(CUSTOMER_SESSION_KEY);
-      localStorage.removeItem(SELECTED_DELIVERY_ADDRESS_KEY);
       setSession(null);
       setForm(defaultAccountForm(null));
       setStatus("Sessao encerrada neste aparelho.");
@@ -1557,8 +1538,6 @@
     const [coupon, setCoupon] = useState("");
     const [couponResult, setCouponResult] = useState(null);
     const [address, setAddress] = useState(initialCartAddress);
-    const [addressMode, setAddressMode] = useState(() => selectedDeliveryAddress() || accountDeliveryAddress() ? "saved" : "manual");
-    const [savedAddresses, setSavedAddresses] = useState(loadDeliveryAddresses);
     const [quotes, setQuotes] = useState([]);
     const [selectedQuoteId, setSelectedQuoteId] = useState("");
     const [shippingBenefit, setShippingBenefit] = useState(null);
@@ -1643,19 +1622,6 @@
     }, [coupon, items]);
 
     const enriched = items.map((item) => enrichCartItem(item, products));
-    const principalAddress = accountDeliveryAddress();
-    const addressOptions = [
-      ...(principalAddress ? [principalAddress] : []),
-      ...savedAddresses.filter((item) => !principalAddress || addressKey(item) !== addressKey(principalAddress))
-    ];
-    const activeAddressKey = addressKey(address);
-    const isManual = addressMode === "manual";
-    const canSaveAddress = isManual
-      && cleanZip(address.zipCode).length === 8
-      && Boolean(address.number)
-      && Boolean(address.complement)
-      && !addressOptions.some((item) => addressKey(item) === addressKey(address))
-      && savedAddresses.length < 3;
     const subtotal = enriched.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0);
     const allFreeShipping = enriched.length > 0 && enriched.every((item) => item.sellerPaysShipping);
     const selectedQuote = quotes.find((quote) => shippingQuoteId(quote) === selectedQuoteId) || null;
@@ -1685,53 +1651,7 @@
     };
 
     const updateAddress = (field, value) => {
-      setAddressMode("manual");
-      localStorage.removeItem(SELECTED_DELIVERY_ADDRESS_KEY);
       setAddress((current) => ({ ...current, [field]: field === "state" ? value.toUpperCase() : value }));
-    };
-
-    const useAddress = (nextAddress) => {
-      setAddress({ ...nextAddress });
-      setAddressMode("saved");
-      localStorage.setItem(SELECTED_DELIVERY_ADDRESS_KEY, JSON.stringify(nextAddress));
-      setCartStatus("");
-    };
-
-    const startNewAddress = () => {
-      setAddress({
-        zipCode: "",
-        number: "",
-        complement: "",
-        street: "",
-        neighborhood: "",
-        city: "",
-        state: "",
-        ibge: ""
-      });
-      setAddressMode("manual");
-      localStorage.removeItem(SELECTED_DELIVERY_ADDRESS_KEY);
-      setCartStatus("Digite um novo CEP para calcular a entrega.");
-    };
-
-    const saveCurrentAddress = () => {
-      if (!canSaveAddress) return;
-      const normalized = { ...address, zipCode: cleanZip(address.zipCode), principal: false };
-      const next = [normalized, ...savedAddresses.filter((item) => addressKey(item) !== addressKey(normalized))].slice(0, 3);
-      saveDeliveryAddresses(next);
-      setSavedAddresses(next);
-      useAddress(normalized);
-      setCartStatus("Endereco salvo para este carrinho.");
-    };
-
-    const removeSavedAddress = (addressToRemove) => {
-      const next = savedAddresses.filter((item) => addressKey(item) !== addressKey(addressToRemove));
-      saveDeliveryAddresses(next);
-      setSavedAddresses(next);
-      if (activeAddressKey === addressKey(addressToRemove)) {
-        const fallback = principalAddress || next[0];
-        if (fallback) useAddress(fallback);
-        else startNewAddress();
-      }
     };
 
     const lookupCep = async () => {
@@ -1869,29 +1789,10 @@
                   })
                 )
               ),
-              addressOptions.length ? h("div", { className: "react-address-book" },
-                addressOptions.map((item, index) => {
-                  const active = addressKey(item) === activeAddressKey;
-                  return h("article", { className: active ? "active" : "", key: `${addressKey(item)}-${index}` },
-                    h("strong", null, item.principal ? "Destino principal" : active ? "Destino atual" : `Endereco ${index + 1}`),
-                    addressLines(item).map((line) => h("span", { key: line }, line)),
-                    h("div", { className: "react-address-actions" },
-                      h("button", { type: "button", onClick: () => useAddress(item) }, "Usar este endereco"),
-                      !item.principal ? h("button", { type: "button", onClick: () => removeSavedAddress(item) }, "Remover") : null
-                    )
-                  );
-                })
-              ) : null,
               addressLines(address).length ? h("div", { className: "react-destination-card" },
                 h("strong", null, "Destino"),
                 addressLines(address).map((line) => h("span", { key: line }, line))
               ) : null,
-              h("div", { className: "react-address-extra-actions" },
-                addressMode !== "manual" && savedAddresses.length < 3
-                  ? h("button", { type: "button", onClick: startNewAddress }, "Usar outro endereco")
-                  : null,
-                canSaveAddress ? h("button", { type: "button", onClick: saveCurrentAddress }, "Salvar este endereco") : null
-              ),
               h("label", null,
                 h("span", null, "Cupom"),
                 h("input", {
