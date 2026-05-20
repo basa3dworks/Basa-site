@@ -1789,6 +1789,11 @@ main {
   font-weight: 900;
 }
 
+.react-shipping-note.free {
+  color: #006d42;
+  background: #e6f6ee;
+}
+
 .react-cart-summary {
   display: grid;
   gap: 9px;

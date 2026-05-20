@@ -2131,7 +2131,7 @@
             items: apiCartItems(items),
             customer,
             customerLoggedIn: true,
-            shippingOption: selectedQuote,
+            shippingOption: freeShipping ? null : selectedQuote,
             zipCode: customer.zipCode,
             coupon: coupon.trim().toUpperCase()
           })
@@ -2226,8 +2226,12 @@
               couponResult && h("p", { className: couponResult.valid ? "react-coupon-ok" : "react-coupon-error" },
                 couponResult.valid ? "Cupom aplicado." : couponResult.reason || "Cupom invalido."
               ),
-              h("div", { className: "react-shipping-options" },
-                quotes.length
+              freeShipping
+                ? h("div", { className: "react-shipping-note free" },
+                  shippingBenefit?.message || "Frete grátis neste pedido. A Basa 3D Works define a melhor forma de envio."
+                )
+                : h("div", { className: "react-shipping-options" },
+                  quotes.length
                   ? quotes.map((quote) => h("label", { className: "react-shipping-option", key: shippingQuoteId(quote) },
                     h("input", {
                       type: "radio",
@@ -2243,7 +2247,7 @@
                     h("b", null, freeShipping ? "Grátis" : money(quote.price))
                   ))
                   : h("div", { className: "react-shipping-note" }, shippingBenefit?.message || cartStatus || "Informe o CEP para calcular a entrega.")
-              )
+                )
             ),
             h("section", { className: "react-cart-summary" },
               h("div", null, h("span", null, "Subtotal"), h("strong", null, money(subtotal))),
