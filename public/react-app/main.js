@@ -666,6 +666,35 @@
     );
   }
 
+  function ProductInfoDetails({ product }) {
+    const highlights = Array.isArray(product.highlights) ? product.highlights.filter(Boolean) : [];
+    const specs = Object.entries(product.specs || {}).filter(([, value]) => value !== undefined && value !== null && String(value).trim());
+    const description = product.longDescription || product.description || "";
+    if (!description && !highlights.length && !specs.length) return null;
+    return h("section", { className: "react-product-info" },
+      description ? h("article", { className: "react-info-panel react-info-description" },
+        h("p", null, description)
+      ) : null,
+      highlights.length ? h("article", { className: "react-info-panel" },
+        h("small", null, "Destaques"),
+        h("h2", null, "Por que escolher"),
+        h("ul", { className: "react-feature-list" },
+          highlights.map((item) => h("li", { key: item }, item))
+        )
+      ) : null,
+      specs.length ? h("article", { className: "react-info-panel" },
+        h("small", null, "Especificacoes"),
+        h("h2", null, "Detalhes tecnicos"),
+        h("dl", { className: "react-spec-list" },
+          specs.map(([key, value]) => h("div", { key },
+            h("dt", null, key),
+            h("dd", null, String(value))
+          ))
+        )
+      ) : null
+    );
+  }
+
   function ProductDetail({ products, loading, setCount }) {
     const wantedSlug = getQuery("slug") || "";
     const product = products.find((item) => String(item.slug || item.id) === wantedSlug) || null;
@@ -821,9 +850,9 @@
         h("article", { className: "react-payment" },
           h("strong", null, "Pagamento seguro via Mercado Pago"),
           h("span", null, "Pix e cartoes de credito aceitos no checkout.")
-        ),
-        product.description && h("p", { className: "react-description" }, product.description)
+        )
       ),
+      h(ProductInfoDetails, { product }),
       h(ReviewsSection, { product, openMedia }),
       h(RelatedSection, { product, products }),
       lightbox && h(MediaLightbox, {

@@ -812,14 +812,100 @@ main {
   background: #f4f9ff;
 }
 
-.react-payment span,
-.react-description {
+.react-payment span {
   color: var(--muted);
   line-height: 1.5;
 }
 
-.react-description {
+.react-product-info {
+  display: grid;
+  gap: 12px;
+}
+
+.react-info-panel {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.react-info-panel small {
+  color: var(--accent);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.react-info-panel h2 {
   margin: 0;
+  font-size: 1.2rem;
+}
+
+.react-info-description p,
+.react-feature-list,
+.react-spec-list,
+.react-spec-list dd {
+  margin: 0;
+}
+
+.react-info-description p {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.react-feature-list {
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.react-feature-list li {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: var(--muted);
+  background: #f7faf8;
+  font-weight: 900;
+}
+
+.react-feature-list li::before {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--accent);
+  content: "";
+}
+
+.react-spec-list {
+  display: grid;
+  gap: 8px;
+}
+
+.react-spec-list div {
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f7faf8;
+}
+
+.react-spec-list dt {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.react-spec-list dd {
+  color: var(--ink);
+  font-weight: 900;
 }
 
 .react-reviews h2,
