@@ -160,7 +160,8 @@
         image: productImage(product),
         quantity,
         colorName,
-        colorHex: color?.hex || color?.color || ""
+        colorHex: color?.hex || color?.color || "",
+        sellerPaysShipping: Boolean(product.sellerPaysShipping)
       });
     }
     saveCart(items);
@@ -177,7 +178,7 @@
       h("a", { className: "round-icon", href: "/?panel=chat#produtos", "aria-label": "Chat" },
         h("span", { className: "material-symbols-rounded" }, "forum")
       ),
-      h("a", { className: "round-icon cart-icon", href: "/", "aria-label": "Carrinho" },
+      h("a", { className: "round-icon cart-icon", href: "/react/carrinho", "aria-label": "Carrinho" },
         h("span", { className: "material-symbols-rounded" }, "shopping_bag"),
         h("b", null, count)
       )
@@ -347,7 +348,11 @@
     const handleAdd = (buyNow) => {
       addToCart(product, quantity, color);
       setCount(cartCount());
-      setNotice(buyNow ? "Produto pronto no carrinho para finalizar." : "Produto adicionado ao carrinho.");
+      if (buyNow) {
+        window.location.href = "/react/carrinho";
+        return;
+      }
+      setNotice("Produto adicionado ao carrinho.");
     };
 
     const openMedia = (items, index) => setLightbox({ items, index });
@@ -446,6 +451,111 @@
     );
   }
 
+  function enrichCartItem(item, products) {
+    const product = products.find((candidate) => String(candidate.id) === String(item.id) || String(candidate.slug) === String(item.slug));
+    if (!product) return item;
+    return {
+      ...item,
+      product,
+      name: item.name || product.name,
+      price: item.price ?? product.price,
+      image: item.image || productImage(product),
+      sellerPaysShipping: item.sellerPaysShipping ?? Boolean(product.sellerPaysShipping)
+    };
+  }
+
+  function CartPage({ products, loading, setCount }) {
+    const [items, setItems] = useState(cartItems());
+    const [coupon, setCoupon] = useState("");
+
+    useEffect(() => {
+      const sync = () => setItems(cartItems());
+      window.addEventListener("basa-cart-change", sync);
+      return () => window.removeEventListener("basa-cart-change", sync);
+    }, []);
+
+    const enriched = items.map((item) => enrichCartItem(item, products));
+    const subtotal = enriched.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0);
+    const allFreeShipping = enriched.length > 0 && enriched.every((item) => item.sellerPaysShipping);
+    const shipping = allFreeShipping ? 0 : 0;
+    const total = subtotal + shipping;
+
+    const updateItems = (nextItems) => {
+      saveCart(nextItems);
+      setItems(nextItems);
+      setCount(cartCount());
+    };
+
+    const changeQuantity = (index, quantity) => {
+      const nextItems = items.map((item, itemIndex) => itemIndex === index ? { ...item, quantity } : item);
+      updateItems(nextItems.filter((item) => Number(item.quantity || 0) > 0));
+    };
+
+    const removeItem = (index) => {
+      updateItems(items.filter((_, itemIndex) => itemIndex !== index));
+    };
+
+    return h("main", { className: "react-cart-page" },
+      h("section", { className: "react-cart-header" },
+        h("p", null, "Carrinho"),
+        h("h1", null, "Sua compra")
+      ),
+      loading
+        ? h("section", { className: "react-detail-card" }, h("p", null, "Carregando carrinho..."))
+        : enriched.length
+          ? h(React.Fragment, null,
+            h("section", { className: "react-cart-list" },
+              enriched.map((item, index) => h("article", { className: "react-cart-item", key: `${item.id || item.slug || index}-${item.colorName || ""}` },
+                h("a", { className: "react-cart-media", href: item.slug ? `/react/produto?slug=${encodeURIComponent(item.slug)}` : "/react" },
+                  item.image ? h("img", { src: item.image, alt: item.name }) : h("span", null, "Imagem")
+                ),
+                h("div", { className: "react-cart-info" },
+                  h("strong", null, item.name),
+                  item.colorName ? h("span", null, `Cor: ${item.colorName}`) : null,
+                  item.sellerPaysShipping ? h("em", null, "Frete gratis") : null,
+                  h("b", null, money(Number(item.price || 0) * Number(item.quantity || 0)))
+                ),
+                h("div", { className: "react-cart-controls" },
+                  h("select", {
+                    value: Number(item.quantity || 1),
+                    onChange: (event) => changeQuantity(index, Number(event.target.value))
+                  }, Array.from({ length: 10 }, (_, optionIndex) =>
+                    h("option", { key: optionIndex + 1, value: optionIndex + 1 }, optionIndex + 1)
+                  )),
+                  h("button", { type: "button", onClick: () => removeItem(index), "aria-label": "Remover item" },
+                    h("span", { className: "material-symbols-rounded" }, "delete")
+                  )
+                )
+              ))
+            ),
+            h("section", { className: "react-detail-card react-cart-delivery" },
+              h("small", null, "Entrega"),
+              h("label", null,
+                h("span", null, "Cupom"),
+                h("input", {
+                  value: coupon,
+                  onChange: (event) => setCoupon(event.target.value.toUpperCase()),
+                  placeholder: "Ex: FRETE3D"
+                })
+              ),
+              h("div", { className: "react-shipping-note" }, allFreeShipping ? "Frete gratis liberado por produto." : "Opcoes logisticas serao integradas nesta tela React.")
+            ),
+            h("section", { className: "react-cart-summary" },
+              h("div", null, h("span", null, "Subtotal"), h("strong", null, money(subtotal))),
+              h("div", null, h("span", null, "Frete"), h("strong", null, allFreeShipping ? "Gratis" : "A calcular")),
+              h("div", null, h("span", null, "Total"), h("strong", null, allFreeShipping ? money(total) : money(subtotal))),
+              h("button", { type: "button" }, "Finalizar pedido")
+            )
+          )
+          : h("section", { className: "react-empty-cart" },
+            h("span", { className: "material-symbols-rounded" }, "shopping_bag"),
+            h("h2", null, "Seu carrinho esta vazio"),
+            h("p", null, "Escolha um produto para continuar a compra."),
+            h("a", { className: "react-buy", href: "/react" }, "Ver produtos")
+          )
+    );
+  }
+
   function App() {
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -474,11 +584,19 @@
     }, []);
 
     const isProductPage = window.location.pathname.startsWith("/react/produto");
+    const isCartPage = window.location.pathname.startsWith("/react/carrinho");
 
     if (isProductPage) {
       return h(React.Fragment, null,
         h(Topbar, { count, detail: true }),
         h(ProductDetail, { products, loading, setCount })
+      );
+    }
+
+    if (isCartPage) {
+      return h(React.Fragment, null,
+        h(Topbar, { count, detail: true }),
+        h(CartPage, { products, loading, setCount })
       );
     }
 
