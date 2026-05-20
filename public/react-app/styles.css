@@ -814,6 +814,92 @@ main {
   color: var(--ink);
 }
 
+.react-cart-address-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.react-destination-card {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid #bfe5d4;
+  border-radius: 8px;
+  color: var(--muted);
+  background: #eefaf3;
+  font-weight: 800;
+}
+
+.react-destination-card strong {
+  color: var(--ink);
+}
+
+.react-coupon-ok,
+.react-coupon-error,
+.react-cart-status {
+  margin: 0;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.react-coupon-ok {
+  color: #008d4d;
+}
+
+.react-coupon-error,
+.react-cart-status {
+  color: #a83232;
+}
+
+.react-shipping-options {
+  display: grid;
+  gap: 8px;
+}
+
+.react-shipping-option {
+  display: grid;
+  grid-template-columns: 24px 78px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  background: #fff;
+}
+
+.react-shipping-option input {
+  width: 18px;
+  min-height: 18px;
+}
+
+.react-shipping-option img {
+  width: 78px;
+  max-height: 34px;
+  object-fit: contain;
+}
+
+.react-shipping-option span {
+  display: grid;
+  min-width: 0;
+}
+
+.react-shipping-option strong,
+.react-shipping-option small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.react-shipping-option small {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.react-shipping-option b {
+  font-size: 0.92rem;
+}
+
 .react-shipping-note {
   padding: 12px;
   border-radius: 8px;

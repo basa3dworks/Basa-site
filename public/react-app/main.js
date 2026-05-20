@@ -2,6 +2,7 @@
   const h = React.createElement;
   const { useEffect, useMemo, useState } = React;
   const CART_KEY = "basa_cart";
+  const CUSTOMER_SESSION_KEY = "basa_customer_session";
 
   function money(value) {
     return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(value || 0));
@@ -139,6 +140,26 @@
     }
   }
 
+  function customerSession() {
+    try {
+      return JSON.parse(localStorage.getItem(CUSTOMER_SESSION_KEY) || "null");
+    } catch {
+      return null;
+    }
+  }
+
+  function apiCartItems(items) {
+    return items.map((item) => ({
+      productId: item.productId || item.id,
+      quantity: Number(item.quantity || 1),
+      variant: item.colorName ? { color: item.colorName, colorHex: item.colorHex || "" } : (item.variant || {})
+    })).filter((item) => item.productId);
+  }
+
+  function shippingQuoteId(quote) {
+    return String(quote?.id || `${quote?.carrier || ""}-${quote?.service || ""}-${quote?.price || ""}`);
+  }
+
   function saveCart(items) {
     localStorage.setItem(CART_KEY, JSON.stringify(items));
     window.dispatchEvent(new Event("basa-cart-change"));
@@ -153,6 +174,7 @@
       existing.quantity = Number(existing.quantity || 0) + quantity;
     } else {
       items.push({
+        productId: product.id,
         id: product.id,
         slug: product.slug,
         name: product.name,
@@ -467,6 +489,25 @@
   function CartPage({ products, loading, setCount }) {
     const [items, setItems] = useState(cartItems());
     const [coupon, setCoupon] = useState("");
+    const [couponResult, setCouponResult] = useState(null);
+    const [address, setAddress] = useState(() => {
+      const customer = customerSession()?.customer || {};
+      return {
+        zipCode: String(customer.zipCode || "").replace(/\D/g, ""),
+        number: customer.number || "",
+        complement: customer.complement || "",
+        street: customer.street || "",
+        neighborhood: customer.neighborhood || "",
+        city: customer.city || "",
+        state: customer.state || "",
+        ibge: customer.ibge || ""
+      };
+    });
+    const [quotes, setQuotes] = useState([]);
+    const [selectedQuoteId, setSelectedQuoteId] = useState("");
+    const [shippingBenefit, setShippingBenefit] = useState(null);
+    const [cartStatus, setCartStatus] = useState("");
+    const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
       const sync = () => setItems(cartItems());
@@ -474,11 +515,89 @@
       return () => window.removeEventListener("basa-cart-change", sync);
     }, []);
 
+    useEffect(() => {
+      const zipCode = String(address.zipCode || "").replace(/\D/g, "");
+      if (zipCode.length !== 8 || !items.length) {
+        setQuotes([]);
+        setSelectedQuoteId("");
+        setShippingBenefit(null);
+        return;
+      }
+      let active = true;
+      setCartStatus("Calculando entrega...");
+      fetch("/api/shipping/quote", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ zipCode, items: apiCartItems(items) })
+      })
+        .then(async (response) => {
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(data.error || "Nao foi possivel calcular o frete.");
+          return data;
+        })
+        .then((data) => {
+          if (!active) return;
+          const nextQuotes = data.quotes || [];
+          setQuotes(nextQuotes);
+          setShippingBenefit(data.shippingBenefit || null);
+          setSelectedQuoteId((current) => current && nextQuotes.some((quote) => shippingQuoteId(quote) === current)
+            ? current
+            : shippingQuoteId(nextQuotes[0] || {}));
+          setCartStatus(nextQuotes.length ? "" : data.shippingBenefit?.message || "Nenhuma opcao de entrega encontrada.");
+        })
+        .catch((error) => {
+          if (!active) return;
+          setQuotes([]);
+          setSelectedQuoteId("");
+          setShippingBenefit(null);
+          setCartStatus(error.message);
+        });
+      return () => { active = false; };
+    }, [address.zipCode, items]);
+
+    useEffect(() => {
+      const code = coupon.trim().toUpperCase();
+      if (!code || !items.length) {
+        setCouponResult(null);
+        return;
+      }
+      let active = true;
+      const timer = setTimeout(() => {
+        fetch("/api/coupons/validate", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ code, items: apiCartItems(items) })
+        })
+          .then(async (response) => {
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(data.error || "Cupom invalido.");
+            return data;
+          })
+          .then((data) => {
+            if (active) setCouponResult(data);
+          })
+          .catch((error) => {
+            if (active) setCouponResult({ valid: false, reason: error.message });
+          });
+      }, 450);
+      return () => {
+        active = false;
+        clearTimeout(timer);
+      };
+    }, [coupon, items]);
+
     const enriched = items.map((item) => enrichCartItem(item, products));
     const subtotal = enriched.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0);
     const allFreeShipping = enriched.length > 0 && enriched.every((item) => item.sellerPaysShipping);
-    const shipping = allFreeShipping ? 0 : 0;
-    const total = subtotal + shipping;
+    const selectedQuote = quotes.find((quote) => shippingQuoteId(quote) === selectedQuoteId) || null;
+    const freeShipping = Boolean(shippingBenefit?.freeShipping || allFreeShipping || (couponResult?.valid && couponResult?.coupon?.type === "free_shipping"));
+    const discount = couponResult?.valid && couponResult?.coupon?.type === "percent"
+      ? subtotal * Number(couponResult.coupon.value || 0) / 100
+      : couponResult?.valid && couponResult?.coupon?.type && couponResult.coupon.type !== "free_shipping"
+        ? Math.min(subtotal, Number(couponResult.coupon.value || 0))
+        : 0;
+    const shipping = freeShipping ? 0 : selectedQuote ? Number(selectedQuote.price || 0) : null;
+    const total = Math.max(0, subtotal - discount) + Number(shipping || 0);
 
     const updateItems = (nextItems) => {
       saveCart(nextItems);
@@ -493,6 +612,82 @@
 
     const removeItem = (index) => {
       updateItems(items.filter((_, itemIndex) => itemIndex !== index));
+    };
+
+    const updateAddress = (field, value) => {
+      setAddress((current) => ({ ...current, [field]: field === "state" ? value.toUpperCase() : value }));
+    };
+
+    const lookupCep = async () => {
+      const zipCode = String(address.zipCode || "").replace(/\D/g, "");
+      if (zipCode.length !== 8) return;
+      setCartStatus("Buscando CEP...");
+      try {
+        const response = await fetch(`/api/cep/${zipCode}`);
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || "CEP nao encontrado.");
+        setAddress((current) => ({
+          ...current,
+          zipCode: data.zipCode || data.cep || zipCode,
+          street: data.street || "",
+          neighborhood: data.neighborhood || "",
+          city: data.city || "",
+          state: data.state || "",
+          ibge: data.ibge || ""
+        }));
+        setCartStatus("");
+      } catch (error) {
+        setCartStatus(error.message || "Nao foi possivel consultar o CEP.");
+      }
+    };
+
+    const checkout = async () => {
+      const session = customerSession();
+      if (!session?.customer) {
+        setCartStatus("Entre na sua conta antes de finalizar a compra.");
+        return;
+      }
+      if (!items.length || submitting) return;
+      if (!freeShipping && !selectedQuote) {
+        setCartStatus("Calcule e selecione uma opcao de entrega.");
+        return;
+      }
+      setSubmitting(true);
+      setCartStatus("Criando pedido...");
+      const customer = {
+        ...session.customer,
+        zipCode: String(address.zipCode || "").replace(/\D/g, ""),
+        number: address.number,
+        complement: address.complement,
+        street: address.street,
+        neighborhood: address.neighborhood,
+        city: address.city,
+        state: address.state,
+        ibge: address.ibge
+      };
+      try {
+        const response = await fetch("/api/checkout", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            items: apiCartItems(items),
+            customer,
+            customerLoggedIn: true,
+            shippingOption: selectedQuote,
+            zipCode: customer.zipCode,
+            coupon: coupon.trim().toUpperCase()
+          })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || "Nao foi possivel criar o pedido.");
+        saveCart([]);
+        setItems([]);
+        setCount(0);
+        window.location.href = data.payment?.checkoutUrl || `/obrigado.html?pedido=${data.order?.id || ""}`;
+      } catch (error) {
+        setCartStatus(error.message || "Nao foi possivel criar o pedido.");
+        setSubmitting(false);
+      }
     };
 
     return h("main", { className: "react-cart-page" },
@@ -529,7 +724,42 @@
               ))
             ),
             h("section", { className: "react-detail-card react-cart-delivery" },
-              h("small", null, "Entrega"),
+              h("small", null, "Endereco da entrega"),
+              h("div", { className: "react-cart-address-grid" },
+                h("label", null,
+                  h("span", null, "CEP"),
+                  h("input", {
+                    value: address.zipCode,
+                    onChange: (event) => updateAddress("zipCode", event.target.value.replace(/\D/g, "").slice(0, 8)),
+                    onBlur: lookupCep,
+                    placeholder: "01128010",
+                    inputMode: "numeric"
+                  })
+                ),
+                h("label", null,
+                  h("span", null, "Numero"),
+                  h("input", {
+                    value: address.number,
+                    onChange: (event) => updateAddress("number", event.target.value),
+                    placeholder: "107"
+                  })
+                ),
+                h("label", null,
+                  h("span", null, "Complemento"),
+                  h("input", {
+                    value: address.complement,
+                    onChange: (event) => updateAddress("complement", event.target.value),
+                    placeholder: "Apto 154"
+                  })
+                )
+              ),
+              (address.street || address.city) && h("div", { className: "react-destination-card" },
+                h("strong", null, "Destino"),
+                h("span", null, [address.street, address.number].filter(Boolean).join(", ")),
+                h("span", null, [address.neighborhood, address.city && address.state ? `${address.city}/${address.state}` : address.city || address.state].filter(Boolean).join(" - ")),
+                address.complement ? h("span", null, `Complemento: ${address.complement}`) : null,
+                h("span", null, `CEP ${String(address.zipCode || "").replace(/^(\d{5})(\d{3})$/, "$1-$2")}`)
+              ),
               h("label", null,
                 h("span", null, "Cupom"),
                 h("input", {
@@ -538,13 +768,35 @@
                   placeholder: "Ex: FRETE3D"
                 })
               ),
-              h("div", { className: "react-shipping-note" }, allFreeShipping ? "Frete gratis liberado por produto." : "Opcoes logisticas serao integradas nesta tela React.")
+              couponResult && h("p", { className: couponResult.valid ? "react-coupon-ok" : "react-coupon-error" },
+                couponResult.valid ? "Cupom aplicado." : couponResult.reason || "Cupom invalido."
+              ),
+              h("div", { className: "react-shipping-options" },
+                quotes.length
+                  ? quotes.map((quote) => h("label", { className: "react-shipping-option", key: shippingQuoteId(quote) },
+                    h("input", {
+                      type: "radio",
+                      name: "reactShippingOption",
+                      checked: shippingQuoteId(quote) === selectedQuoteId,
+                      onChange: () => setSelectedQuoteId(shippingQuoteId(quote))
+                    }),
+                    quote.logo ? h("img", { src: quote.logo, alt: quote.displayName || quote.carrier || "Entrega" }) : null,
+                    h("span", null,
+                      h("strong", null, quote.displayName || `${quote.carrier} ${quote.service}`),
+                      h("small", null, quote.deliveryDays ? `${quote.deliveryDays} dias uteis` : "Prazo a confirmar")
+                    ),
+                    h("b", null, freeShipping ? "Gratis" : money(quote.price))
+                  ))
+                  : h("div", { className: "react-shipping-note" }, shippingBenefit?.message || cartStatus || "Informe o CEP para calcular a entrega.")
+              )
             ),
             h("section", { className: "react-cart-summary" },
               h("div", null, h("span", null, "Subtotal"), h("strong", null, money(subtotal))),
-              h("div", null, h("span", null, "Frete"), h("strong", null, allFreeShipping ? "Gratis" : "A calcular")),
-              h("div", null, h("span", null, "Total"), h("strong", null, allFreeShipping ? money(total) : money(subtotal))),
-              h("button", { type: "button" }, "Finalizar pedido")
+              discount > 0 ? h("div", null, h("span", null, "Desconto"), h("strong", null, `-${money(discount)}`)) : null,
+              h("div", null, h("span", null, "Frete"), h("strong", null, freeShipping ? "Gratis" : shipping === null ? "A calcular" : money(shipping))),
+              h("div", null, h("span", null, "Total"), h("strong", null, money(total))),
+              h("button", { type: "button", onClick: checkout, disabled: submitting }, submitting ? "Processando..." : "Finalizar pedido"),
+              cartStatus ? h("p", { className: "react-cart-status" }, cartStatus) : null
             )
           )
           : h("section", { className: "react-empty-cart" },
