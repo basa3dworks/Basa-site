@@ -99,16 +99,13 @@ main {
 }
 
 .react-customer-row .react-verified-badge {
-  width: 15px;
-  height: 15px;
+  width: 14px;
+  height: 14px;
   flex: 0 0 auto;
 }
 
 .react-customer-row .react-verified-badge::after {
-  top: 3px;
-  left: 4px;
-  width: 6px;
-  height: 3px;
+  background-size: 7px 6px;
 }
 
 .round-icon {
@@ -770,23 +767,21 @@ main {
 
 .react-verified-badge {
   position: relative;
-  display: inline-block;
+  display: inline-grid;
+  place-items: center;
   width: 16px;
   height: 16px;
-  border-radius: 999px;
-  background: #1da1f2;
+  margin-left: 4px;
+  vertical-align: middle;
+  background: #0b73e8;
+  clip-path: polygon(50% 0%, 58% 9%, 69% 3%, 75% 14%, 87% 13%, 88% 27%, 100% 34%, 94% 46%, 100% 58%, 90% 67%, 91% 80%, 78% 84%, 72% 96%, 59% 92%, 50% 100%, 41% 92%, 28% 96%, 22% 84%, 9% 80%, 10% 67%, 0% 58%, 6% 46%, 0% 34%, 12% 27%, 13% 13%, 25% 14%, 31% 3%, 42% 9%);
 }
 
 .react-verified-badge::after {
   position: absolute;
-  top: 3px;
-  left: 4px;
-  width: 7px;
-  height: 4px;
-  border-bottom: 2px solid #fff;
-  border-left: 2px solid #fff;
+  inset: 0;
+  background: center / 8px 7px no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 10'%3E%3Cpath d='M1.5 5.1 4.7 8.2 10.5 1.7' fill='none' stroke='%23fff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   content: "";
-  transform: rotate(-45deg);
 }
 
 .react-review-card p,
