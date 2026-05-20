@@ -468,12 +468,13 @@ main {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+  align-items: start;
 }
 
 .react-product-card {
   display: grid;
   align-content: start;
-  gap: 5px;
+  gap: 4px;
   min-width: 0;
   padding: 8px;
   border: 1px solid var(--line);
@@ -482,6 +483,7 @@ main {
 }
 
 .react-product-image {
+  position: relative;
   display: grid;
   aspect-ratio: 1 / 1;
   place-items: center;
@@ -505,15 +507,87 @@ main {
 }
 
 .react-product-card strong {
-  min-height: 2.2em;
   font-size: 0.84rem;
   line-height: 1.12;
 }
 
-.react-product-card p {
+.react-card-price {
+  display: grid;
+  gap: 1px;
+  margin-top: 1px;
+}
+
+.react-card-price p {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: baseline;
   margin: 0;
   color: var(--ink);
   font-size: 1rem;
+  font-weight: 900;
+}
+
+.react-card-price p sup {
+  font-size: 0.58em;
+  line-height: 1;
+}
+
+.react-card-price p em {
+  padding: 2px 5px;
+  border-radius: 999px;
+  background: #fff1e8;
+  color: #bf4d28;
+  font-size: 0.62rem;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.react-old-price {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-decoration: line-through;
+}
+
+.react-product-badge {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+  max-width: calc(100% - 12px);
+  padding: 4px 6px;
+  border-radius: 5px;
+  background: #c76442;
+  color: #fff;
+  font-size: 0.58rem;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.react-product-badge .material-symbols-rounded {
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.react-product-badge.campaign-flash {
+  background: #e23d2f;
+}
+
+.react-product-badge.campaign-clearance {
+  background: #ff6a1a;
+}
+
+.react-product-badge.campaign-launch {
+  background: #1f7f5c;
+}
+
+.react-flash-line {
+  color: #bf4d28;
+  font-size: 0.66rem;
   font-weight: 900;
 }
 

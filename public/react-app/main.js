@@ -9,6 +9,67 @@
     return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(value || 0));
   }
 
+  function moneyParts(value) {
+    const [main, cents = "00"] = money(value).split(",");
+    return { main, cents };
+  }
+
+  function discountPercent(product) {
+    const compareAt = Number(product?.compareAtPrice || 0);
+    const price = Number(product?.price || 0);
+    if (!compareAt || !price || compareAt <= price) return 0;
+    return Math.round((1 - price / compareAt) * 100);
+  }
+
+  function campaignIsRunning(campaign) {
+    if (!campaign?.active) return false;
+    const now = Date.now();
+    const startsAt = campaign.startsAt ? new Date(campaign.startsAt).getTime() : 0;
+    const endsAt = campaign.endsAt ? new Date(campaign.endsAt).getTime() : Infinity;
+    return now >= startsAt && now <= endsAt;
+  }
+
+  function campaignLabel(product) {
+    const campaign = product?.campaign || {};
+    if (!campaignIsRunning(campaign)) return "";
+    if (campaign.label) return campaign.label;
+    return {
+      flash: "Oferta relampago",
+      clearance: "Queima de estoque",
+      launch: "Lancamento",
+      featured: "Destaque"
+    }[campaign.type] || "Destaque";
+  }
+
+  function campaignBadgeClass(product) {
+    return campaignIsRunning(product?.campaign) ? `campaign-${product.campaign?.type || "featured"}` : "";
+  }
+
+  function campaignEndsLabel(campaign) {
+    if (!campaign?.endsAt) return "por tempo limitado";
+    const remainingMs = new Date(campaign.endsAt).getTime() - Date.now();
+    if (!Number.isFinite(remainingMs) || remainingMs <= 0) return "terminando agora";
+    const hours = Math.floor(remainingMs / 3600000);
+    const minutes = Math.floor((remainingMs % 3600000) / 60000);
+    return hours > 0 ? `termina em ${hours}h ${minutes}min` : `termina em ${minutes}min`;
+  }
+
+  function productSortScore(product) {
+    let score = Number(product.priority || 0);
+    if (campaignIsRunning(product?.campaign)) {
+      score += 600 + Number(product.campaign?.priority || 0) * 8;
+      if (product.campaign?.type === "flash") score += 180;
+      if (product.campaign?.type === "clearance") score += 120;
+      if (product.campaign?.type === "launch") score += 90;
+    }
+    score += discountPercent(product) * 5;
+    score += Math.min(90, Number(product.soldUnits || product.soldCount || 0) * 3);
+    score += Math.min(50, Number(product.favoriteCount || 0) * 2);
+    score += Number(product.rating?.average || product.ratingAverage || 0) * 8;
+    if (product.sellerPaysShipping) score += 20;
+    return score;
+  }
+
   function cartCount() {
     try {
       return JSON.parse(localStorage.getItem(CART_KEY) || "[]").reduce((sum, item) => sum + Number(item.quantity || 0), 0);
@@ -46,8 +107,8 @@
         Array.from({ length: 5 }, (_, index) => {
           const fill = Math.max(0, Math.min(100, (rating - index) * 100));
           return h("span", { className: "react-star", key: index },
-            h("span", { style: { width: `${fill}%` } }, "★"),
-            h("span", null, "★")
+            h("span", { style: { width: `${fill}%` } }, "\u2605"),
+            h("span", null, "\u2605")
           );
         })
       ),
@@ -581,15 +642,28 @@
   function ProductCard({ product }) {
     const rating = productRating(product);
     const img = productImage(product);
+    const badge = campaignLabel(product);
+    const discount = discountPercent(product);
+    const price = moneyParts(product.price);
     return h("a", { className: "react-product-card", href: `/react/produto?slug=${productSlug(product)}` },
       h("div", { className: "react-product-image" }, img
         ? h("img", { src: img, alt: product.name })
-        : h("span", null, "Imagem")
+        : h("span", null, "Imagem"),
+        badge ? h("span", { className: `react-product-badge ${campaignBadgeClass(product)}` },
+          product.campaign?.type === "clearance" ? h("span", { className: "material-symbols-rounded", "aria-hidden": "true" }, "local_fire_department") : null,
+          badge
+        ) : null
       ),
       h("small", null, product.category || "Produto"),
       h("strong", null, product.name),
       rating ? h(RatingStars, { value: rating.average, count: rating.count, compact: true }) : null,
-      h("p", null, money(product.price)),
+      campaignIsRunning(product.campaign) && product.campaign?.type === "flash"
+        ? h("span", { className: "react-flash-line" }, campaignEndsLabel(product.campaign))
+        : null,
+      h("div", { className: "react-card-price" },
+        product.compareAtPrice ? h("span", { className: "react-old-price" }, money(product.compareAtPrice)) : null,
+        h("p", null, h("span", null, price.main), h("sup", null, price.cents), discount ? h("em", null, `${discount}% OFF`) : null)
+      ),
       product.sellerPaysShipping ? h("span", { className: "free-shipping" }, "Frete Gratis") : null
     );
   }
@@ -881,9 +955,9 @@
         return active.filter((product) => product.category === category);
       }
       if (feed === "trending") {
-        return [...active].sort((a, b) => Number(b.soldUnits || 0) - Number(a.soldUnits || 0));
+        return [...active].sort((a, b) => Number(b.soldUnits || b.soldCount || 0) - Number(a.soldUnits || a.soldCount || 0));
       }
-      return active;
+      return [...active].sort((a, b) => productSortScore(b) - productSortScore(a));
     }, [products, feed]);
     const title = feed.startsWith("category:")
       ? feed.replace("category:", "")
