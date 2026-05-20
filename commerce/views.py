@@ -1570,7 +1570,7 @@ def api_checkout(request):
     )
     if not lines:
         return JsonResponse({"error": "Carrinho vazio."}, status=400)
-    if shipping > 0 and not shipping_option:
+    if not free_shipping and not shipping_option:
         return JsonResponse({"error": "Calcule e selecione uma opcao de entrega antes de finalizar o pedido."}, status=400)
     customer_email = str(body.get("customer", {}).get("email", "")).strip().lower()
     recent_order = _recent_pending_checkout(db, customer_email, lines, total)

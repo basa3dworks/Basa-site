@@ -2149,7 +2149,15 @@
     const productionDays = cartProductionDays(enriched);
     const freeReferenceQuote = freeShippingReferenceQuote(quotes);
     const freeShippingDeadline = freeReferenceQuote ? shippingDeadlineLabel(freeReferenceQuote, productionDays) : productionDays ? `${productionDays} dias úteis de produção + prazo do envio` : "Prazo a confirmar";
-    const freeShipping = Boolean(shippingBenefit?.freeShipping || allFreeShipping || (couponResult?.valid && couponResult?.coupon?.type === "free_shipping"));
+    const couponFreeShipping = Boolean(couponResult?.valid && couponResult?.coupon?.type === "free_shipping");
+    const benefitReason = shippingBenefit?.reason;
+    const minFreeSubtotal = Number(shippingBenefit?.freeShippingMinSubtotal || 100);
+    const backendFreeShipping = Boolean(shippingBenefit?.freeShipping && (
+      (benefitReason === "subtotal" && subtotal >= minFreeSubtotal)
+      || (benefitReason === "seller_pays_shipping" && allFreeShipping)
+      || (benefitReason === "coupon" && couponFreeShipping)
+    ));
+    const freeShipping = Boolean(backendFreeShipping || allFreeShipping || couponFreeShipping);
     const discount = couponResult?.valid && couponResult?.coupon?.type === "percent"
       ? subtotal * Number(couponResult.coupon.value || 0) / 100
       : couponResult?.valid && couponResult?.coupon?.type && couponResult.coupon.type !== "free_shipping"
@@ -2163,6 +2171,8 @@
       saveCart(nextItems);
       setItems(nextItems);
       setCount(cartCount());
+      setShippingBenefit(null);
+      setSelectedQuoteId("");
     };
 
     const changeQuantity = (index, quantity) => {
