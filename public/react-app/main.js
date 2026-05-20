@@ -474,6 +474,48 @@
     return String(quote?.id || `${quote?.carrier || ""}-${quote?.service || ""}-${quote?.price || ""}`);
   }
 
+  function productionDaysFromProduct(product = {}) {
+    const candidates = [
+      product.productionDays,
+      product.leadTimeDays,
+      product.shipping?.productionDays
+    ];
+    const specs = product.specs || {};
+    if (specs && typeof specs === "object" && !Array.isArray(specs)) {
+      Object.entries(specs).forEach(([key, value]) => {
+        const normalizedKey = String(key || "").toLowerCase();
+        if (normalizedKey.includes("prazo") || normalizedKey.includes("produc")) candidates.push(value);
+      });
+    }
+    for (const candidate of candidates) {
+      const numbers = String(candidate ?? "").match(/\d+/g);
+      if (numbers?.length) return Math.max(...numbers.map(Number).filter(Number.isFinite));
+    }
+    return 3;
+  }
+
+  function cartProductionDays(items = []) {
+    return Math.max(...items.map((item) => Number(item.productionDays || productionDaysFromProduct(item.product || item) || 0)), 0);
+  }
+
+  function quoteDeliveryDays(quote) {
+    return Number(quote?.deliveryDays || quote?.delivery_time || 0);
+  }
+
+  function shippingDeadlineLabel(quote, productionDays = 0) {
+    const deliveryDays = quoteDeliveryDays(quote);
+    const totalDays = deliveryDays + Number(productionDays || 0);
+    if (!totalDays) return "Prazo a confirmar";
+    return `${totalDays} dias úteis`;
+  }
+
+  function freeShippingReferenceQuote(quotes = []) {
+    return quotes.find((quote) => quote.methodCode === "jet-standard")
+      || quotes.find((quote) => /j\s*&?\s*t|jet/i.test(`${quote.carrier || ""} ${quote.displayName || ""} ${quote.service || ""}`))
+      || quotes[0]
+      || null;
+  }
+
   function cleanZip(value) {
     return String(value || "").replace(/\D/g, "").slice(0, 8);
   }
@@ -2047,6 +2089,9 @@
     const subtotal = enriched.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0);
     const allFreeShipping = enriched.length > 0 && enriched.every((item) => item.sellerPaysShipping);
     const selectedQuote = quotes.find((quote) => shippingQuoteId(quote) === selectedQuoteId) || null;
+    const productionDays = cartProductionDays(enriched);
+    const freeReferenceQuote = freeShippingReferenceQuote(quotes);
+    const freeShippingDeadline = freeReferenceQuote ? shippingDeadlineLabel(freeReferenceQuote, productionDays) : productionDays ? `${productionDays} dias úteis de produção + prazo do envio` : "Prazo a confirmar";
     const freeShipping = Boolean(shippingBenefit?.freeShipping || allFreeShipping || (couponResult?.valid && couponResult?.coupon?.type === "free_shipping"));
     const discount = couponResult?.valid && couponResult?.coupon?.type === "percent"
       ? subtotal * Number(couponResult.coupon.value || 0) / 100
@@ -2228,7 +2273,9 @@
               ),
               freeShipping
                 ? h("div", { className: "react-shipping-note free" },
-                  shippingBenefit?.message || "Frete grátis neste pedido. A Basa 3D Works define a melhor forma de envio."
+                  h("strong", null, shippingBenefit?.message || "Frete grátis neste pedido."),
+                  h("span", null, `Previsão: ${freeShippingDeadline} (produção + envio).`),
+                  h("small", null, "A Basa 3D Works define a melhor forma de envio.")
                 )
                 : h("div", { className: "react-shipping-options" },
                   quotes.length
@@ -2242,7 +2289,7 @@
                     quote.logo ? h("img", { src: quote.logo, alt: quote.displayName || quote.carrier || "Entrega" }) : null,
                     h("span", null,
                       h("strong", null, quote.displayName || `${quote.carrier} ${quote.service}`),
-                      h("small", null, quote.deliveryDays ? `${quote.deliveryDays} dias uteis` : "Prazo a confirmar")
+                      h("small", null, shippingDeadlineLabel(quote, productionDays))
                     ),
                     h("b", null, freeShipping ? "Grátis" : money(quote.price))
                   ))

@@ -1790,8 +1790,20 @@ main {
 }
 
 .react-shipping-note.free {
+  display: grid;
+  gap: 4px;
   color: #006d42;
   background: #e6f6ee;
+}
+
+.react-shipping-note.free span,
+.react-shipping-note.free small {
+  color: #315a4a;
+  font-weight: 800;
+}
+
+.react-shipping-note.free small {
+  font-size: 0.78rem;
 }
 
 .react-cart-summary {
