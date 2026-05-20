@@ -1201,6 +1201,13 @@ main {
   padding: 16px 14px 28px;
 }
 
+.react-chat-page {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  padding: 16px 14px 28px;
+}
+
 .react-orders-list,
 .react-requests-list {
   display: grid;
@@ -1425,6 +1432,113 @@ main {
   border: 0;
   border-radius: 8px;
   padding: 0 14px;
+  color: #fff;
+  background: var(--brand);
+  font-weight: 900;
+}
+
+.react-chat-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.react-chat-card > p {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.react-chat-thread {
+  display: grid;
+  gap: 8px;
+  max-height: 52vh;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.react-chat-message {
+  display: grid;
+  gap: 4px;
+  max-width: 88%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.react-chat-message.customer {
+  justify-self: end;
+  color: #fff;
+  background: var(--brand);
+}
+
+.react-chat-message.admin {
+  justify-self: start;
+  color: var(--ink);
+  background: var(--soft);
+}
+
+.react-chat-message small {
+  opacity: 0.78;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.react-chat-empty {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  padding: 28px 16px;
+  border-radius: 8px;
+  background: var(--soft);
+  text-align: center;
+}
+
+.react-chat-empty .material-symbols-rounded {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border-radius: 999px;
+  color: var(--brand);
+  background: #fff;
+  font-size: 1.8rem;
+}
+
+.react-chat-empty strong,
+.react-chat-empty p {
+  margin: 0;
+}
+
+.react-chat-empty p {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.react-chat-form {
+  display: grid;
+  gap: 8px;
+}
+
+.react-chat-form textarea {
+  width: 100%;
+  min-height: 92px;
+  resize: vertical;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.react-chat-form button {
+  min-height: 48px;
+  border: 0;
+  border-radius: 8px;
   color: #fff;
   background: var(--brand);
   font-weight: 900;

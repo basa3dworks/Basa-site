@@ -3,6 +3,7 @@
   const { useEffect, useMemo, useState } = React;
   const CART_KEY = "basa_cart";
   const CUSTOMER_SESSION_KEY = "basa_customer_session";
+  const SUPPORT_CHAT_KEY = "basa_support_chat";
   const DELIVERY_ADDRESSES_KEY = "basa_delivery_addresses";
   const SELECTED_DELIVERY_ADDRESS_KEY = "basa_selected_delivery_address";
 
@@ -148,6 +149,26 @@
     } catch {
       return null;
     }
+  }
+
+  function supportChatState() {
+    try {
+      return JSON.parse(localStorage.getItem(SUPPORT_CHAT_KEY) || "null");
+    } catch {
+      return null;
+    }
+  }
+
+  function saveSupportChatState(chat) {
+    localStorage.setItem(SUPPORT_CHAT_KEY, JSON.stringify(chat));
+  }
+
+  function supportRequestFromList(requests, chat) {
+    const chats = (requests || [])
+      .filter((request) => request.kind === "chat" || String(request.title || "").startsWith("Atendimento"))
+      .sort((a, b) => Date.parse(b.updatedAt || b.createdAt || 0) - Date.parse(a.updatedAt || a.createdAt || 0));
+    const saved = chats.find((request) => request.id === chat?.id && request.status !== "closed");
+    return saved || chats.find((request) => request.status !== "closed") || chats[0] || null;
   }
 
   function accountNextUrl() {
@@ -367,7 +388,7 @@
       h("label", { className: "react-search" },
         h("input", { placeholder: "Buscar na Basa 3D Works", readOnly: true })
       ),
-      h("a", { className: "round-icon", href: "/?panel=chat#produtos", "aria-label": "Chat" },
+      h("a", { className: "round-icon", href: "/react/chat", "aria-label": "Chat" },
         h("span", { className: "material-symbols-rounded" }, "forum")
       ),
       h("a", { className: "round-icon cart-icon", href: "/react/carrinho", "aria-label": "Carrinho" },
@@ -983,6 +1004,129 @@
     );
   }
 
+  function ChatPage() {
+    const [session, setSession] = useState(customerSession());
+    const [chat, setChat] = useState(null);
+    const [message, setMessage] = useState("");
+    const [status, setStatus] = useState("");
+    const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
+    const customer = session?.customer || null;
+
+    const loadChat = (markSeen = true) => {
+      if (!customer?.email) {
+        setChat(null);
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
+      const saved = supportChatState() || { email: customer.email, seenAdminCount: 0 };
+      fetch(`/api/custom-requests?email=${encodeURIComponent(customer.email)}`)
+        .then(async (response) => {
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(data.error || "Nao foi possivel carregar o chat.");
+          const nextChat = supportRequestFromList(data.requests || [], saved);
+          setChat(nextChat);
+          if (nextChat) {
+            const adminCount = (nextChat.messages || []).filter((item) => item.author === "admin").length;
+            saveSupportChatState({
+              id: nextChat.id,
+              email: nextChat.customer?.email || customer.email,
+              seenAdminCount: markSeen ? adminCount : Number(saved.seenAdminCount || 0)
+            });
+          }
+          setStatus("");
+        })
+        .catch((error) => {
+          setStatus(error.message || "Nao foi possivel carregar o chat.");
+          setChat(null);
+        })
+        .finally(() => setLoading(false));
+    };
+
+    useEffect(loadChat, [customer?.email]);
+
+    const sendChatMessage = async (event) => {
+      event.preventDefault();
+      const text = message.trim();
+      if (!customer?.email || !text || submitting) return;
+      setSubmitting(true);
+      setStatus("Enviando mensagem...");
+      try {
+        const response = chat ? await fetch(`/api/custom-requests/${encodeURIComponent(chat.id)}/messages`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ email: customer.email, text })
+        }) : await fetch("/api/custom-requests", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            title: "Atendimento pelo chat",
+            kind: "chat",
+            idea: text,
+            customer
+          })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || "Nao foi possivel enviar a mensagem.");
+        const nextChat = data.request;
+        setChat(nextChat);
+        setMessage("");
+        saveSupportChatState({
+          id: nextChat.id,
+          email: customer.email,
+          seenAdminCount: (nextChat.messages || []).filter((item) => item.author === "admin").length
+        });
+        setStatus("Mensagem enviada. A resposta aparece aqui no chat.");
+      } catch (error) {
+        setStatus(error.message || "Nao foi possivel enviar a mensagem.");
+      } finally {
+        setSubmitting(false);
+      }
+    };
+
+    return h("main", { className: "react-chat-page" },
+      h("section", { className: "react-account-hero" },
+        h("small", null, "Atendimento"),
+        h("h1", null, "Chat Basa"),
+        h("p", null, customer ? "Fale conosco por aqui. A resposta aparece nesta conversa." : "Entre para enviar mensagens e acompanhar a resposta no chat.")
+      ),
+      !customer
+        ? h("section", { className: "react-account-card" },
+          h("p", null, "Para falar com a Basa, conecte sua conta primeiro."),
+          h("a", { className: "react-primary-link", href: "/react/conta?next=/react/chat" }, "Entrar ou criar conta")
+        )
+        : h(React.Fragment, null,
+          h("section", { className: "react-chat-card" },
+            loading
+              ? h("p", null, "Carregando conversa...")
+              : chat?.messages?.length
+                ? h("div", { className: "react-chat-thread" },
+                  chat.messages.map((item) => h("div", { className: `react-chat-message ${item.author === "admin" ? "admin" : "customer"}`, key: item.id || `${item.author}-${item.createdAt}` },
+                    h("span", null, item.text),
+                    h("small", null, item.author === "admin" ? "Basa" : "Voce")
+                  ))
+                )
+                : h("div", { className: "react-chat-empty" },
+                  h("span", { className: "material-symbols-rounded" }, "forum"),
+                  h("strong", null, "Comece uma conversa"),
+                  h("p", null, "Envie uma mensagem e acompanhe a resposta aqui.")
+                ),
+            h("form", { className: "react-chat-form", onSubmit: sendChatMessage },
+              h("textarea", {
+                value: message,
+                onChange: (event) => setMessage(event.target.value),
+                placeholder: "Escreva sua mensagem",
+                rows: 3
+              }),
+              h("button", { type: "submit", disabled: submitting }, submitting ? "Enviando..." : "Enviar mensagem")
+            )
+          ),
+          status ? h("p", { className: "react-account-status" }, status) : null
+        )
+    );
+  }
+
   function OrdersPage({ products }) {
     const [session, setSession] = useState(customerSession());
     const [orders, setOrders] = useState([]);
@@ -1527,6 +1671,7 @@
     const isAccountPage = window.location.pathname.startsWith("/react/conta");
     const isOrdersPage = window.location.pathname.startsWith("/react/pedidos");
     const isRequestsPage = window.location.pathname.startsWith("/react/encomendas");
+    const isChatPage = window.location.pathname.startsWith("/react/chat");
 
     if (isProductPage) {
       return h(React.Fragment, null,
@@ -1560,6 +1705,13 @@
       return h(React.Fragment, null,
         h(Topbar, { count, detail: true }),
         h(RequestsPage)
+      );
+    }
+
+    if (isChatPage) {
+      return h(React.Fragment, null,
+        h(Topbar, { count, detail: true }),
+        h(ChatPage)
       );
     }
 
