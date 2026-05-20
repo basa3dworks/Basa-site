@@ -150,6 +150,38 @@
     }
   }
 
+  function accountNextUrl() {
+    return getQuery("next") || "/react/carrinho";
+  }
+
+  function googleLoginUrl() {
+    const next = window.location.pathname + window.location.search;
+    return `/api/customer/google/start?next=${encodeURIComponent(next)}`;
+  }
+
+  function safeCustomerName(customer = {}) {
+    return customer.displayName || customer.name || customer.email || "Cliente Basa";
+  }
+
+  function defaultAccountForm(session = null) {
+    const customer = session?.customer || {};
+    return {
+      name: customer.name || "",
+      email: customer.email || "",
+      password: "",
+      customerUsername: customer.displayName || session?.username || "",
+      phone: customer.phone || "",
+      zipCode: cleanZip(customer.zipCode),
+      street: customer.street || "",
+      number: customer.number || "",
+      neighborhood: customer.neighborhood || "",
+      complement: customer.complement || "",
+      city: customer.city || "",
+      state: customer.state || "",
+      ibge: customer.ibge || ""
+    };
+  }
+
   function apiCartItems(items) {
     return items.map((item) => ({
       productId: item.productId || item.id,
@@ -557,6 +589,167 @@
     };
   }
 
+  function AccountPage() {
+    const [session, setSession] = useState(customerSession());
+    const [form, setForm] = useState(() => defaultAccountForm(customerSession()));
+    const [status, setStatus] = useState("");
+    const [submitting, setSubmitting] = useState(false);
+    const customer = session?.customer || null;
+    const nextUrl = accountNextUrl();
+
+    const updateForm = (field, value) => {
+      setForm((current) => ({ ...current, [field]: field === "state" ? value.toUpperCase().slice(0, 2) : value }));
+    };
+
+    const lookupCep = async () => {
+      const zipCode = cleanZip(form.zipCode);
+      if (zipCode.length !== 8) return;
+      setStatus("Buscando CEP...");
+      try {
+        const response = await fetch(`/api/cep/${zipCode}`);
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || "CEP nao encontrado.");
+        setForm((current) => ({
+          ...current,
+          zipCode: data.zipCode || data.cep || zipCode,
+          street: data.street || "",
+          neighborhood: data.neighborhood || "",
+          city: data.city || "",
+          state: data.state || "",
+          ibge: data.ibge || ""
+        }));
+        setStatus("");
+      } catch (error) {
+        setStatus(error.message || "Nao foi possivel consultar o CEP.");
+      }
+    };
+
+    const submitAccount = async (event) => {
+      event.preventDefault();
+      if (submitting) return;
+      setSubmitting(true);
+      setStatus("Validando acesso...");
+      try {
+        const response = await fetch("/api/customer/access", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            name: form.name,
+            email: form.email,
+            password: form.password,
+            customerPassword: form.password,
+            customerUsername: form.customerUsername,
+            username: form.customerUsername,
+            phone: form.phone,
+            zipCode: cleanZip(form.zipCode),
+            street: form.street,
+            number: form.number,
+            neighborhood: form.neighborhood,
+            complement: form.complement,
+            city: form.city,
+            state: form.state,
+            ibge: form.ibge
+          })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || "Nao foi possivel entrar ou cadastrar.");
+        const nextSession = {
+          loggedIn: true,
+          username: data.account?.username,
+          customer: data.account?.customer || data.customer?.customer || data.customer,
+          updatedAt: new Date().toISOString()
+        };
+        localStorage.setItem(CUSTOMER_SESSION_KEY, JSON.stringify(nextSession));
+        localStorage.removeItem(SELECTED_DELIVERY_ADDRESS_KEY);
+        setSession(nextSession);
+        setForm(defaultAccountForm(nextSession));
+        setStatus(data.created ? "Cadastro criado. Agora voce pode finalizar a compra." : "Login confirmado.");
+      } catch (error) {
+        setStatus(error.message || "Nao foi possivel entrar ou cadastrar.");
+      } finally {
+        setSubmitting(false);
+      }
+    };
+
+    const logout = () => {
+      localStorage.removeItem(CUSTOMER_SESSION_KEY);
+      localStorage.removeItem(SELECTED_DELIVERY_ADDRESS_KEY);
+      setSession(null);
+      setForm(defaultAccountForm(null));
+      setStatus("Sessao encerrada neste aparelho.");
+    };
+
+    return h("main", { className: "react-account-page" },
+      h("section", { className: "react-account-hero" },
+        h("small", null, "Conta do cliente"),
+        h("h1", null, customer ? "Minha conta" : "Entrar na Basa"),
+        h("p", null, customer ? "Seu acesso esta conectado ao carrinho React." : "Entre para finalizar pedidos, salvar endereco e acompanhar compras.")
+      ),
+      customer
+        ? h(React.Fragment, null,
+          h("section", { className: "react-account-card react-session-card" },
+            h("div", null,
+              h("strong", null, safeCustomerName(customer)),
+              h("span", null, customer.email || "")
+            ),
+            h("a", { className: "react-primary-link", href: nextUrl }, nextUrl.includes("carrinho") ? "Voltar ao carrinho" : "Continuar"),
+            h("button", { type: "button", className: "react-danger-button", onClick: logout }, "Sair")
+          ),
+          status ? h("p", { className: "react-account-status" }, status) : null
+        )
+        : h("section", { className: "react-account-card" },
+          h("a", { className: "react-google-button", href: googleLoginUrl() },
+            h("span", { className: "react-google-mark" }, "G"),
+            h("strong", null, "Entrar com Google")
+          ),
+          h("div", { className: "react-account-divider" }, "ou"),
+          h("form", { className: "react-account-form", onSubmit: submitAccount },
+            h("label", null,
+              h("span", null, "Nome completo"),
+              h("input", { required: true, value: form.name, onChange: (event) => updateForm("name", event.target.value), placeholder: "Seu nome" })
+            ),
+            h("label", null,
+              h("span", null, "Email"),
+              h("input", { required: true, type: "email", value: form.email, onChange: (event) => updateForm("email", event.target.value), placeholder: "voce@email.com" })
+            ),
+            h("label", null,
+              h("span", null, "Senha"),
+              h("input", { required: true, type: "password", minLength: 6, value: form.password, onChange: (event) => updateForm("password", event.target.value), placeholder: "Minimo 6 caracteres" })
+            ),
+            h("label", null,
+              h("span", null, "Nome do perfil"),
+              h("input", { value: form.customerUsername, onChange: (event) => updateForm("customerUsername", event.target.value), placeholder: "@ do Instagram sem @" }),
+              h("small", null, "Prefira usar seu @ do Instagram.")
+            ),
+            h("div", { className: "react-account-grid" },
+              h("label", null,
+                h("span", null, "Telefone"),
+                h("input", { value: form.phone, onChange: (event) => updateForm("phone", event.target.value), inputMode: "tel", placeholder: "11999999999" })
+              ),
+              h("label", null,
+                h("span", null, "CEP"),
+                h("input", { value: form.zipCode, onChange: (event) => updateForm("zipCode", cleanZip(event.target.value)), onBlur: lookupCep, inputMode: "numeric", placeholder: "01128010" })
+              ),
+              h("label", null,
+                h("span", null, "Numero"),
+                h("input", { value: form.number, onChange: (event) => updateForm("number", event.target.value), placeholder: "107" })
+              ),
+              h("label", null,
+                h("span", null, "Complemento"),
+                h("input", { value: form.complement, onChange: (event) => updateForm("complement", event.target.value), placeholder: "Apto 154" })
+              )
+            ),
+            form.street ? h("div", { className: "react-destination-card" },
+              h("strong", null, "Endereco"),
+              addressLines(form).map((line) => h("span", { key: line }, line))
+            ) : null,
+            h("button", { type: "submit", disabled: submitting }, submitting ? "Entrando..." : "Entrar ou criar conta")
+          ),
+          status ? h("p", { className: "react-account-status" }, status) : null
+        )
+    );
+  }
+
   function CartPage({ products, loading, setCount }) {
     const [items, setItems] = useState(cartItems());
     const [coupon, setCoupon] = useState("");
@@ -672,6 +865,7 @@
         : 0;
     const shipping = freeShipping ? 0 : selectedQuote ? Number(selectedQuote.price || 0) : null;
     const total = Math.max(0, subtotal - discount) + Number(shipping || 0);
+    const loggedIn = Boolean(customerSession()?.customer);
 
     const updateItems = (nextItems) => {
       saveCart(nextItems);
@@ -931,6 +1125,7 @@
               discount > 0 ? h("div", null, h("span", null, "Desconto"), h("strong", null, `-${money(discount)}`)) : null,
               h("div", null, h("span", null, "Frete"), h("strong", null, freeShipping ? "Gratis" : shipping === null ? "A calcular" : money(shipping))),
               h("div", null, h("span", null, "Total"), h("strong", null, money(total))),
+              !loggedIn ? h("a", { className: "react-account-cta", href: "/react/conta?next=/react/carrinho" }, "Entrar ou criar conta") : null,
               h("button", { type: "button", onClick: checkout, disabled: submitting }, submitting ? "Processando..." : "Finalizar pedido"),
               cartStatus ? h("p", { className: "react-cart-status" }, cartStatus) : null
             )
@@ -973,6 +1168,7 @@
 
     const isProductPage = window.location.pathname.startsWith("/react/produto");
     const isCartPage = window.location.pathname.startsWith("/react/carrinho");
+    const isAccountPage = window.location.pathname.startsWith("/react/conta");
 
     if (isProductPage) {
       return h(React.Fragment, null,
@@ -985,6 +1181,13 @@
       return h(React.Fragment, null,
         h(Topbar, { count, detail: true }),
         h(CartPage, { products, loading, setCount })
+      );
+    }
+
+    if (isAccountPage) {
+      return h(React.Fragment, null,
+        h(Topbar, { count, detail: true }),
+        h(AccountPage)
       );
     }
 

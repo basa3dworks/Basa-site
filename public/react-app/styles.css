@@ -989,6 +989,181 @@ main {
   font-weight: 900;
 }
 
+.react-account-cta,
+.react-primary-link {
+  display: grid;
+  min-height: 48px;
+  place-items: center;
+  border-radius: 8px;
+  color: #fff;
+  background: var(--brand);
+  font-weight: 900;
+  text-align: center;
+}
+
+.react-account-page {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  padding: 16px 14px 28px;
+}
+
+.react-account-hero {
+  display: grid;
+  gap: 6px;
+}
+
+.react-account-hero small,
+.react-account-card label span {
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.react-account-hero h1,
+.react-account-hero p {
+  margin: 0;
+}
+
+.react-account-hero h1 {
+  font-size: clamp(2rem, 10vw, 3rem);
+  line-height: 0.98;
+}
+
+.react-account-hero p {
+  color: var(--muted);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.react-account-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.react-google-button {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.react-google-mark {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 999px;
+  color: #4285f4;
+  background: conic-gradient(from -45deg, #4285f4 0 25%, #34a853 0 50%, #fbbc05 0 75%, #ea4335 0);
+  font-weight: 900;
+  -webkit-text-fill-color: #fff;
+}
+
+.react-account-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-weight: 900;
+}
+
+.react-account-divider::before,
+.react-account-divider::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: var(--line);
+}
+
+.react-account-form {
+  display: grid;
+  gap: 12px;
+}
+
+.react-account-form label {
+  display: grid;
+  gap: 6px;
+}
+
+.react-account-form input {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 12px;
+  color: var(--ink);
+  background: #fff;
+  font-weight: 800;
+}
+
+.react-account-form label small {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.react-account-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.react-account-form button,
+.react-danger-button {
+  min-height: 48px;
+  border: 0;
+  border-radius: 8px;
+  font-weight: 900;
+}
+
+.react-account-form button {
+  color: #fff;
+  background: var(--brand);
+}
+
+.react-danger-button {
+  color: #a83232;
+  background: #fff0f0;
+}
+
+.react-session-card {
+  grid-template-columns: 1fr;
+}
+
+.react-session-card div {
+  display: grid;
+  gap: 3px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--soft);
+}
+
+.react-session-card strong {
+  font-size: 1.15rem;
+}
+
+.react-session-card span,
+.react-account-status {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.react-account-status {
+  margin: 0;
+  line-height: 1.35;
+}
+
 .react-empty-cart {
   display: grid;
   gap: 10px;
