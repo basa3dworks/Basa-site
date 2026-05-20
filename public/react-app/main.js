@@ -149,6 +149,22 @@
     return product.image || product.images?.[0]?.url || product.media?.[0]?.url || "";
   }
 
+  function isVideoSrc(src) {
+    return /\.(mp4|webm|mov|m4v)$/i.test(String(src || "").split("?")[0]);
+  }
+
+  function mediaItemFromSource(item, index, fallbackLabel = "Mídia do produto") {
+    const src = typeof item === "string" ? item : item?.url || item?.src || item?.mediaUrl;
+    if (!src) return null;
+    const explicitType = typeof item === "object" ? String(item.type || item.mediaType || "").toLowerCase() : "";
+    return {
+      src,
+      poster: typeof item === "object" ? item.posterUrl || item.poster || "" : "",
+      type: explicitType.includes("video") || isVideoSrc(src) ? "video" : "image",
+      label: `${fallbackLabel} ${index + 1}`
+    };
+  }
+
   function storyProduct(story, products = []) {
     if (story?.product?.slug || story?.product?.id) return story.product;
     return products.find((product) => String(product.id) === String(story?.productId)) || null;
@@ -167,6 +183,22 @@
       ...(product.media || []).map((item) => item.url || item.src || item)
     ].filter(Boolean);
     return [...new Set(sources)];
+  }
+
+  function productMediaItems(product) {
+    const rawItems = [
+      product.image ? { url: product.image, type: "image" } : null,
+      ...(product.images || []),
+      ...(product.media || [])
+    ].filter(Boolean);
+    const seen = new Set();
+    return rawItems
+      .map((item, index) => mediaItemFromSource(item, index, product.name || "Mídia do produto"))
+      .filter((item) => {
+        if (!item?.src || seen.has(item.src)) return false;
+        seen.add(item.src);
+        return true;
+      });
   }
 
   function productRating(product) {
@@ -263,6 +295,15 @@
 
   function reviewName(review) {
     return review.customerName || review.profileName || "Cliente Basa";
+  }
+
+  function normalizedReviewMediaItems(review) {
+    return (review.media || review.photos || [])
+      .map((item, index) => {
+        const media = mediaItemFromSource(item, index, "Midia do comentario");
+        return media ? { ...media, label: `Midia ${index + 1}` } : null;
+      })
+      .filter(Boolean);
   }
 
   function productSlug(product) {
@@ -847,7 +888,7 @@
         h("span", { className: "material-symbols-rounded" }, "chevron_left")
       ),
       h("div", { className: "react-lightbox-media" }, item.type === "video"
-        ? h("video", { src: item.src, controls: true, playsInline: true })
+        ? h("video", { src: item.src, poster: item.poster, controls: true, playsInline: true })
         : h("img", { src: item.src, alt: item.label || "Mídia do comentário" })
       ),
       items.length > 1 && h("button", { className: "react-lightbox-arrow right", type: "button", onClick: next, "aria-label": "Próxima" },
@@ -864,7 +905,7 @@
       h("h2", null, "Quem comprou conta"),
       reviews.length
         ? h("div", { className: "react-review-list" }, reviews.slice(0, 8).map((review, reviewIndex) => {
-          const media = reviewMediaItems(review);
+          const media = normalizedReviewMediaItems(review);
           const name = reviewName(review);
           return h("article", { className: "react-review-card", key: review.id || reviewIndex },
             h("div", { className: "react-review-head" },
@@ -935,7 +976,7 @@
   function ProductDetail({ products, loading, setCount }) {
     const wantedSlug = getQuery("slug") || "";
     const product = products.find((item) => String(item.slug || item.id) === wantedSlug) || null;
-    const images = product ? productImages(product) : [];
+    const mediaItems = product ? productMediaItems(product) : [];
     const colors = product ? getColors(product) : [];
     const [selectedImage, setSelectedImage] = useState(0);
     const [selectedColor, setSelectedColor] = useState(0);
@@ -999,7 +1040,7 @@
     const rating = productRating(product);
     const stock = availableStock(product);
     const color = colors[selectedColor];
-    const image = images[selectedImage] || productImage(product);
+    const selectedMedia = mediaItems[selectedImage] || mediaItems[0] || (productImage(product) ? { src: productImage(product), type: "image", label: product.name } : null);
 
     const handleAdd = (buyNow) => {
       addToCart(product, quantity, color);
@@ -1027,17 +1068,33 @@
     return h("main", { className: "react-product-page" },
       h(ProductNav, { visible: productNavVisible, activeTab: activeProductTab, onTabClick: scrollProductSection }),
       h("section", { className: "react-gallery", id: "produto-inicio" },
-        h("div", { className: "react-main-media" }, image
-          ? h("img", { src: image, alt: product.name })
+        h("button", {
+          className: "react-main-media",
+          type: "button",
+          onClick: () => selectedMedia && openMedia(mediaItems, selectedImage),
+          "aria-label": "Expandir mídia do produto"
+        }, selectedMedia?.src
+          ? selectedMedia.type === "video"
+            ? h(React.Fragment, null,
+              h("video", { src: selectedMedia.src, poster: selectedMedia.poster, muted: true, playsInline: true, preload: "metadata" }),
+              h("span", { className: "react-media-play material-symbols-rounded" }, "play_arrow")
+            )
+            : h("img", { src: selectedMedia.src, alt: product.name })
           : h("span", null, "Imagem do produto")
         ),
-        images.length > 1 && h("div", { className: "react-thumbs" },
-          images.map((src, index) => h("button", {
-            key: src,
+        mediaItems.length > 1 && h("div", { className: "react-thumbs" },
+          mediaItems.map((item, index) => h("button", {
+            key: item.src,
             className: index === selectedImage ? "active" : "",
             type: "button",
             onClick: () => setSelectedImage(index)
-          }, h("img", { src, alt: `${product.name} ${index + 1}` })))
+          }, item.type === "video"
+            ? h(React.Fragment, null,
+              h("video", { src: item.src, poster: item.poster, muted: true, playsInline: true, preload: "metadata" }),
+              h("span", { className: "react-media-play material-symbols-rounded" }, "play_arrow")
+            )
+            : h("img", { src: item.src, alt: `${product.name} ${index + 1}` })
+          ))
         )
       ),
       h("section", { className: "react-detail-card", "data-product-section": "intro" },
