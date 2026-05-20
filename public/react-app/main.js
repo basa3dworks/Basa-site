@@ -35,9 +35,9 @@
     if (!campaignIsRunning(campaign)) return "";
     if (campaign.label) return campaign.label;
     return {
-      flash: "Oferta relampago",
+      flash: "Oferta relâmpago",
       clearance: "Queima de estoque",
-      launch: "Lancamento",
+      launch: "Lançamento",
       featured: "Destaque"
     }[campaign.type] || "Destaque";
   }
@@ -230,7 +230,7 @@
         return {
           src,
           type: /\.(mp4|webm|mov|m4v)$/i.test(String(src).split("?")[0]) ? "video" : "image",
-          label: `Midia ${index + 1}`
+          label: `Mídia ${index + 1}`
         };
       })
       .filter(Boolean);
@@ -335,7 +335,7 @@
     const name = normalizeProfileName(value);
     if (!name) return "Informe o nome do perfil.";
     if (!/^[a-z0-9._]{1,15}$/.test(name)) {
-      return "Use ate 15 caracteres, sem espacos. Permitidos: letras, numeros, ponto e underline.";
+      return "Use até 15 caracteres, sem espaços. Permitidos: letras, números, ponto e underline.";
     }
     return "";
   }
@@ -356,9 +356,9 @@
       created: "Criado",
       awaiting_payment: "Aguardando pagamento",
       paid: "Pago",
-      in_production: "Em producao",
+      in_production: "Em produção",
       shipped: "Enviado",
-      completed: "Concluido",
+      completed: "Concluído",
       canceled: "Cancelado"
     }[status] || status || "Criado";
   }
@@ -386,7 +386,7 @@
     const option = order?.shippingOption || {};
     const name = option.displayName || [option.carrier, option.service].filter(Boolean).join(" ");
     if (name) return name;
-    return Number(order?.shipping || 0) > 0 ? "Frete calculado" : "Frete gratis";
+    return Number(order?.shipping || 0) > 0 ? "Frete calculado" : "Frete grátis";
   }
 
   function orderDeliveryLabel(order) {
@@ -407,12 +407,12 @@
       new: "Nova",
       waiting_admin: "Aguardando Basa",
       waiting_customer: "Aguardando cliente",
-      in_review: "Em analise",
-      quoted: "Orcada",
+      in_review: "Em análise",
+      quoted: "Orçada",
       approved: "Aprovada",
-      in_production: "Em producao",
+      in_production: "Em produção",
       shipped: "Enviada",
-      completed: "Concluida",
+      completed: "Concluída",
       closed: "Encerrada",
       canceled: "Cancelada"
     }[status] || status || "Nova";
@@ -552,9 +552,9 @@
     };
     const menuItems = customer
       ? [
-        ["account_circle", "Perfil e dados", "Cadastro, foto e endereco.", "/react/perfil"],
+        ["account_circle", "Perfil e dados", "Cadastro, foto e endereço.", "/react/perfil"],
         ["receipt_long", "Pedidos", "Compras, pagamentos e entrega.", "/react/pedidos"],
-        ["inventory_2", "Encomendas", "Solicitacoes sob medida.", "/react/encomendas"],
+        ["inventory_2", "Encomendas", "Solicitações sob medida.", "/react/encomendas"],
         ["forum", "Chat", "Fale com a Basa.", "/react/chat"],
         ["shopping_bag", "Carrinho", "Itens e entrega.", "/react/carrinho"]
       ]
@@ -587,8 +587,8 @@
           )
         ),
         customer ? h("div", { className: "react-customer-row" },
-          h("span", { className: "react-customer-hello" }, "Ola ", h("strong", null, safeCustomerName(customer)), verifiedBadge(customer)),
-          h("span", { className: "react-customer-address" }, addressLabel || "Endereco principal")
+          h("span", { className: "react-customer-hello" }, "Olá ", h("strong", null, safeCustomerName(customer)), verifiedBadge(customer)),
+          h("span", { className: "react-customer-address" }, addressLabel || "Endereço principal")
         ) : null
       ),
       !detail && menuOpen ? h("div", { className: "react-menu-backdrop", onClick: closeMenu },
@@ -637,8 +637,8 @@
       return [...new Set((products || []).map((product) => product.category).filter(Boolean))];
     }, [products]);
     const tabs = [
-      ["for-you", "Para voce"],
-      ["trending", "Tendencia"],
+      ["for-you", "Para você"],
+      ["trending", "Tendência"],
       ["favorites", "Favoritos"]
     ];
     const chooseFeed = (id) => {
@@ -730,25 +730,25 @@
       rating ? h(RatingStars, { value: rating.average, count: rating.count, compact: true }) : null,
       campaignIsRunning(product.campaign) && product.campaign?.type === "flash"
         ? h("span", { className: "react-flash-ticker" },
-          h("span", null, "\u26a1 ", campaignEndsLabel(product.campaign), " \u2022 oferta relampago"),
-          h("span", null, "\u26a1 ", campaignEndsLabel(product.campaign), " \u2022 oferta relampago")
+          h("span", null, "\u26a1 ", campaignEndsLabel(product.campaign), " \u2022 oferta relâmpago"),
+          h("span", null, "\u26a1 ", campaignEndsLabel(product.campaign), " \u2022 oferta relâmpago")
         )
         : null,
       h("div", { className: "react-card-price" },
         product.compareAtPrice ? h("span", { className: "react-old-price" }, money(product.compareAtPrice)) : null,
         h("p", null, h("span", null, price.main), h("sup", null, price.cents), discount ? h("em", null, `${discount}% OFF`) : null)
       ),
-      product.sellerPaysShipping ? h("span", { className: "free-shipping" }, "Frete Gratis") : null
+      product.sellerPaysShipping ? h("span", { className: "free-shipping" }, "Frete Grátis") : null
     );
   }
 
   function ProductNav({ visible, activeTab, onTabClick }) {
     const tabs = [
-      ["intro", "produto-inicio", "Inicio"],
-      ["comments", "produto-comentarios", "Comentarios"],
+      ["intro", "produto-inicio", "Início"],
+      ["comments", "produto-comentarios", "Comentários"],
       ["related", "produto-relacionados", "Relacionados"]
     ];
-    return h("nav", { className: visible ? "react-product-nav is-visible" : "react-product-nav", "aria-label": "Navegacao do produto" },
+    return h("nav", { className: visible ? "react-product-nav is-visible" : "react-product-nav", "aria-label": "Navegação do produto" },
       tabs.map(([id, target, label]) => h("button", {
         key: id,
         className: activeTab === id ? "active" : "",
@@ -772,9 +772,9 @@
       ),
       h("div", { className: "react-lightbox-media" }, item.type === "video"
         ? h("video", { src: item.src, controls: true, playsInline: true })
-        : h("img", { src: item.src, alt: item.label || "Midia do comentario" })
+        : h("img", { src: item.src, alt: item.label || "Mídia do comentário" })
       ),
-      items.length > 1 && h("button", { className: "react-lightbox-arrow right", type: "button", onClick: next, "aria-label": "Proxima" },
+      items.length > 1 && h("button", { className: "react-lightbox-arrow right", type: "button", onClick: next, "aria-label": "Próxima" },
         h("span", { className: "material-symbols-rounded" }, "chevron_right")
       ),
       h("span", { className: "react-lightbox-count" }, `${index + 1} / ${items.length}`)
@@ -784,7 +784,7 @@
   function ReviewsSection({ product, openMedia }) {
     const reviews = product.publicReviews || [];
     return h("section", { className: "react-detail-card react-reviews", id: "produto-comentarios", "data-product-section": "comments" },
-      h("small", null, "Comentarios"),
+      h("small", null, "Comentários"),
       h("h2", null, "Quem comprou conta"),
       reviews.length
         ? h("div", { className: "react-review-list" }, reviews.slice(0, 8).map((review, reviewIndex) => {
@@ -813,7 +813,7 @@
             ) : null
           );
         }))
-        : h("p", { className: "react-empty" }, "Ainda nao ha comentarios deste produto.")
+        : h("p", { className: "react-empty" }, "Ainda não há comentários deste produto.")
     );
   }
 
@@ -823,7 +823,7 @@
       h("h2", null, "Relacionados"),
       related.length
         ? h("div", { className: "react-product-grid" }, related.map((item) => h(ProductCard, { key: item.id, product: item })))
-        : h("p", { className: "react-empty" }, "Ainda nao ha produtos relacionados cadastrados.")
+        : h("p", { className: "react-empty" }, "Ainda não há produtos relacionados cadastrados.")
     );
   }
 
@@ -914,7 +914,7 @@
     if (!product) {
       return h("main", { className: "react-product-page" },
         h("section", { className: "react-detail-card" },
-          h("h1", null, "Produto nao encontrado"),
+          h("h1", null, "Produto não encontrado"),
           h("a", { className: "react-add", href: "/react" }, "Voltar para a vitrine")
         )
       );
@@ -969,10 +969,10 @@
         h("h1", null, product.name),
         rating ? h("div", { className: "product-rating" }, h(RatingStars, { value: rating.average, count: rating.count })) : null,
         h("div", { className: "react-price" }, money(product.price)),
-        product.sellerPaysShipping ? h("span", { className: "free-shipping product-free-shipping" }, "Frete Gratis") : null,
+        product.sellerPaysShipping ? h("span", { className: "free-shipping product-free-shipping" }, "Frete Grátis") : null,
         h("div", { className: "react-options" },
           h("div", { className: "react-stock-line" },
-            h("strong", null, `${stock || 1} ${stock === 1 ? "unidade disponivel" : "unidades disponiveis"}`)
+            h("strong", null, `${stock || 1} ${stock === 1 ? "unidade disponível" : "unidades disponíveis"}`)
           ),
           colors.length ? h("div", { className: "react-color-list" },
             colors.map((item, index) => h("button", {
@@ -993,7 +993,7 @@
             }, Array.from({ length: Math.max(1, Math.min(stock || 10, 10)) }, (_, index) =>
               h("option", { key: index + 1, value: index + 1 }, `${index + 1}`)
             )),
-            h("span", null, stock ? `(+${Math.max(0, stock - quantity)} disponiveis)` : "")
+            h("span", null, stock ? `(+${Math.max(0, stock - quantity)} disponíveis)` : "")
           )
         ),
         h("div", { className: "react-actions" },
@@ -1006,7 +1006,7 @@
         notice && h("p", { className: "react-status" }, notice),
         h("article", { className: "react-payment" },
           h("strong", null, "Pagamento seguro via Mercado Pago"),
-          h("span", null, "Pix e cartoes de credito aceitos no checkout.")
+          h("span", null, "Pix e cartões de crédito aceitos no checkout.")
         )
       ),
       h(ProductInfoDetails, { product }),
@@ -1039,7 +1039,7 @@
     }, [products, feed, favoriteVersion]);
     const title = feed.startsWith("category:")
       ? feed.replace("category:", "")
-      : feed === "trending" ? "Tendencia" : feed === "favorites" ? "Favoritos" : "Produtos em destaque";
+      : feed === "trending" ? "Tendência" : feed === "favorites" ? "Favoritos" : "Produtos em destaque";
 
     return h("section", { className: "react-section" },
       h("h2", null, title),
@@ -1049,7 +1049,7 @@
         )
         : h("div", { className: "react-empty-list" },
           h("strong", null, feed === "favorites" ? "Nenhum favorito ainda." : "Nenhum produto por aqui ainda."),
-          h("span", null, feed === "favorites" ? "Toque no coracao dos produtos para montar sua vitrine." : "Tente outra categoria ou busca.")
+          h("span", null, feed === "favorites" ? "Toque no coração dos produtos para montar sua vitrine." : "Tente outra categoria ou busca.")
         )
     );
   }
@@ -1082,7 +1082,7 @@
           ))
         ),
         h("button", { className: "react-story-hit prev", type: "button", onClick: previous, "aria-label": "Story anterior" }),
-        h("button", { className: "react-story-hit next", type: "button", onClick: next, "aria-label": "Proximo story" }),
+        h("button", { className: "react-story-hit next", type: "button", onClick: next, "aria-label": "Próximo story" }),
         h("div", { className: "react-story-content" },
           h("p", null, "Bastidores"),
           h("h2", null, story.title || "Bastidor Basa"),
@@ -1097,10 +1097,10 @@
     const activeStories = (stories || []).filter((story) => story?.active !== false && (story.mediaUrl || storyPreview(story, products))).slice(0, 10);
     const [activeIndex, setActiveIndex] = useState(-1);
     if (!activeStories.length) return null;
-    return h("section", { className: "react-stories-section", "aria-label": "Stories da producao" },
+    return h("section", { className: "react-stories-section", "aria-label": "Stories da produção" },
       h("div", { className: "react-stories-head" },
         h("small", null, "Bastidores"),
-        h("h2", null, "Dia a dia da producao")
+        h("h2", null, "Dia a dia da produção")
       ),
       h("div", { className: "react-stories-row" },
         activeStories.map((story, index) => {
@@ -1150,7 +1150,7 @@
       try {
         const response = await fetch(`/api/cep/${zipCode}`);
         const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.error || "CEP nao encontrado.");
+        if (!response.ok) throw new Error(data.error || "CEP não encontrado.");
         setForm((current) => ({
           ...current,
           zipCode: data.zipCode || data.cep || zipCode,
@@ -1162,7 +1162,7 @@
         }));
         setStatus("");
       } catch (error) {
-        setStatus(error.message || "Nao foi possivel consultar o CEP.");
+        setStatus(error.message || "Não foi possível consultar o CEP.");
       }
     };
 
@@ -1194,7 +1194,7 @@
           })
         });
         const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.error || "Nao foi possivel entrar ou cadastrar.");
+        if (!response.ok) throw new Error(data.error || "Não foi possível entrar ou cadastrar.");
         const nextSession = {
           loggedIn: true,
           username: data.account?.username,
@@ -1204,9 +1204,9 @@
         localStorage.setItem(CUSTOMER_SESSION_KEY, JSON.stringify(nextSession));
         setSession(nextSession);
         setForm(defaultAccountForm(nextSession));
-        setStatus(data.created ? "Cadastro criado. Agora voce pode finalizar a compra." : "Login confirmado.");
+        setStatus(data.created ? "Cadastro criado. Agora você pode finalizar a compra." : "Login confirmado.");
       } catch (error) {
-        setStatus(error.message || "Nao foi possivel entrar ou cadastrar.");
+        setStatus(error.message || "Não foi possível entrar ou cadastrar.");
       } finally {
         setSubmitting(false);
       }
@@ -1223,7 +1223,7 @@
       h("section", { className: "react-account-hero" },
         h("small", null, "Conta do cliente"),
         h("h1", null, customer ? "Minha conta" : "Entrar na Basa"),
-        h("p", null, customer ? "Seu acesso esta conectado ao carrinho React." : "Entre para finalizar pedidos, salvar endereco e acompanhar compras.")
+        h("p", null, customer ? "Seu acesso está conectado ao carrinho React." : "Entre para finalizar pedidos, salvar endereço e acompanhar compras.")
       ),
       customer
         ? h(React.Fragment, null,
@@ -1253,7 +1253,7 @@
             ),
             h("label", null,
               h("span", null, "Email"),
-              h("input", { required: true, type: "email", value: form.email, onChange: (event) => updateForm("email", event.target.value), placeholder: "voce@email.com" })
+              h("input", { required: true, type: "email", value: form.email, onChange: (event) => updateForm("email", event.target.value), placeholder: "seu@email.com" })
             ),
             h("label", null,
               h("span", null, "Senha"),
@@ -1274,16 +1274,16 @@
                 h("input", { value: form.zipCode, onChange: (event) => updateForm("zipCode", cleanZip(event.target.value)), onBlur: lookupCep, inputMode: "numeric", placeholder: "Digite seu CEP" })
               ),
               h("label", null,
-                h("span", null, "Numero"),
-                h("input", { value: form.number, onChange: (event) => updateForm("number", event.target.value), placeholder: "Numero da residencia" })
+                h("span", null, "Número"),
+                h("input", { value: form.number, onChange: (event) => updateForm("number", event.target.value), placeholder: "Número da residência" })
               ),
               h("label", null,
                 h("span", null, "Complemento"),
-                h("input", { value: form.complement, onChange: (event) => updateForm("complement", event.target.value), placeholder: "Apto, bloco ou referencia" })
+                h("input", { value: form.complement, onChange: (event) => updateForm("complement", event.target.value), placeholder: "Apto, bloco ou referência" })
               )
             ),
             form.street ? h("div", { className: "react-destination-card" },
-              h("strong", null, "Endereco"),
+              h("strong", null, "Endereço"),
               addressLines(form).map((line) => h("span", { key: line }, line))
             ) : null,
             h("button", { type: "submit", disabled: submitting }, submitting ? "Entrando..." : "Entrar ou criar conta")
@@ -1332,7 +1332,7 @@
       try {
         const response = await fetch(`/api/cep/${zipCode}`);
         const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.error || "CEP nao encontrado.");
+        if (!response.ok) throw new Error(data.error || "CEP não encontrado.");
         setDataForm((current) => ({
           ...current,
           zipCode: data.zipCode || data.cep || zipCode,
@@ -1344,7 +1344,7 @@
         }));
         setStatus("");
       } catch (error) {
-        setStatus(error.message || "Nao foi possivel consultar o CEP.");
+        setStatus(error.message || "Não foi possível consultar o CEP.");
       }
     };
 
@@ -1364,7 +1364,7 @@
         return;
       }
       if (normalizedName !== currentName && !customer.profileNameChangedAt) {
-        const confirmed = window.confirm("Voce pode trocar o nome de perfil agora. Depois desta troca, a proxima so podera ser feita em 30 dias. Tem certeza?");
+        const confirmed = window.confirm("Você pode trocar o nome de perfil agora. Depois desta troca, a próxima só poderá ser feita em 30 dias. Tem certeza?");
         if (!confirmed) return;
       }
       const body = new FormData();
@@ -1376,11 +1376,11 @@
       try {
         const response = await fetch("/api/customer/profile", { method: "POST", body });
         const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.error || "Nao foi possivel salvar o perfil.");
+        if (!response.ok) throw new Error(data.error || "Não foi possível salvar o perfil.");
         refreshSession(data.account);
         setStatus("Perfil salvo.");
       } catch (error) {
-        setStatus(error.message || "Nao foi possivel salvar o perfil.");
+        setStatus(error.message || "Não foi possível salvar o perfil.");
       } finally {
         setSavingProfile(false);
       }
@@ -1399,11 +1399,11 @@
       try {
         const response = await fetch("/api/customer/profile", { method: "POST", body });
         const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.error || "Nao foi possivel salvar os dados.");
+        if (!response.ok) throw new Error(data.error || "Não foi possível salvar os dados.");
         refreshSession(data.account);
         setStatus("Dados salvos.");
       } catch (error) {
-        setStatus(error.message || "Nao foi possivel salvar os dados.");
+        setStatus(error.message || "Não foi possível salvar os dados.");
       } finally {
         setSavingData(false);
       }
@@ -1413,11 +1413,11 @@
       h("section", { className: "react-account-hero" },
         h("small", null, "Dados"),
         h("h1", null, "Perfil e dados"),
-        h("p", null, customer ? "Edite seu perfil publico, foto e endereco principal." : "Entre para editar seus dados.")
+        h("p", null, customer ? "Edite seu perfil público, foto e endereço principal." : "Entre para editar seus dados.")
       ),
       !customer
         ? h("section", { className: "react-account-card" },
-          h("p", null, "Sua conta nao esta conectada neste aparelho."),
+          h("p", null, "Sua conta não está conectada neste aparelho."),
           h("a", { className: "react-primary-link", href: "/react/conta?next=/react/perfil" }, "Entrar ou criar conta")
         )
         : h(React.Fragment, null,
@@ -1430,7 +1430,7 @@
             )
           ),
           h("form", { className: "react-account-card react-account-form", onSubmit: saveProfile },
-            h("strong", null, "Editar perfil publico"),
+            h("strong", null, "Editar perfil público"),
             h("label", null,
               h("span", null, "Nome do perfil"),
               h("input", {
@@ -1471,7 +1471,7 @@
                 h("input", { required: true, value: dataForm.zipCode, onChange: (event) => updateData("zipCode", cleanZip(event.target.value)), onBlur: lookupProfileCep, inputMode: "numeric", autoComplete: "postal-code" })
               ),
               h("label", null,
-                h("span", null, "Numero"),
+                h("span", null, "Número"),
                 h("input", { required: true, value: dataForm.number, onChange: (event) => updateData("number", event.target.value), autoComplete: "address-line2" })
               )
             ),
@@ -1502,7 +1502,7 @@
             h("button", { type: "submit", disabled: savingData }, savingData ? "Salvando..." : "Salvar dados")
           ),
           addressLines(dataForm).length ? h("section", { className: "react-destination-card" },
-            h("strong", null, "Endereco principal"),
+            h("strong", null, "Endereço principal"),
             addressLines(dataForm).map((line) => h("span", { key: line }, line))
           ) : null,
           status ? h("p", { className: "react-account-status" }, status) : null
@@ -1530,12 +1530,12 @@
       fetch(`/api/custom-requests?email=${encodeURIComponent(customer.email)}`)
         .then(async (response) => {
           const data = await response.json().catch(() => ({}));
-          if (!response.ok) throw new Error(data.error || "Nao foi possivel carregar encomendas.");
+          if (!response.ok) throw new Error(data.error || "Não foi possível carregar encomendas.");
           setRequests((data.requests || []).filter((item) => item.kind !== "chat"));
           setStatus("");
         })
         .catch((error) => {
-          setStatus(error.message || "Nao foi possivel carregar encomendas.");
+          setStatus(error.message || "Não foi possível carregar encomendas.");
           setRequests([]);
         })
         .finally(() => setLoading(false));
@@ -1565,12 +1565,12 @@
           })
         });
         const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.error || "Nao foi possivel enviar a encomenda.");
+        if (!response.ok) throw new Error(data.error || "Não foi possível enviar a encomenda.");
         setRequests((current) => [data.request, ...current]);
         setForm({ title: "", idea: "", budget: "", deadline: "" });
         setStatus("Encomenda enviada. A Basa responde por aqui.");
       } catch (error) {
-        setStatus(error.message || "Nao foi possivel enviar a encomenda.");
+        setStatus(error.message || "Não foi possível enviar a encomenda.");
       } finally {
         setSubmitting(false);
       }
@@ -1587,12 +1587,12 @@
           body: JSON.stringify({ email: customer.email, text })
         });
         const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.error || "Nao foi possivel enviar a mensagem.");
+        if (!response.ok) throw new Error(data.error || "Não foi possível enviar a mensagem.");
         setRequests((current) => current.map((item) => item.id === requestId ? data.request : item));
         setReplyText((current) => ({ ...current, [requestId]: "" }));
         setStatus("Mensagem enviada.");
       } catch (error) {
-        setStatus(error.message || "Nao foi possivel enviar a mensagem.");
+        setStatus(error.message || "Não foi possível enviar a mensagem.");
       }
     };
 
@@ -1604,7 +1604,7 @@
       ),
       !customer
         ? h("section", { className: "react-account-card" },
-          h("p", null, "Sua conta nao esta conectada neste aparelho."),
+          h("p", null, "Sua conta não está conectada neste aparelho."),
           h("a", { className: "react-primary-link", href: "/react/conta?next=/react/encomendas" }, "Entrar ou criar conta")
         )
         : h(React.Fragment, null,
@@ -1616,12 +1616,12 @@
               ),
               h("label", null,
                 h("span", null, "Sua ideia"),
-                h("textarea", { required: true, value: form.idea, onChange: (event) => updateForm("idea", event.target.value), placeholder: "Conte medidas, uso, cor desejada e referencias." })
+                h("textarea", { required: true, value: form.idea, onChange: (event) => updateForm("idea", event.target.value), placeholder: "Conte medidas, uso, cor desejada e referências." })
               ),
               h("div", { className: "react-account-grid" },
                 h("label", null,
-                  h("span", null, "Orcamento"),
-                  h("input", { value: form.budget, onChange: (event) => updateForm("budget", event.target.value), placeholder: "Ex: ate R$ 150" })
+                  h("span", null, "Orçamento"),
+                  h("input", { value: form.budget, onChange: (event) => updateForm("budget", event.target.value), placeholder: "Ex: até R$ 150" })
                 ),
                 h("label", null,
                   h("span", null, "Prazo"),
@@ -1646,12 +1646,12 @@
                   ),
                   h("p", null, request.idea),
                   request.budget || request.deadline ? h("div", { className: "react-request-meta" },
-                    request.budget ? h("span", null, h("b", null, "Orcamento"), request.budget) : null,
+                    request.budget ? h("span", null, h("b", null, "Orçamento"), request.budget) : null,
                     request.deadline ? h("span", null, h("b", null, "Prazo"), request.deadline) : null
                   ) : null,
                   h("div", { className: "react-request-messages" },
                     (request.messages || []).slice(-4).map((message) => h("span", { className: message.author === "admin" ? "admin" : "", key: message.id || `${request.id}-${message.createdAt}` },
-                      h("b", null, message.author === "admin" ? "Basa: " : "Voce: "),
+                      h("b", null, message.author === "admin" ? "Basa: " : "Você: "),
                       message.text
                     ))
                   ),
@@ -1694,7 +1694,7 @@
       fetch(`/api/custom-requests?email=${encodeURIComponent(customer.email)}`)
         .then(async (response) => {
           const data = await response.json().catch(() => ({}));
-          if (!response.ok) throw new Error(data.error || "Nao foi possivel carregar o chat.");
+          if (!response.ok) throw new Error(data.error || "Não foi possível carregar o chat.");
           const nextChat = supportRequestFromList(data.requests || [], saved);
           setChat(nextChat);
           if (nextChat) {
@@ -1708,7 +1708,7 @@
           setStatus("");
         })
         .catch((error) => {
-          setStatus(error.message || "Nao foi possivel carregar o chat.");
+          setStatus(error.message || "Não foi possível carregar o chat.");
           setChat(null);
         })
         .finally(() => setLoading(false));
@@ -1738,7 +1738,7 @@
           })
         });
         const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.error || "Nao foi possivel enviar a mensagem.");
+        if (!response.ok) throw new Error(data.error || "Não foi possível enviar a mensagem.");
         const nextChat = data.request;
         setChat(nextChat);
         setMessage("");
@@ -1749,7 +1749,7 @@
         });
         setStatus("Mensagem enviada. A resposta aparece aqui no chat.");
       } catch (error) {
-        setStatus(error.message || "Nao foi possivel enviar a mensagem.");
+        setStatus(error.message || "Não foi possível enviar a mensagem.");
       } finally {
         setSubmitting(false);
       }
@@ -1774,7 +1774,7 @@
                 ? h("div", { className: "react-chat-thread" },
                   chat.messages.map((item) => h("div", { className: `react-chat-message ${item.author === "admin" ? "admin" : "customer"}`, key: item.id || `${item.author}-${item.createdAt}` },
                     h("span", null, item.text),
-                    h("small", null, item.author === "admin" ? "Basa" : "Voce")
+                    h("small", null, item.author === "admin" ? "Basa" : "Você")
                   ))
                 )
                 : h("div", { className: "react-chat-empty" },
@@ -1814,7 +1814,7 @@
       fetch(`/api/customer/orders?email=${encodeURIComponent(customer.email)}`)
         .then(async (response) => {
           const data = await response.json().catch(() => ({}));
-          if (!response.ok) throw new Error(data.error || "Nao foi possivel carregar pedidos.");
+          if (!response.ok) throw new Error(data.error || "Não foi possível carregar pedidos.");
           if (data.account) {
             const nextSession = {
               loggedIn: true,
@@ -1829,7 +1829,7 @@
           setStatus("");
         })
         .catch((error) => {
-          setStatus(error.message || "Nao foi possivel carregar pedidos.");
+          setStatus(error.message || "Não foi possível carregar pedidos.");
           setOrders([]);
         })
         .finally(() => setLoading(false));
@@ -1848,11 +1848,11 @@
           body: JSON.stringify({ email: customer.email, action: "cancel_payment" })
         });
         const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.error || "Nao foi possivel cancelar este pedido.");
+        if (!response.ok) throw new Error(data.error || "Não foi possível cancelar este pedido.");
         setOrders((current) => current.map((order) => order.id === orderId ? data.order : order));
         setStatus("Pedido cancelado.");
       } catch (error) {
-        setStatus(error.message || "Nao foi possivel cancelar este pedido.");
+        setStatus(error.message || "Não foi possível cancelar este pedido.");
       }
     };
 
@@ -1864,7 +1864,7 @@
       ),
       !customer
         ? h("section", { className: "react-account-card" },
-          h("p", null, "Sua conta nao esta conectada neste aparelho."),
+          h("p", null, "Sua conta não está conectada neste aparelho."),
           h("a", { className: "react-primary-link", href: "/react/conta?next=/react/pedidos" }, "Entrar ou criar conta")
         )
         : loading
@@ -1914,7 +1914,7 @@
             : h("section", { className: "react-empty-cart" },
               h("span", { className: "material-symbols-rounded" }, "receipt_long"),
               h("h2", null, "Nenhum pedido ainda"),
-              h("p", null, "Quando voce comprar, seus pedidos aparecem aqui."),
+              h("p", null, "Quando você comprar, seus pedidos aparecem aqui."),
               h("a", { className: "react-buy", href: "/react" }, "Ver produtos")
             )
     );
@@ -1954,7 +1954,7 @@
       })
         .then(async (response) => {
           const data = await response.json().catch(() => ({}));
-          if (!response.ok) throw new Error(data.error || "Nao foi possivel calcular o frete.");
+          if (!response.ok) throw new Error(data.error || "Não foi possível calcular o frete.");
           return data;
         })
         .then((data) => {
@@ -1965,7 +1965,7 @@
           setSelectedQuoteId((current) => current && nextQuotes.some((quote) => shippingQuoteId(quote) === current)
             ? current
             : shippingQuoteId(nextQuotes[0] || {}));
-          setCartStatus(nextQuotes.length ? "" : data.shippingBenefit?.message || "Nenhuma opcao de entrega encontrada.");
+          setCartStatus(nextQuotes.length ? "" : data.shippingBenefit?.message || "Nenhuma opção de entrega encontrada.");
         })
         .catch((error) => {
           if (!active) return;
@@ -2048,7 +2048,7 @@
       try {
         const response = await fetch(`/api/cep/${zipCode}`);
         const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.error || "CEP nao encontrado.");
+        if (!response.ok) throw new Error(data.error || "CEP não encontrado.");
         setAddress((current) => ({
           ...current,
           zipCode: data.zipCode || data.cep || zipCode,
@@ -2060,7 +2060,7 @@
         }));
         setCartStatus("");
       } catch (error) {
-        setCartStatus(error.message || "Nao foi possivel consultar o CEP.");
+        setCartStatus(error.message || "Não foi possível consultar o CEP.");
       }
     };
 
@@ -2072,7 +2072,7 @@
       }
       if (!items.length || submitting) return;
       if (!freeShipping && !selectedQuote) {
-        setCartStatus("Calcule e selecione uma opcao de entrega.");
+        setCartStatus("Calcule e selecione uma opção de entrega.");
         return;
       }
       setSubmitting(true);
@@ -2102,13 +2102,13 @@
           })
         });
         const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.error || "Nao foi possivel criar o pedido.");
+        if (!response.ok) throw new Error(data.error || "Não foi possível criar o pedido.");
         saveCart([]);
         setItems([]);
         setCount(0);
         window.location.href = data.payment?.checkoutUrl || `/obrigado.html?pedido=${data.order?.id || ""}`;
       } catch (error) {
-        setCartStatus(error.message || "Nao foi possivel criar o pedido.");
+        setCartStatus(error.message || "Não foi possível criar o pedido.");
         setSubmitting(false);
       }
     };
@@ -2130,7 +2130,7 @@
                 h("div", { className: "react-cart-info" },
                   h("strong", null, item.name),
                   item.colorName ? h("span", null, `Cor: ${item.colorName}`) : null,
-                  item.sellerPaysShipping ? h("em", null, "Frete gratis") : null,
+                  item.sellerPaysShipping ? h("em", null, "Frete grátis") : null,
                   h("b", null, money(Number(item.price || 0) * Number(item.quantity || 0)))
                 ),
                 h("div", { className: "react-cart-controls" },
@@ -2147,7 +2147,7 @@
               ))
             ),
             h("section", { className: "react-detail-card react-cart-delivery" },
-              h("small", null, "Endereco da entrega"),
+              h("small", null, "Endereço da entrega"),
               h("div", { className: "react-cart-address-grid" },
                 h("label", null,
                   h("span", null, "CEP"),
@@ -2160,11 +2160,11 @@
                   })
                 ),
                 h("label", null,
-                  h("span", null, "Numero"),
+                  h("span", null, "Número"),
                   h("input", {
                     value: address.number,
                     onChange: (event) => updateAddress("number", event.target.value),
-                    placeholder: "Numero da residencia"
+                    placeholder: "Número da residência"
                   })
                 ),
                 h("label", null,
@@ -2172,7 +2172,7 @@
                   h("input", {
                     value: address.complement,
                     onChange: (event) => updateAddress("complement", event.target.value),
-                    placeholder: "Apto, bloco ou referencia"
+                    placeholder: "Apto, bloco ou referência"
                   })
                 )
               ),
@@ -2205,7 +2205,7 @@
                       h("strong", null, quote.displayName || `${quote.carrier} ${quote.service}`),
                       h("small", null, quote.deliveryDays ? `${quote.deliveryDays} dias uteis` : "Prazo a confirmar")
                     ),
-                    h("b", null, freeShipping ? "Gratis" : money(quote.price))
+                    h("b", null, freeShipping ? "Grátis" : money(quote.price))
                   ))
                   : h("div", { className: "react-shipping-note" }, shippingBenefit?.message || cartStatus || "Informe o CEP para calcular a entrega.")
               )
@@ -2213,7 +2213,7 @@
             h("section", { className: "react-cart-summary" },
               h("div", null, h("span", null, "Subtotal"), h("strong", null, money(subtotal))),
               discount > 0 ? h("div", null, h("span", null, "Desconto"), h("strong", null, `-${money(discount)}`)) : null,
-              h("div", null, h("span", null, "Frete"), h("strong", null, freeShipping ? "Gratis" : shipping === null ? "A calcular" : money(shipping))),
+              h("div", null, h("span", null, "Frete"), h("strong", null, freeShipping ? "Grátis" : shipping === null ? "A calcular" : money(shipping))),
               h("div", null, h("span", null, "Total"), h("strong", null, money(total))),
               !loggedIn ? h("a", { className: "react-account-cta", href: "/react/conta?next=/react/carrinho" }, "Entrar ou criar conta") : null,
               h("button", { type: "button", onClick: checkout, disabled: submitting }, submitting ? "Processando..." : "Finalizar pedido"),
@@ -2222,7 +2222,7 @@
           )
           : h("section", { className: "react-empty-cart" },
             h("span", { className: "material-symbols-rounded" }, "shopping_bag"),
-            h("h2", null, "Seu carrinho esta vazio"),
+            h("h2", null, "Seu carrinho está vazio"),
             h("p", null, "Escolha um produto para continuar a compra."),
             h("a", { className: "react-buy", href: "/react" }, "Ver produtos")
           )
