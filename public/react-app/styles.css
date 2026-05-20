@@ -829,7 +829,9 @@ main {
 }
 
 .react-product-badge.campaign-flash {
-  background: #e23d2f;
+  background: #ffd84a;
+  color: #2c2410;
+  box-shadow: 0 0 0 1px rgba(121, 82, 0, 0.12);
 }
 
 .react-product-badge.campaign-clearance {
@@ -840,10 +842,38 @@ main {
   background: #1f7f5c;
 }
 
-.react-flash-line {
-  color: #bf4d28;
-  font-size: 0.66rem;
+.react-product-badge.campaign-flash .material-symbols-rounded {
+  color: #f4a900;
+  font-variation-settings: "FILL" 1, "wght" 900, "GRAD" 0, "opsz" 20;
+}
+
+.react-product-badge.campaign-clearance .material-symbols-rounded {
+  color: #fff4d8;
+  font-variation-settings: "FILL" 1, "wght" 900, "GRAD" 0, "opsz" 20;
+}
+
+.react-flash-ticker {
+  display: flex;
+  max-width: 100%;
+  overflow: hidden;
+  border-radius: 5px;
+  padding: 3px 0;
+  color: #7a4e00;
+  background: #fff5c2;
+  font-size: 0.62rem;
   font-weight: 900;
+  white-space: nowrap;
+}
+
+.react-flash-ticker span {
+  min-width: max-content;
+  padding-inline: 8px;
+  animation: reactFlashTicker 8s linear infinite;
+}
+
+@keyframes reactFlashTicker {
+  from { transform: translateX(0); }
+  to { transform: translateX(-100%); }
 }
 
 .react-stars {

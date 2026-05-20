@@ -46,6 +46,12 @@
     return campaignIsRunning(product?.campaign) ? `campaign-${product.campaign?.type || "featured"}` : "";
   }
 
+  function campaignIcon(product) {
+    if (product?.campaign?.type === "flash") return "bolt";
+    if (product?.campaign?.type === "clearance") return "local_fire_department";
+    return "";
+  }
+
   function campaignEndsLabel(campaign) {
     if (!campaign?.endsAt) return "por tempo limitado";
     const remainingMs = new Date(campaign.endsAt).getTime() - Date.now();
@@ -662,7 +668,7 @@
         ? h("img", { src: img, alt: product.name })
         : h("span", null, "Imagem"),
         badge ? h("span", { className: `react-product-badge ${campaignBadgeClass(product)}` },
-          product.campaign?.type === "clearance" ? h("span", { className: "material-symbols-rounded", "aria-hidden": "true" }, "local_fire_department") : null,
+          campaignIcon(product) ? h("span", { className: "material-symbols-rounded", "aria-hidden": "true" }, campaignIcon(product)) : null,
           badge
         ) : null
       ),
@@ -670,7 +676,10 @@
       h("strong", null, product.name),
       rating ? h(RatingStars, { value: rating.average, count: rating.count, compact: true }) : null,
       campaignIsRunning(product.campaign) && product.campaign?.type === "flash"
-        ? h("span", { className: "react-flash-line" }, campaignEndsLabel(product.campaign))
+        ? h("span", { className: "react-flash-ticker" },
+          h("span", null, "\u26a1 ", campaignEndsLabel(product.campaign), " \u2022 oferta relampago"),
+          h("span", null, "\u26a1 ", campaignEndsLabel(product.campaign), " \u2022 oferta relampago")
+        )
         : null,
       h("div", { className: "react-card-price" },
         product.compareAtPrice ? h("span", { className: "react-old-price" }, money(product.compareAtPrice)) : null,
