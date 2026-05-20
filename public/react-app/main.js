@@ -38,6 +38,23 @@
     return { average, count };
   }
 
+  function RatingStars({ value, count, compact = false }) {
+    const rating = Math.max(0, Math.min(5, Number(value || 0)));
+    return h("div", { className: compact ? "react-stars compact" : "react-stars", "aria-label": `Nota ${rating.toFixed(1)} de 5` },
+      h("b", null, rating.toFixed(1)),
+      h("span", { className: "react-star-row", "aria-hidden": "true" },
+        Array.from({ length: 5 }, (_, index) => {
+          const fill = Math.max(0, Math.min(100, (rating - index) * 100));
+          return h("span", { className: "react-star", key: index },
+            h("span", { style: { width: `${fill}%` } }, "★"),
+            h("span", null, "★")
+          );
+        })
+      ),
+      Number(count || 0) ? h("em", null, `(${count})`) : null
+    );
+  }
+
   function normalizeTerm(value) {
     return String(value || "")
       .normalize("NFD")
@@ -571,11 +588,7 @@
       ),
       h("small", null, product.category || "Produto"),
       h("strong", null, product.name),
-      rating && h("div", { className: "react-rating" },
-        h("b", null, rating.average.toFixed(1)),
-        h("span", null, "★★★★★"),
-        rating.count ? h("em", null, `(${rating.count})`) : null
-      ),
+      rating ? h(RatingStars, { value: rating.average, count: rating.count, compact: true }) : null,
       h("p", null, money(product.price)),
       product.sellerPaysShipping ? h("span", { className: "free-shipping" }, "Frete Gratis") : null
     );
@@ -636,7 +649,7 @@
                 : h("span", { className: "react-review-avatar" }, name.charAt(0).toUpperCase() || "B"),
               h("strong", null, name),
               review.profileVerified ? h("span", { className: "react-verified-badge", "aria-label": "Perfil verificado" }) : null,
-              review.rating ? h("em", null, `${Number(review.rating).toFixed(1)} *`) : null
+              review.rating ? h(RatingStars, { value: review.rating, compact: true }) : null
             ),
             review.comment ? h("p", null, review.comment) : null,
             media.length ? h("div", { className: "react-review-media" },
@@ -806,11 +819,7 @@
       h("section", { className: "react-detail-card", "data-product-section": "intro" },
         h("small", null, product.category || "Produto"),
         h("h1", null, product.name),
-        rating && h("div", { className: "react-rating product-rating" },
-          h("b", null, rating.average.toFixed(1)),
-          h("span", null, "*****"),
-          rating.count ? h("em", null, `(${rating.count})`) : null
-        ),
+        rating ? h("div", { className: "product-rating" }, h(RatingStars, { value: rating.average, count: rating.count })) : null,
         h("div", { className: "react-price" }, money(product.price)),
         product.sellerPaysShipping ? h("span", { className: "free-shipping product-free-shipping" }, "Frete Gratis") : null,
         h("div", { className: "react-options" },

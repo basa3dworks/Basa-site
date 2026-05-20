@@ -517,18 +517,56 @@ main {
   font-weight: 900;
 }
 
-.react-rating {
-  display: flex;
-  gap: 4px;
+.react-stars {
+  display: inline-flex;
+  gap: 5px;
   align-items: center;
+  min-width: 0;
   color: #f5b301;
-  font-size: 0.7rem;
+  font-size: 0.82rem;
+  font-weight: 900;
 }
 
-.react-rating b,
-.react-rating em {
+.react-stars.compact {
+  gap: 4px;
+  font-size: 0.72rem;
+}
+
+.react-stars b,
+.react-stars em {
   color: var(--ink);
   font-style: normal;
+}
+
+.react-star-row {
+  display: inline-flex;
+  gap: 1px;
+  line-height: 1;
+}
+
+.react-star {
+  position: relative;
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  color: #d8dfd9;
+  line-height: 1;
+}
+
+.react-star span {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: hidden;
+}
+
+.react-star span:first-child {
+  z-index: 1;
+  color: #f5b301;
+}
+
+.react-star span:last-child {
+  color: #d8dfd9;
 }
 
 .free-shipping {
@@ -665,6 +703,11 @@ main {
 }
 
 .product-rating {
+  display: flex;
+  margin-top: -2px;
+}
+
+.product-rating .react-stars {
   font-size: 0.86rem;
 }
 
@@ -930,7 +973,7 @@ main {
 
 .react-review-head {
   display: grid;
-  grid-template-columns: 38px minmax(0, auto) 18px 1fr;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
 }
@@ -942,11 +985,12 @@ main {
   white-space: nowrap;
 }
 
-.react-review-head em {
+.react-review-head .react-verified-badge {
+  margin-left: 0;
+}
+
+.react-review-head .react-stars {
   justify-self: end;
-  color: #f5b301;
-  font-style: normal;
-  font-weight: 900;
 }
 
 .react-review-avatar {
