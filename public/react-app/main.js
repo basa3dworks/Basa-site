@@ -117,6 +117,20 @@
     return String(product.slug || product.id || "");
   }
 
+  function sameCartProduct(item, product) {
+    const identifiers = [product.id, product.slug].filter(Boolean).map(String);
+    const itemIdentifiers = [item.id, item.productId, item.slug].filter(Boolean).map(String);
+    return identifiers.some((identifier) => itemIdentifiers.includes(identifier));
+  }
+
+  function cartVariantKey(item = {}) {
+    return [item.colorName || "", item.colorHex || ""].map((value) => String(value || "").trim().toLowerCase()).join("|");
+  }
+
+  function cartItemIdentifiers(item = {}) {
+    return [item.id, item.productId, item.slug].filter(Boolean).map(String);
+  }
+
   function getQuery(name) {
     return new URLSearchParams(window.location.search).get(name);
   }
@@ -352,15 +366,28 @@
   }
 
   function saveCart(items) {
-    localStorage.setItem(CART_KEY, JSON.stringify(items));
+    const merged = [];
+    items.forEach((item) => {
+      const identifiers = cartItemIdentifiers(item);
+      const existing = merged.find((candidate) =>
+        cartVariantKey(candidate) === cartVariantKey(item)
+        && cartItemIdentifiers(candidate).some((identifier) => identifiers.includes(identifier))
+      );
+      if (existing) {
+        existing.quantity = Number(existing.quantity || 0) + Number(item.quantity || 0);
+      } else {
+        merged.push({ ...item, quantity: Number(item.quantity || 1) });
+      }
+    });
+    localStorage.setItem(CART_KEY, JSON.stringify(merged));
     window.dispatchEvent(new Event("basa-cart-change"));
   }
 
   function addToCart(product, quantity, color) {
     const items = cartItems();
-    const key = getProductKey(product);
     const colorName = color?.name || color?.label || "";
-    const existing = items.find((item) => String(item.id || item.slug) === key && (item.colorName || "") === colorName);
+    const colorHex = color?.hex || color?.color || "";
+    const existing = items.find((item) => sameCartProduct(item, product) && cartVariantKey(item) === cartVariantKey({ colorName, colorHex }));
     if (existing) {
       existing.quantity = Number(existing.quantity || 0) + quantity;
     } else {
@@ -373,7 +400,7 @@
         image: productImage(product),
         quantity,
         colorName,
-        colorHex: color?.hex || color?.color || "",
+        colorHex,
         sellerPaysShipping: Boolean(product.sellerPaysShipping)
       });
     }
