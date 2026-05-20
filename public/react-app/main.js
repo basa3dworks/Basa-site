@@ -22,6 +22,10 @@
     return Math.round((1 - price / compareAt) * 100);
   }
 
+  function productHasFreeShipping(product = {}) {
+    return Boolean(product.sellerPaysShipping || product.shipping?.sellerPaysShipping);
+  }
+
   function campaignIsRunning(campaign) {
     if (!campaign?.active) return false;
     const now = Date.now();
@@ -73,7 +77,7 @@
     score += Math.min(90, Number(product.soldUnits || product.soldCount || 0) * 3);
     score += Math.min(50, Number(product.favoriteCount || 0) * 2);
     score += Number(product.rating?.average || product.ratingAverage || 0) * 8;
-    if (product.sellerPaysShipping) score += 20;
+    if (productHasFreeShipping(product)) score += 20;
     return score;
   }
 
@@ -640,7 +644,7 @@
         quantity,
         colorName,
         colorHex,
-        sellerPaysShipping: Boolean(product.sellerPaysShipping)
+        sellerPaysShipping: productHasFreeShipping(product)
       });
     }
     saveCart(items);
@@ -855,7 +859,7 @@
         product.compareAtPrice ? h("span", { className: "react-old-price" }, money(product.compareAtPrice)) : null,
         h("p", null, h("span", null, price.main), h("sup", null, price.cents), discount ? h("em", null, `${discount}% OFF`) : null)
       ),
-      product.sellerPaysShipping ? h("span", { className: "free-shipping" }, "Frete Grátis") : null
+      productHasFreeShipping(product) ? h("span", { className: "free-shipping" }, "Frete Grátis") : null
     );
   }
 
@@ -1102,7 +1106,7 @@
         h("h1", null, product.name),
         rating ? h("div", { className: "product-rating" }, h(RatingStars, { value: rating.average, count: rating.count })) : null,
         h("div", { className: "react-price" }, money(product.price)),
-        product.sellerPaysShipping ? h("span", { className: "free-shipping product-free-shipping" }, "Frete Grátis") : null,
+        productHasFreeShipping(product) ? h("span", { className: "free-shipping product-free-shipping" }, "Frete Grátis") : null,
         h("div", { className: "react-options" },
           h("div", { className: "react-stock-line" },
             h("strong", null, `${stock || 1} ${stock === 1 ? "unidade disponível" : "unidades disponíveis"}`)
@@ -1261,7 +1265,7 @@
       name: item.name || product.name,
       price: item.price ?? product.price,
       image: item.image || productImage(product),
-      sellerPaysShipping: item.sellerPaysShipping ?? Boolean(product.sellerPaysShipping)
+      sellerPaysShipping: item.sellerPaysShipping ?? productHasFreeShipping(product)
     };
   }
 
