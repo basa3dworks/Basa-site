@@ -184,6 +184,30 @@
     return customer.displayName || customer.name || customer.email || "Cliente Basa";
   }
 
+  function normalizeProfileName(value) {
+    return String(value || "").trim().replace(/^@+/, "").toLowerCase();
+  }
+
+  function profileNameError(value) {
+    const name = normalizeProfileName(value);
+    if (!name) return "Informe o nome do perfil.";
+    if (!/^[a-z0-9._]{1,15}$/.test(name)) {
+      return "Use ate 15 caracteres, sem espacos. Permitidos: letras, numeros, ponto e underline.";
+    }
+    return "";
+  }
+
+  function avatarNode(customer = {}, className = "react-profile-avatar") {
+    const name = safeCustomerName(customer);
+    return customer.avatarUrl
+      ? h("img", { className, src: customer.avatarUrl, alt: name })
+      : h("span", { className }, name.charAt(0).toUpperCase() || "B");
+  }
+
+  function verifiedBadge(customer = {}) {
+    return customer.profileVerified ? h("span", { className: "react-verified-badge", title: "Perfil verificado", "aria-label": "Perfil verificado" }) : null;
+  }
+
   function orderStatusLabel(status) {
     return {
       created: "Criado",
@@ -780,6 +804,7 @@
               h("strong", null, safeCustomerName(customer)),
               h("span", null, customer.email || "")
             ),
+            h("a", { className: "react-secondary-link", href: "/react/perfil" }, "Perfil e dados"),
             h("a", { className: "react-secondary-link", href: "/react/pedidos" }, "Meus pedidos"),
             h("a", { className: "react-secondary-link", href: "/react/encomendas" }, "Encomendas"),
             h("a", { className: "react-primary-link", href: nextUrl }, nextUrl.includes("carrinho") ? "Voltar ao carrinho" : "Continuar"),
@@ -835,6 +860,223 @@
             ) : null,
             h("button", { type: "submit", disabled: submitting }, submitting ? "Entrando..." : "Entrar ou criar conta")
           ),
+          status ? h("p", { className: "react-account-status" }, status) : null
+        )
+    );
+  }
+
+  function ProfilePage() {
+    const [session, setSession] = useState(customerSession());
+    const [customer, setCustomer] = useState(() => customerSession()?.customer || null);
+    const [profile, setProfile] = useState(() => ({
+      displayName: normalizeProfileName(customerSession()?.customer?.displayName || customerSession()?.username || ""),
+      avatar: null
+    }));
+    const [dataForm, setDataForm] = useState(() => defaultAccountForm(customerSession()));
+    const [status, setStatus] = useState("");
+    const [savingProfile, setSavingProfile] = useState(false);
+    const [savingData, setSavingData] = useState(false);
+
+    const refreshSession = (account) => {
+      const nextSession = {
+        ...session,
+        loggedIn: true,
+        username: account.username,
+        customer: account.customer,
+        emailVerified: Boolean(account.emailVerified),
+        updatedAt: new Date().toISOString()
+      };
+      localStorage.setItem(CUSTOMER_SESSION_KEY, JSON.stringify(nextSession));
+      setSession(nextSession);
+      setCustomer(account.customer);
+      setProfile({ displayName: normalizeProfileName(account.customer?.displayName || account.username || ""), avatar: null });
+      setDataForm(defaultAccountForm(nextSession));
+    };
+
+    const updateData = (field, value) => {
+      setDataForm((current) => ({ ...current, [field]: field === "state" ? value.toUpperCase().slice(0, 2) : value }));
+    };
+
+    const lookupProfileCep = async () => {
+      const zipCode = cleanZip(dataForm.zipCode);
+      if (zipCode.length !== 8) return;
+      setStatus("Buscando CEP...");
+      try {
+        const response = await fetch(`/api/cep/${zipCode}`);
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || "CEP nao encontrado.");
+        setDataForm((current) => ({
+          ...current,
+          zipCode: data.zipCode || data.cep || zipCode,
+          street: data.street || "",
+          neighborhood: data.neighborhood || "",
+          city: data.city || "",
+          state: data.state || "",
+          ibge: data.ibge || ""
+        }));
+        setStatus("");
+      } catch (error) {
+        setStatus(error.message || "Nao foi possivel consultar o CEP.");
+      }
+    };
+
+    const saveProfile = async (event) => {
+      event.preventDefault();
+      if (!customer?.email || savingProfile) return;
+      const normalizedName = normalizeProfileName(profile.displayName);
+      const validationError = profileNameError(normalizedName);
+      if (validationError) {
+        setStatus(validationError);
+        return;
+      }
+      const currentName = normalizeProfileName(customer.displayName || session?.username || "");
+      if (customer.profileVerified && normalizedName !== currentName) {
+        setProfile((current) => ({ ...current, displayName: currentName }));
+        setStatus("Perfil verificado: somente o admin pode alterar este nome.");
+        return;
+      }
+      if (normalizedName !== currentName && !customer.profileNameChangedAt) {
+        const confirmed = window.confirm("Voce pode trocar o nome de perfil agora. Depois desta troca, a proxima so podera ser feita em 30 dias. Tem certeza?");
+        if (!confirmed) return;
+      }
+      const body = new FormData();
+      body.set("email", customer.email);
+      body.set("displayName", normalizedName);
+      if (profile.avatar) body.set("avatar", profile.avatar);
+      setSavingProfile(true);
+      setStatus("Salvando perfil...");
+      try {
+        const response = await fetch("/api/customer/profile", { method: "POST", body });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || "Nao foi possivel salvar o perfil.");
+        refreshSession(data.account);
+        setStatus("Perfil salvo.");
+      } catch (error) {
+        setStatus(error.message || "Nao foi possivel salvar o perfil.");
+      } finally {
+        setSavingProfile(false);
+      }
+    };
+
+    const saveData = async (event) => {
+      event.preventDefault();
+      if (!customer?.email || savingData) return;
+      const body = new FormData();
+      ["name", "document", "phone", "zipCode", "street", "number", "neighborhood", "complement", "city", "state", "ibge"].forEach((field) => {
+        body.set(field, field === "zipCode" ? cleanZip(dataForm[field]) : dataForm[field] || "");
+      });
+      body.set("email", customer.email);
+      setSavingData(true);
+      setStatus("Salvando dados...");
+      try {
+        const response = await fetch("/api/customer/profile", { method: "POST", body });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || "Nao foi possivel salvar os dados.");
+        refreshSession(data.account);
+        setStatus("Dados salvos.");
+      } catch (error) {
+        setStatus(error.message || "Nao foi possivel salvar os dados.");
+      } finally {
+        setSavingData(false);
+      }
+    };
+
+    return h("main", { className: "react-profile-page" },
+      h("section", { className: "react-account-hero" },
+        h("small", null, "Dados"),
+        h("h1", null, "Perfil e dados"),
+        h("p", null, customer ? "Edite seu perfil publico, foto e endereco principal." : "Entre para editar seus dados.")
+      ),
+      !customer
+        ? h("section", { className: "react-account-card" },
+          h("p", null, "Sua conta nao esta conectada neste aparelho."),
+          h("a", { className: "react-primary-link", href: "/react/conta?next=/react/perfil" }, "Entrar ou criar conta")
+        )
+        : h(React.Fragment, null,
+          h("section", { className: "react-profile-summary" },
+            avatarNode(customer, "react-profile-avatar large"),
+            h("div", null,
+              h("strong", null, safeCustomerName(customer), verifiedBadge(customer)),
+              h("span", null, customer.email || ""),
+              h("small", null, session?.username ? `@${session.username}` : "")
+            )
+          ),
+          h("form", { className: "react-account-card react-account-form", onSubmit: saveProfile },
+            h("strong", null, "Editar perfil publico"),
+            h("label", null,
+              h("span", null, "Nome do perfil"),
+              h("input", {
+                required: true,
+                maxLength: 15,
+                readOnly: Boolean(customer.profileVerified),
+                value: profile.displayName,
+                onChange: (event) => setProfile((current) => ({ ...current, displayName: normalizeProfileName(event.target.value) })),
+                placeholder: "Ex: fernanda.landimm"
+              }),
+              h("small", null, customer.profileVerified ? "Perfil verificado: somente o admin pode alterar este nome." : "Prefira usar seu @ do Instagram.")
+            ),
+            h("label", null,
+              h("span", null, "Foto de perfil"),
+              h("input", { type: "file", accept: "image/*", onChange: (event) => setProfile((current) => ({ ...current, avatar: event.target.files?.[0] || null })) })
+            ),
+            h("button", { type: "submit", disabled: savingProfile }, savingProfile ? "Salvando..." : "Salvar perfil")
+          ),
+          h("form", { className: "react-account-card react-account-form", onSubmit: saveData },
+            h("strong", null, "Editar dados de compra"),
+            h("label", null,
+              h("span", null, "Nome completo"),
+              h("input", { required: true, value: dataForm.name, onChange: (event) => updateData("name", event.target.value), autoComplete: "name" })
+            ),
+            h("div", { className: "react-account-grid" },
+              h("label", null,
+                h("span", null, "CPF ou CNPJ"),
+                h("input", { required: true, value: dataForm.document, onChange: (event) => updateData("document", event.target.value), inputMode: "numeric" })
+              ),
+              h("label", null,
+                h("span", null, "Telefone"),
+                h("input", { required: true, value: dataForm.phone, onChange: (event) => updateData("phone", event.target.value), inputMode: "tel", autoComplete: "tel" })
+              )
+            ),
+            h("div", { className: "react-account-grid" },
+              h("label", null,
+                h("span", null, "CEP"),
+                h("input", { required: true, value: dataForm.zipCode, onChange: (event) => updateData("zipCode", cleanZip(event.target.value)), onBlur: lookupProfileCep, inputMode: "numeric", autoComplete: "postal-code" })
+              ),
+              h("label", null,
+                h("span", null, "Numero"),
+                h("input", { required: true, value: dataForm.number, onChange: (event) => updateData("number", event.target.value), autoComplete: "address-line2" })
+              )
+            ),
+            h("label", null,
+              h("span", null, "Rua"),
+              h("input", { required: true, value: dataForm.street, onChange: (event) => updateData("street", event.target.value), autoComplete: "address-line1" })
+            ),
+            h("div", { className: "react-account-grid" },
+              h("label", null,
+                h("span", null, "Bairro"),
+                h("input", { required: true, value: dataForm.neighborhood, onChange: (event) => updateData("neighborhood", event.target.value) })
+              ),
+              h("label", null,
+                h("span", null, "Complemento"),
+                h("input", { value: dataForm.complement, onChange: (event) => updateData("complement", event.target.value), autoComplete: "address-line3" })
+              )
+            ),
+            h("div", { className: "react-account-grid" },
+              h("label", null,
+                h("span", null, "Cidade"),
+                h("input", { required: true, value: dataForm.city, onChange: (event) => updateData("city", event.target.value), autoComplete: "address-level2" })
+              ),
+              h("label", null,
+                h("span", null, "Estado"),
+                h("input", { required: true, maxLength: 2, value: dataForm.state, onChange: (event) => updateData("state", event.target.value), autoComplete: "address-level1" })
+              )
+            ),
+            h("button", { type: "submit", disabled: savingData }, savingData ? "Salvando..." : "Salvar dados")
+          ),
+          addressLines(dataForm).length ? h("section", { className: "react-destination-card" },
+            h("strong", null, "Endereco principal"),
+            addressLines(dataForm).map((line) => h("span", { key: line }, line))
+          ) : null,
           status ? h("p", { className: "react-account-status" }, status) : null
         )
     );
@@ -1669,6 +1911,7 @@
     const isProductPage = window.location.pathname.startsWith("/react/produto");
     const isCartPage = window.location.pathname.startsWith("/react/carrinho");
     const isAccountPage = window.location.pathname.startsWith("/react/conta");
+    const isProfilePage = window.location.pathname.startsWith("/react/perfil");
     const isOrdersPage = window.location.pathname.startsWith("/react/pedidos");
     const isRequestsPage = window.location.pathname.startsWith("/react/encomendas");
     const isChatPage = window.location.pathname.startsWith("/react/chat");
@@ -1691,6 +1934,13 @@
       return h(React.Fragment, null,
         h(Topbar, { count, detail: true }),
         h(AccountPage)
+      );
+    }
+
+    if (isProfilePage) {
+      return h(React.Fragment, null,
+        h(Topbar, { count, detail: true }),
+        h(ProfilePage)
       );
     }
 
