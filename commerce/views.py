@@ -592,14 +592,20 @@ def _partner_payload(body, existing=None, kind="affiliate"):
 
 
 def _campaign_payload(body):
+    starts_at = body.get("startsAt", "")
+    ends_at = body.get("endsAt", "")
+    starts_dt = _aware_dt(starts_at)
+    ends_dt = _aware_dt(ends_at)
+    if starts_dt and ends_dt and ends_dt <= starts_dt:
+        raise ValueError("A campanha precisa terminar depois de começar.")
     return {
         "active": bool(body.get("active")),
         "type": body.get("type") if body.get("type") in {"featured", "flash", "clearance", "launch"} else "featured",
         "label": str(body.get("label", "")).strip(),
         "discountPercent": max(0, min(95, float(body.get("discountPercent") or 0))),
         "priority": max(0, min(100, float(body.get("priority") or 0))),
-        "startsAt": body.get("startsAt", ""),
-        "endsAt": body.get("endsAt", ""),
+        "startsAt": starts_at,
+        "endsAt": ends_at,
         "updatedAt": _now(),
     }
 
@@ -2571,7 +2577,10 @@ def api_admin_product_campaign(request, product_id):
     if not product:
         return JsonResponse({"error": "Produto nao encontrado."}, status=404)
     body = _json_body(request)
-    product["campaign"] = None if body.get("clear") else _campaign_payload(body)
+    try:
+        product["campaign"] = None if body.get("clear") else _campaign_payload(body)
+    except ValueError as exc:
+        return JsonResponse({"error": str(exc)}, status=400)
     write_db(db)
     return JsonResponse({"product": product, "products": db.get("products", [])})
 

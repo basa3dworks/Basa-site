@@ -577,6 +577,19 @@ function campaignHoursLeft(campaign) {
   return Number.isFinite(hours) ? hours : null;
 }
 
+function campaignDatePayload(form) {
+  const startsAt = form.elements.startsAt.value ? new Date(form.elements.startsAt.value).toISOString() : "";
+  const endsAt = form.elements.endsAt.value ? new Date(form.elements.endsAt.value).toISOString() : "";
+  return { startsAt, endsAt };
+}
+
+function campaignDateError(form) {
+  const startsAt = form.elements.startsAt.value ? new Date(form.elements.startsAt.value).getTime() : 0;
+  const endsAt = form.elements.endsAt.value ? new Date(form.elements.endsAt.value).getTime() : 0;
+  if (startsAt && endsAt && endsAt <= startsAt) return "A campanha precisa terminar depois de começar.";
+  return "";
+}
+
 function campaignStrength(product) {
   const campaign = product?.campaign || {};
   const discount = Math.max(0, Math.min(95, Number(campaign.discountPercent || 0)));
@@ -720,8 +733,7 @@ function fillCampaignFormFromSelected() {
     label: form.elements.label.value,
     discountPercent: Number(form.elements.discountPercent.value || 0),
     priority: Number(form.elements.priority.value || 0),
-    startsAt: form.elements.startsAt.value ? new Date(form.elements.startsAt.value).toISOString() : product?.campaign?.startsAt,
-    endsAt: form.elements.endsAt.value ? new Date(form.elements.endsAt.value).toISOString() : product?.campaign?.endsAt,
+    ...campaignDatePayload(form),
     active: form.elements.active.checked
   };
   const productForInsight = product ? { ...product, campaign } : null;
@@ -2540,9 +2552,15 @@ $("#campaignForm").addEventListener("submit", async (event) => {
   const form = event.currentTarget;
   const productId = form.elements.productId.value;
   if (!productId) return;
+  const dateError = campaignDateError(form);
+  if (dateError) {
+    $("#campaignStatus").textContent = dateError;
+    return;
+  }
   $("#campaignStatus").textContent = "Salvando campanha...";
   const body = Object.fromEntries(new FormData(form).entries());
   body.active = form.elements.active.checked;
+  Object.assign(body, campaignDatePayload(form));
   try {
     const result = await api(`/api/admin/products/${encodeURIComponent(productId)}/campaign`, {
       method: "PATCH",

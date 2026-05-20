@@ -232,14 +232,23 @@ function productPayload(body, existing = {}, settings = {}) {
 
 function campaignPayload(body = {}) {
   const type = ["featured", "flash", "clearance", "launch"].includes(body.type) ? body.type : "featured";
+  const startsAt = body.startsAt || "";
+  const endsAt = body.endsAt || "";
+  if (startsAt && endsAt) {
+    const starts = new Date(startsAt).getTime();
+    const ends = new Date(endsAt).getTime();
+    if (Number.isFinite(starts) && Number.isFinite(ends) && ends <= starts) {
+      throw Object.assign(new Error("A campanha precisa terminar depois de começar."), { status: 400 });
+    }
+  }
   return {
     active: Boolean(body.active),
     type,
     label: String(body.label || "").trim(),
     discountPercent: Math.max(0, Math.min(95, Number(body.discountPercent || 0))),
     priority: Math.max(0, Math.min(100, Number(body.priority || 0))),
-    startsAt: body.startsAt || "",
-    endsAt: body.endsAt || "",
+    startsAt,
+    endsAt,
     updatedAt: new Date().toISOString()
   };
 }
