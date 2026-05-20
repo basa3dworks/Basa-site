@@ -90,6 +90,11 @@
     return `basa_favorites_${email}`;
   }
 
+  function hiddenFavoriteKey() {
+    const email = customerSession()?.customer?.email || "guest";
+    return `basa_favorites_hidden_${email}`;
+  }
+
   function favoriteIds() {
     try {
       return JSON.parse(localStorage.getItem(favoriteKey()) || "[]");
@@ -100,6 +105,18 @@
 
   function saveFavoriteIds(ids) {
     localStorage.setItem(favoriteKey(), JSON.stringify([...new Set(ids.map(String))]));
+  }
+
+  function hiddenFavoriteIds() {
+    try {
+      return JSON.parse(localStorage.getItem(hiddenFavoriteKey()) || "[]");
+    } catch {
+      return [];
+    }
+  }
+
+  function saveHiddenFavoriteIds(ids) {
+    localStorage.setItem(hiddenFavoriteKey(), JSON.stringify([...new Set(ids.map(String))]));
   }
 
   function isFavorite(productId) {
@@ -116,8 +133,16 @@
     const ids = favoriteIds();
     const active = ids.includes(id);
     saveFavoriteIds(active ? ids.filter((item) => item !== id) : [...ids, id]);
+    saveHiddenFavoriteIds(hiddenFavoriteIds().filter((item) => item !== id));
     window.dispatchEvent(new Event("basa-favorites-change"));
     return !active;
+  }
+
+  function hideFromFavorites(productId) {
+    const id = String(productId || "");
+    if (!id) return;
+    saveHiddenFavoriteIds([...hiddenFavoriteIds(), id]);
+    window.dispatchEvent(new Event("basa-favorites-change"));
   }
 
   function productImage(product) {
@@ -692,20 +717,23 @@
     );
   }
 
-  function ProductCard({ product, onFavoriteChange }) {
+  function ProductCard({ product, feed }) {
     const rating = productRating(product);
     const img = productImage(product);
     const badge = campaignLabel(product);
     const discount = discountPercent(product);
     const price = moneyParts(product.price);
-    const [favorite, setFavorite] = useState(() => isFavorite(product.id));
+    const favorite = isFavorite(product.id);
     const likes = favoriteCount(product);
     const handleFavorite = (event) => {
       event.preventDefault();
       event.stopPropagation();
-      const next = toggleFavorite(product.id);
-      setFavorite(next);
-      onFavoriteChange?.();
+      toggleFavorite(product.id);
+    };
+    const handleHideFavorite = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      hideFromFavorites(product.id);
     };
     return h("a", { className: "react-product-card", href: `/react/produto?slug=${productSlug(product)}` },
       h("div", { className: "react-product-image" }, img
@@ -720,6 +748,12 @@
           h("span", { className: "material-symbols-rounded", "aria-hidden": "true" }, favorite ? "favorite" : "favorite"),
           likes ? h("small", null, likes) : null
         ),
+        feed === "favorites" ? h("button", {
+          className: "react-favorite-remove",
+          type: "button",
+          onClick: handleHideFavorite,
+          "aria-label": `Remover ${product.name} desta lista de favoritos`
+        }, h("span", { className: "material-symbols-rounded", "aria-hidden": "true" }, "close")) : null,
         badge ? h("span", { className: `react-product-badge ${campaignBadgeClass(product)}` },
           campaignIcon(product) ? h("span", { className: "material-symbols-rounded", "aria-hidden": "true" }, campaignIcon(product)) : null,
           badge
@@ -1030,7 +1064,8 @@
       }
       if (feed === "favorites") {
         const favorites = favoriteIds();
-        return active.filter((product) => favorites.includes(String(product.id)));
+        const hidden = hiddenFavoriteIds();
+        return active.filter((product) => favorites.includes(String(product.id)) && !hidden.includes(String(product.id)));
       }
       if (feed === "trending") {
         return [...active].sort((a, b) => Number(b.soldUnits || b.soldCount || 0) - Number(a.soldUnits || a.soldCount || 0));
@@ -1045,7 +1080,7 @@
       h("h2", null, title),
       visibleProducts.length
         ? h("div", { className: "react-product-grid" },
-          visibleProducts.slice(0, 12).map((product) => h(ProductCard, { key: product.id, product }))
+          visibleProducts.slice(0, 12).map((product) => h(ProductCard, { key: product.id, product, feed }))
         )
         : h("div", { className: "react-empty-list" },
           h("strong", null, feed === "favorites" ? "Nenhum favorito ainda." : "Nenhum produto por aqui ainda."),

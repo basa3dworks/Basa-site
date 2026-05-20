@@ -788,6 +788,28 @@ main {
   font-weight: 900;
 }
 
+.react-favorite-remove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid rgba(19, 45, 38, 0.12);
+  border-radius: 999px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 8px 18px rgba(19, 45, 38, 0.12);
+  cursor: pointer;
+}
+
+.react-favorite-remove .material-symbols-rounded {
+  font-size: 1rem;
+  font-variation-settings: "FILL" 0, "wght" 800, "GRAD" 0, "opsz" 20;
+}
+
 .react-product-card small {
   color: var(--accent);
   font-size: 0.66rem;
