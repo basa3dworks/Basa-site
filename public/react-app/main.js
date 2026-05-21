@@ -738,6 +738,7 @@
         ["shopping_bag", "Carrinho", "Itens e entrega.", "/carrinho"]
       ]
       : [
+        ["storefront", "Loja", "Voltar para a vitrine.", "/"],
         ["login", "Entrar", "Acesse ou crie sua conta.", "/conta"],
         ["forum", "Chat", "Entre para falar conosco.", "/chat"],
         ["shopping_bag", "Carrinho", "Itens e entrega.", "/carrinho"]
@@ -771,18 +772,18 @@
         ) : null
       ),
       !detail && menuOpen ? h("div", { className: "react-menu-backdrop", onClick: closeMenu },
-        h("nav", { className: "react-menu-panel", onClick: (event) => event.stopPropagation(), "aria-label": "Menu da loja" },
-          h("div", { className: "react-menu-profile" },
+        h("nav", { className: customer ? "react-menu-panel" : "react-menu-panel logged-out", onClick: (event) => event.stopPropagation(), "aria-label": "Menu da loja" },
+          customer ? h("div", { className: "react-menu-profile" },
             customer ? avatarNode(customer, "react-profile-avatar") : h("span", { className: "react-profile-avatar" }, "B"),
             h("div", null,
               h("strong", null, customer ? safeCustomerName(customer) : "Minha Basa", customer ? verifiedBadge(customer) : null),
               h("span", null, customer?.email || "Entre para acompanhar compras.")
             )
-          ),
-          h("a", { className: "react-menu-home", href: "/", onClick: closeMenu },
+          ) : null,
+          customer ? h("a", { className: "react-menu-home", href: "/", onClick: closeMenu },
             h("span", { className: "material-symbols-rounded" }, "storefront"),
             h("strong", null, "Loja")
-          ),
+          ) : null,
           h("div", { className: "react-menu-links" },
             menuItems.map(([icon, title, text, href]) => h("a", { href, key: href, onClick: closeMenu },
               h("span", { className: "material-symbols-rounded" }, icon),
