@@ -5610,6 +5610,175 @@ body.store-body:not(.admin-body) .customer-drawer {
   line-height: 1.5;
 }
 
+.affiliate-command-panel {
+  display: grid;
+  gap: 16px;
+  margin: 18px 0;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.affiliate-command-panel .panel-head {
+  align-items: start;
+}
+
+.affiliate-status-tabs {
+  justify-content: end;
+}
+
+.affiliate-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.affiliate-kpi-grid article,
+.affiliate-dashboard-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--soft);
+}
+
+.affiliate-kpi-grid article {
+  display: grid;
+  gap: 5px;
+  padding: 14px;
+}
+
+.affiliate-kpi-grid span,
+.affiliate-kpi-grid small,
+.affiliate-dashboard-card p,
+.affiliate-rank-card span,
+.affiliate-rank-card small,
+.affiliate-commission-row small,
+.affiliate-product-opportunity span,
+.affiliate-product-opportunity small {
+  color: var(--muted);
+}
+
+.affiliate-kpi-grid span {
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.affiliate-kpi-grid strong {
+  color: var(--brand);
+  font-size: 1.45rem;
+}
+
+.affiliate-dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.affiliate-dashboard-card {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 14px;
+}
+
+.affiliate-dashboard-card h3 {
+  margin: 0;
+}
+
+.affiliate-rank-list,
+.affiliate-commission-list,
+.affiliate-product-list {
+  display: grid;
+  gap: 8px;
+}
+
+.affiliate-rank-card,
+.affiliate-commission-row,
+.affiliate-product-opportunity {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.affiliate-rank-card {
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.affiliate-rank-card b {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--brand);
+}
+
+.affiliate-rank-card div,
+.affiliate-product-opportunity div,
+.affiliate-commission-row div {
+  min-width: 0;
+}
+
+.affiliate-rank-card strong,
+.affiliate-rank-card span,
+.affiliate-rank-card small,
+.affiliate-product-opportunity strong,
+.affiliate-product-opportunity span,
+.affiliate-product-opportunity small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.affiliate-rank-card em {
+  color: var(--brand);
+  font-style: normal;
+  font-weight: 900;
+}
+
+.affiliate-rank-card small {
+  grid-column: 2 / -1;
+}
+
+.affiliate-commission-row {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+}
+
+.affiliate-commission-row b {
+  color: var(--brand);
+}
+
+.affiliate-product-opportunity {
+  grid-template-columns: 56px minmax(0, 1fr);
+  align-items: center;
+}
+
+.affiliate-product-opportunity img,
+.affiliate-product-opportunity .product-placeholder {
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: #eef4ef;
+}
+
+.affiliate-product-opportunity .product-placeholder {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
 .people-list {
   display: grid;
   gap: 10px;

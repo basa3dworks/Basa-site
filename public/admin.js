@@ -30,6 +30,7 @@ let currentMetricsView = "overview";
 let currentSocialProductId = "";
 let chatStatusFilter = "all";
 let customerStatusFilter = "all";
+let affiliateStatusFilter = "all";
 let productSaveInProgress = false;
 let settingsSaveInProgress = false;
 
@@ -945,13 +946,156 @@ function partnerSearchText(item) {
   ].join(" ");
 }
 
+function commissionStatusLabel(status) {
+  return {
+    pending: "Pendente",
+    confirmed: "Confirmada",
+    available: "Disponível",
+    paid: "Paga",
+    canceled: "Cancelada"
+  }[status] || status || "Pendente";
+}
+
+function affiliateOrderRows() {
+  return currentOrders
+    .filter((order) => order.affiliate)
+    .map((order) => ({
+      order,
+      affiliate: order.affiliate,
+      status: order.affiliate?.status || "pending",
+      amount: Number(order.affiliate?.amount || 0),
+      total: Number(order.subtotal || order.total || 0)
+    }));
+}
+
+function affiliateMetrics(affiliate) {
+  const code = String(affiliate.code || "").toLowerCase();
+  const id = affiliate.id;
+  const rows = affiliateOrderRows().filter((row) =>
+    row.affiliate?.affiliateId === id || String(row.affiliate?.code || "").toLowerCase() === code
+  );
+  const totals = rows.reduce((acc, row) => {
+    acc.orders += 1;
+    acc.sold += row.total;
+    acc[row.status] = (acc[row.status] || 0) + row.amount;
+    if (["confirmed", "available", "paid"].includes(row.status)) acc.commission += row.amount;
+    return acc;
+  }, { orders: 0, sold: 0, commission: 0, pending: 0, confirmed: 0, available: 0, paid: 0, canceled: 0 });
+  totals.receivable = (totals.confirmed || 0) + (totals.available || 0);
+  return totals;
+}
+
+function affiliateProductOpportunities() {
+  const activeAffiliates = currentAffiliates.filter((affiliate) => affiliate.status === "active");
+  const defaultPercent = activeAffiliates.length
+    ? activeAffiliates.reduce((sum, affiliate) => sum + Number(affiliate.commissionPercent || 0), 0) / activeAffiliates.length
+    : 0;
+  return currentProducts
+    .filter((product) => product.status !== "inactive")
+    .map((product) => {
+      const percent = Number(product.affiliateCommissionPercent || defaultPercent || 0);
+      const price = Number(product.price || 0);
+      return {
+        product,
+        percent,
+        commission: price * percent / 100,
+        score: price * percent / 100 + Number(product.favoriteCount || 0) * 0.4 + Number(product.soldCount || product.soldUnits || 0) * 0.8
+      };
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 6);
+}
+
+function renderAffiliateDashboard(affiliates) {
+  const rows = affiliateOrderRows();
+  const activeAffiliates = currentAffiliates.filter((item) => item.status === "active");
+  const totals = rows.reduce((acc, row) => {
+    acc.orders += 1;
+    acc.sold += row.total;
+    acc.pending += row.status === "pending" ? row.amount : 0;
+    acc.receivable += ["confirmed", "available"].includes(row.status) ? row.amount : 0;
+    acc.paid += row.status === "paid" ? row.amount : 0;
+    return acc;
+  }, { orders: 0, sold: 0, pending: 0, receivable: 0, paid: 0 });
+
+  const kpiGrid = $("#affiliateKpiGrid");
+  if (kpiGrid) {
+    kpiGrid.innerHTML = `
+      <article><span>Afiliados ativos</span><strong>${activeAffiliates.length}</strong><small>${currentAffiliates.length} cadastrados</small></article>
+      <article><span>Vendas rastreadas</span><strong>${money(totals.sold)}</strong><small>${totals.orders} pedidos com afiliado</small></article>
+      <article><span>A receber</span><strong>${money(totals.receivable)}</strong><small>Confirmado ou disponível</small></article>
+      <article><span>Pendente</span><strong>${money(totals.pending)}</strong><small>Aguardando pagamento</small></article>
+    `;
+  }
+
+  const ranked = currentAffiliates
+    .map((affiliate) => ({ affiliate, metrics: affiliateMetrics(affiliate) }))
+    .sort((a, b) => b.metrics.commission - a.metrics.commission || b.metrics.sold - a.metrics.sold)
+    .slice(0, 8);
+  const leaderboard = $("#affiliateLeaderboard");
+  if (leaderboard) {
+    leaderboard.innerHTML = ranked.length ? ranked.map(({ affiliate, metrics }, index) => `
+      <article class="affiliate-rank-card">
+        <b>${index + 1}</b>
+        <div>
+          <strong>${escapeHtml(affiliate.name || affiliate.code || "Afiliado")}</strong>
+          <span>${escapeHtml(affiliate.code || "")} | ${personStatusLabel(affiliate.status)}</span>
+        </div>
+        <em>${money(metrics.commission)}</em>
+        <small>${metrics.orders} pedidos | ${money(metrics.sold)}</small>
+      </article>
+    `).join("") : `<p>Nenhuma venda rastreada ainda.</p>`;
+  }
+
+  const commissionTable = $("#affiliateCommissionTable");
+  if (commissionTable) {
+    const recentRows = rows.slice().sort((a, b) => new Date(b.order.createdAt || 0) - new Date(a.order.createdAt || 0)).slice(0, 8);
+    commissionTable.innerHTML = recentRows.length ? recentRows.map((row) => `
+      <article class="affiliate-commission-row">
+        <div>
+          <strong>${escapeHtml(row.order.id)}</strong>
+          <span>${escapeHtml(row.affiliate?.name || row.affiliate?.code || "Afiliado")}</span>
+        </div>
+        <small>${commissionStatusLabel(row.status)} | ${orderStatusLabel(row.order.status)}</small>
+        <b>${money(row.amount)}</b>
+      </article>
+    `).join("") : `<p>Quando pedidos entrarem por links de afiliado, aparecem aqui.</p>`;
+  }
+
+  const productList = $("#affiliateProductOpportunities");
+  if (productList) {
+    const rows = affiliateProductOpportunities();
+    productList.innerHTML = rows.length ? rows.map(({ product, percent, commission }) => `
+      <article class="affiliate-product-opportunity">
+        ${product.image ? `<img src="${product.image}" alt="">` : `<span class="product-placeholder">Produto</span>`}
+        <div>
+          <strong>${escapeHtml(product.name || "Produto")}</strong>
+          <span>${escapeHtml(product.category || "Geral")} | ${money(Number(product.price || 0))}</span>
+          <small>Comissão sugerida ${Number(percent || 0)}% = ${money(commission)}</small>
+        </div>
+      </article>
+    `).join("") : `<p>Cadastre produtos ativos para montar oportunidades.</p>`;
+  }
+
+  document.querySelectorAll("[data-affiliate-status]").forEach((button) => {
+    const status = button.dataset.affiliateStatus;
+    button.classList.toggle("active", status === affiliateStatusFilter);
+    const count = status === "all" ? currentAffiliates.length : currentAffiliates.filter((affiliate) => affiliate.status === status).length;
+    const label = { all: "Todos", active: "Ativos", lead: "Leads", paused: "Pausados" }[status] || personStatusLabel(status);
+    button.textContent = `${label} (${count})`;
+  });
+}
+
 function renderPeopleLists() {
   const query = $("#peopleSearchInput")?.value || "";
   const customers = currentCustomers.filter((item) =>
     (customerStatusFilter === "all" || (item.status || "active") === customerStatusFilter)
     && matchesSearch(customerSearchText(item), query)
   );
-  const affiliates = currentAffiliates.filter((item) => matchesSearch(partnerSearchText(item), query));
+  const affiliates = currentAffiliates.filter((item) =>
+    (affiliateStatusFilter === "all" || (item.status || "lead") === affiliateStatusFilter)
+    && matchesSearch(partnerSearchText(item), query)
+  );
   const customerCounts = currentCustomers.reduce((acc, item) => {
     const status = item.status || "active";
     acc.all += 1;
@@ -970,6 +1114,8 @@ function renderPeopleLists() {
     }[status] || personStatusLabel(status);
     button.textContent = `${baseLabel} (${customerCounts[status] || 0})`;
   });
+
+  renderAffiliateDashboard(affiliates);
 
   const customersList = $("#customersList");
   if (customersList) {
@@ -992,20 +1138,31 @@ function renderPeopleLists() {
     }).join("") : '<article class="people-card"><strong>Nenhum cliente encontrado</strong><span>Quando houver clientes cadastrados, eles aparecem aqui para aprovar o selo verificado.</span></article>';
   }
 
-  $("#affiliatesList").innerHTML = affiliates.length ? affiliates.map((affiliate) => `
+  $("#affiliatesList").innerHTML = affiliates.length ? affiliates.map((affiliate) => {
+    const metrics = affiliateMetrics(affiliate);
+    const shareUrl = `${location.origin}/react?ref=${encodeURIComponent(affiliate.code || "")}`;
+    return `
     <article class="people-card">
       <div>
         <strong>${affiliate.name}</strong>
         <span>${affiliate.email}${affiliate.phone ? ` | ${affiliate.phone}` : ""}</span>
         <small>${affiliate.code ? `Código: ${affiliate.code} | ` : ""}${personStatusLabel(affiliate.status)} | Comissão ${Number(affiliate.commissionPercent || 0)}%</small>
+        <small>${metrics.orders} pedidos | ${money(metrics.receivable)} a receber | ${money(metrics.pending)} pendente</small>
       </div>
       <div class="story-admin-actions">
+        <button class="ghost-button table-action" type="button" data-copy-affiliate-link="${escapeHtml(shareUrl)}">Link</button>
         <button class="ghost-button table-action" type="button" data-edit-affiliate="${affiliate.id}">Editar</button>
         <button class="ghost-button table-action" type="button" data-delete-affiliate="${affiliate.id}">Excluir</button>
       </div>
     </article>
-  `).join("") : "<p>Nenhum afiliado cadastrado.</p>";
+  `;
+  }).join("") : "<p>Nenhum afiliado cadastrado.</p>";
 
+  document.querySelectorAll("[data-copy-affiliate-link]").forEach((button) => button.addEventListener("click", async () => {
+    await navigator.clipboard?.writeText(button.dataset.copyAffiliateLink || "");
+    button.textContent = "Copiado";
+    setTimeout(() => { button.textContent = "Link"; }, 1200);
+  }));
   document.querySelectorAll("[data-edit-affiliate]").forEach((button) => button.addEventListener("click", () => editAffiliate(button.dataset.editAffiliate)));
   document.querySelectorAll("[data-delete-affiliate]").forEach((button) => button.addEventListener("click", () => deleteAffiliate(button.dataset.deleteAffiliate)));
   document.querySelectorAll("[data-edit-customer]").forEach((button) => button.addEventListener("click", () => editCustomer(button.dataset.editCustomer)));
@@ -2440,6 +2597,12 @@ $("#peopleSearchInput").addEventListener("input", renderPeopleLists);
 document.querySelectorAll("[data-customer-status]").forEach((button) => {
   button.addEventListener("click", () => {
     customerStatusFilter = button.dataset.customerStatus || "all";
+    renderPeopleLists();
+  });
+});
+document.querySelectorAll("[data-affiliate-status]").forEach((button) => {
+  button.addEventListener("click", () => {
+    affiliateStatusFilter = button.dataset.affiliateStatus || "all";
     renderPeopleLists();
   });
 });

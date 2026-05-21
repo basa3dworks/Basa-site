@@ -538,6 +538,35 @@
             <button type="button" data-customer-status="lead">Leads</button>
             <button type="button" data-customer-status="blocked">Bloqueados</button>
           </div>
+          <section class="affiliate-command-panel" aria-label="Painel de afiliados">
+            <div class="panel-head compact">
+              <div>
+                <h3>Gestão de afiliados</h3>
+                <p>Comissões, links rastreados, ranking e oportunidades para divulgar.</p>
+              </div>
+              <div class="admin-filter-tabs affiliate-status-tabs" id="affiliateStatusTabs">
+                <button type="button" class="active" data-affiliate-status="all">Todos</button>
+                <button type="button" data-affiliate-status="active">Ativos</button>
+                <button type="button" data-affiliate-status="lead">Leads</button>
+                <button type="button" data-affiliate-status="paused">Pausados</button>
+              </div>
+            </div>
+            <div class="affiliate-kpi-grid" id="affiliateKpiGrid"></div>
+            <div class="affiliate-dashboard-grid">
+              <section class="affiliate-dashboard-card">
+                <h3>Ranking</h3>
+                <div class="affiliate-rank-list" id="affiliateLeaderboard"></div>
+              </section>
+              <section class="affiliate-dashboard-card">
+                <h3>Comissões recentes</h3>
+                <div class="affiliate-commission-list" id="affiliateCommissionTable"></div>
+              </section>
+              <section class="affiliate-dashboard-card affiliate-products-card">
+                <h3>Melhores produtos para divulgar</h3>
+                <div class="affiliate-product-list" id="affiliateProductOpportunities"></div>
+              </section>
+            </div>
+          </section>
           <div class="people-grid">
             <form id="customerAdminForm" class="stack-form people-form">
               <input name="id" type="hidden">
