@@ -1639,6 +1639,15 @@ def react_preview(request, react_path=None):
     return FileResponse(file_path.open("rb"), content_type="text/html; charset=utf-8")
 
 
+def react_legacy_redirect(request, react_path=""):
+    query = request.META.get("QUERY_STRING", "")
+    clean_path = str(react_path or "").strip("/")
+    target = f"/{clean_path}" if clean_path else "/"
+    if query:
+        target = f"{target}?{query}"
+    return HttpResponseRedirect(target)
+
+
 def public_asset(request, asset_path):
     safe_parts = [part for part in Path(asset_path).parts if part not in {"", ".", ".."}]
     file_path = (PUBLIC_DIR / Path(*safe_parts)).resolve()
