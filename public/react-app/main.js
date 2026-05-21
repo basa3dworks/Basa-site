@@ -1235,15 +1235,17 @@
     const activeStories = (stories || []).filter((story) => story?.active !== false && (story.mediaUrl || storyPreview(story, products))).slice(0, 10);
     const [activeIndex, setActiveIndex] = useState(-1);
     if (!activeStories.length) return null;
-    return h("section", { className: "react-stories-section", "aria-label": "Stories da produção" },
-      h("div", { className: "react-stories-head" },
-        h("small", null, "Bastidores"),
-        h("h2", null, "Dia a dia da produção")
+    return h("section", { className: "stories-section react-stories-section", "aria-label": "Stories da produção" },
+      h("div", { className: "section-head compact react-stories-head" },
+        h("div", null,
+          h("p", { className: "eyebrow" }, "Bastidores"),
+          h("h2", null, "Dia a dia da produção")
+        )
       ),
-      h("div", { className: "react-stories-row" },
+      h("div", { className: "product-stories react-stories-row" },
         activeStories.map((story, index) => {
           const preview = storyPreview(story, products);
-          return h("button", { key: story.id || index, className: "react-story-bubble", type: "button", onClick: () => setActiveIndex(index) },
+          return h("button", { key: story.id || index, className: "story-bubble react-story-bubble", type: "button", onClick: () => setActiveIndex(index) },
             h("span", null,
               preview ? h("img", { src: preview, alt: story.title || "Story Basa 3D" }) : null,
               story.mediaType === "video" ? h("i", null, "Video") : null
