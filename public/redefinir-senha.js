@@ -24,5 +24,5 @@ form.addEventListener("submit", async (event) => {
     statusBox.textContent = data.error || "Não foi possível redefinir.";
     return;
   }
-  statusBox.innerHTML = "Senha alterada. <a href=\"/conta.html\">Entrar na Minha Basa</a>";
+  statusBox.innerHTML = "Senha alterada. <a href=\"/conta\">Entrar na Minha Basa</a>";
 });

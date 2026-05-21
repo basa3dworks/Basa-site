@@ -10,7 +10,7 @@ async function verifyEmail() {
   const response = await fetch(`/api/customer/verify-email?token=${encodeURIComponent(token)}`);
   const data = await response.json();
   if (!response.ok) {
-    statusBox.innerHTML = `<strong>Não foi possível confirmar</strong><span>${data.error || "Solicite um novo e-mail de confirmação."}</span><a class="secondary-link" href="/conta.html">Voltar para Minha Basa</a>`;
+    statusBox.innerHTML = `<strong>Não foi possível confirmar</strong><span>${data.error || "Solicite um novo e-mail de confirmação."}</span><a class="secondary-link" href="/conta">Voltar para Minha Basa</a>`;
     return;
   }
   const session = JSON.parse(localStorage.getItem("basa_customer_session") || "null");
@@ -18,7 +18,7 @@ async function verifyEmail() {
     session.emailVerified = true;
     localStorage.setItem("basa_customer_session", JSON.stringify(session));
   }
-  statusBox.innerHTML = "<strong>E-mail confirmado</strong><span>Sua conta foi ativada com sucesso.</span><a class=\"secondary-link\" href=\"/conta.html\">Entrar na Minha Basa</a>";
+  statusBox.innerHTML = "<strong>E-mail confirmado</strong><span>Sua conta foi ativada com sucesso.</span><a class=\"secondary-link\" href=\"/conta\">Entrar na Minha Basa</a>";
 }
 
 verifyEmail();

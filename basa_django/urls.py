@@ -3,7 +3,16 @@ from django.urls import path, re_path
 from commerce import views
 
 urlpatterns = [
-    path("", views.public_page, {"page": "index.html"}),
+    path("", views.react_preview),
+    path("produto", views.react_preview),
+    path("carrinho", views.react_preview),
+    path("conta", views.react_preview),
+    path("perfil", views.react_preview),
+    path("pedidos", views.react_preview),
+    path("encomendas", views.react_preview),
+    path("chat", views.react_preview),
+    path("afiliado", views.react_preview),
+    path("obrigado", views.react_preview),
     path("react", views.react_preview),
     path("react/<path:react_path>", views.react_preview),
     path("<str:page>.html", views.public_page),

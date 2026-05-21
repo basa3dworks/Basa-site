@@ -397,7 +397,7 @@
   }
 
   function accountNextUrl() {
-    return getQuery("next") || "/react/carrinho";
+    return getQuery("next") || "/carrinho";
   }
 
   function googleLoginUrl() {
@@ -672,28 +672,28 @@
     const logout = () => {
       localStorage.removeItem(CUSTOMER_SESSION_KEY);
       closeMenu();
-      window.location.href = "/react/conta";
+      window.location.href = "/conta";
     };
     const menuItems = customer
       ? [
-        ["account_circle", "Perfil e dados", "Cadastro, foto e endereço.", "/react/perfil"],
-        ["receipt_long", "Pedidos", "Compras, pagamentos e entrega.", "/react/pedidos"],
-        ["inventory_2", "Encomendas", "Solicitações sob medida.", "/react/encomendas"],
-        ["percent", "Afiliado", "Comissões e links.", "/react/afiliado"],
-        ["forum", "Chat", "Fale com a Basa.", "/react/chat"],
-        ["shopping_bag", "Carrinho", "Itens e entrega.", "/react/carrinho"]
+        ["account_circle", "Perfil e dados", "Cadastro, foto e endereço.", "/perfil"],
+        ["receipt_long", "Pedidos", "Compras, pagamentos e entrega.", "/pedidos"],
+        ["inventory_2", "Encomendas", "Solicitações sob medida.", "/encomendas"],
+        ["percent", "Afiliado", "Comissões e links.", "/afiliado"],
+        ["forum", "Chat", "Fale com a Basa.", "/chat"],
+        ["shopping_bag", "Carrinho", "Itens e entrega.", "/carrinho"]
       ]
       : [
-        ["login", "Entrar", "Acesse ou crie sua conta.", "/react/conta"],
-        ["forum", "Chat", "Entre para falar conosco.", "/react/chat"],
-        ["shopping_bag", "Carrinho", "Itens e entrega.", "/react/carrinho"]
+        ["login", "Entrar", "Acesse ou crie sua conta.", "/conta"],
+        ["forum", "Chat", "Entre para falar conosco.", "/chat"],
+        ["shopping_bag", "Carrinho", "Itens e entrega.", "/carrinho"]
       ];
 
     return h(React.Fragment, null,
       h("header", { className: customer ? "react-topbar has-customer-row" : "react-topbar" },
         h("div", { className: "react-topbar-main" },
           detail
-            ? h("a", { className: "round-icon", href: "/react", "aria-label": "Voltar" }, h("span", { className: "material-symbols-rounded" }, "arrow_back"))
+            ? h("a", { className: "round-icon", href: "/", "aria-label": "Voltar" }, h("span", { className: "material-symbols-rounded" }, "arrow_back"))
             : h("button", {
               className: "round-icon",
               "aria-label": menuOpen ? "Fechar menu" : "Menu",
@@ -703,10 +703,10 @@
           h("label", { className: "react-search" },
             h("input", { placeholder: "Buscar na Basa 3D Works", readOnly: true })
           ),
-          h("a", { className: "round-icon", href: "/react/chat", "aria-label": "Chat" },
+          h("a", { className: "round-icon", href: "/chat", "aria-label": "Chat" },
             h("span", { className: "material-symbols-rounded" }, "forum")
           ),
-          h("a", { className: "round-icon cart-icon", href: "/react/carrinho", "aria-label": "Carrinho" },
+          h("a", { className: "round-icon cart-icon", href: "/carrinho", "aria-label": "Carrinho" },
             h("span", { className: "material-symbols-rounded" }, "shopping_bag"),
             h("b", null, count)
           )
@@ -725,7 +725,7 @@
               h("span", null, customer?.email || "Entre para acompanhar compras.")
             )
           ),
-          h("a", { className: "react-menu-home", href: "/react", onClick: closeMenu },
+          h("a", { className: "react-menu-home", href: "/", onClick: closeMenu },
             h("span", { className: "material-symbols-rounded" }, "storefront"),
             h("strong", null, "Loja")
           ),
@@ -812,7 +812,7 @@
             onClick: () => chooseFeed(`category:${category}`)
           }, category))
         ),
-        h("a", { className: "react-print-ideas", href: "/react/encomendas" }, "Imprima suas ideias")
+        h("a", { className: "react-print-ideas", href: "/encomendas" }, "Imprima suas ideias")
       ) : null
     );
   }
@@ -835,7 +835,7 @@
       event.stopPropagation();
       hideFromFavorites(product.id);
     };
-    return h("a", { className: "react-product-card", href: `/react/produto?slug=${productSlug(product)}` },
+    return h("a", { className: "react-product-card", href: `/produto?slug=${productSlug(product)}` },
       h("div", { className: "react-product-image" }, img
         ? h("img", { src: img, alt: product.name })
         : h("span", null, "Imagem"),
@@ -1049,7 +1049,7 @@
       return h("main", { className: "react-product-page" },
         h("section", { className: "react-detail-card" },
           h("h1", null, "Produto não encontrado"),
-          h("a", { className: "react-add", href: "/react" }, "Voltar para a vitrine")
+          h("a", { className: "react-add", href: "/" }, "Voltar para a vitrine")
         )
       );
     }
@@ -1063,7 +1063,7 @@
       addToCart(product, quantity, color);
       setCount(cartCount());
       if (buyNow) {
-        window.location.href = "/react/carrinho";
+        window.location.href = "/carrinho";
         return;
       }
       setNotice("Produto adicionado ao carrinho.");
@@ -1238,7 +1238,7 @@
           h("p", null, "Bastidores"),
           h("h2", null, story.title || "Bastidor Basa"),
           story.caption ? h("span", null, story.caption) : null,
-          productSlugValue ? h("a", { href: `/react/produto?slug=${encodeURIComponent(productSlugValue)}` }, "Ver produto relacionado") : null
+          productSlugValue ? h("a", { href: `/produto?slug=${encodeURIComponent(productSlugValue)}` }, "Ver produto relacionado") : null
         )
       )
     );
@@ -1385,9 +1385,9 @@
               h("strong", null, safeCustomerName(customer)),
               h("span", null, customer.email || "")
             ),
-            h("a", { className: "react-secondary-link", href: "/react/perfil" }, "Perfil e dados"),
-            h("a", { className: "react-secondary-link", href: "/react/pedidos" }, "Meus pedidos"),
-            h("a", { className: "react-secondary-link", href: "/react/encomendas" }, "Encomendas"),
+            h("a", { className: "react-secondary-link", href: "/perfil" }, "Perfil e dados"),
+            h("a", { className: "react-secondary-link", href: "/pedidos" }, "Meus pedidos"),
+            h("a", { className: "react-secondary-link", href: "/encomendas" }, "Encomendas"),
             h("a", { className: "react-primary-link", href: nextUrl }, nextUrl.includes("carrinho") ? "Voltar ao carrinho" : "Continuar"),
             h("button", { type: "button", className: "react-danger-button", onClick: logout }, "Sair")
           ),
@@ -1571,7 +1571,7 @@
       !customer
         ? h("section", { className: "react-account-card" },
           h("p", null, "Sua conta não está conectada neste aparelho."),
-          h("a", { className: "react-primary-link", href: "/react/conta?next=/react/perfil" }, "Entrar ou criar conta")
+          h("a", { className: "react-primary-link", href: "/conta?next=/perfil" }, "Entrar ou criar conta")
         )
         : h(React.Fragment, null,
           h("section", { className: "react-profile-summary" },
@@ -1758,7 +1758,7 @@
       !customer
         ? h("section", { className: "react-account-card" },
           h("p", null, "Sua conta não está conectada neste aparelho."),
-          h("a", { className: "react-primary-link", href: "/react/conta?next=/react/encomendas" }, "Entrar ou criar conta")
+          h("a", { className: "react-primary-link", href: "/conta?next=/encomendas" }, "Entrar ou criar conta")
         )
         : h(React.Fragment, null,
           h("section", { className: "react-account-card" },
@@ -1917,7 +1917,7 @@
       !customer
         ? h("section", { className: "react-account-card" },
           h("p", null, "Para falar com a Basa, conecte sua conta primeiro."),
-          h("a", { className: "react-primary-link", href: "/react/conta?next=/react/chat" }, "Entrar ou criar conta")
+          h("a", { className: "react-primary-link", href: "/conta?next=/chat" }, "Entrar ou criar conta")
         )
         : h(React.Fragment, null,
           h("section", { className: "react-chat-card" },
@@ -2018,7 +2018,7 @@
       !customer
         ? h("section", { className: "react-account-card" },
           h("p", null, "Sua conta não está conectada neste aparelho."),
-          h("a", { className: "react-primary-link", href: "/react/conta?next=/react/pedidos" }, "Entrar ou criar conta")
+          h("a", { className: "react-primary-link", href: "/conta?next=/pedidos" }, "Entrar ou criar conta")
         )
         : loading
           ? h("section", { className: "react-detail-card" }, h("p", null, "Carregando seus pedidos..."))
@@ -2068,7 +2068,7 @@
               h("span", { className: "material-symbols-rounded" }, "receipt_long"),
               h("h2", null, "Nenhum pedido ainda"),
               h("p", null, "Quando você comprar, seus pedidos aparecem aqui."),
-              h("a", { className: "react-buy", href: "/react" }, "Ver produtos")
+              h("a", { className: "react-buy", href: "/" }, "Ver produtos")
             )
     );
   }
@@ -2127,7 +2127,7 @@
           h("span", { className: "material-symbols-rounded" }, "percent"),
           h("strong", null, "Login necessário"),
           h("p", null, "Use sua conta Basa para acessar o painel de afiliado."),
-          h("a", { className: "react-buy", href: "/react/conta?next=/react/afiliado" }, "Entrar ou criar conta")
+          h("a", { className: "react-buy", href: "/conta?next=/afiliado" }, "Entrar ou criar conta")
         )
       );
     }
@@ -2158,7 +2158,7 @@
               ),
               h("button", {
                 type: "button",
-                onClick: () => copyLink(`${location.origin}/react?ref=${encodeURIComponent(affiliate.code || "")}`, "home")
+                onClick: () => copyLink(`${location.origin}?ref=${encodeURIComponent(affiliate.code || "")}`, "home")
               }, copied === "home" ? "Copiado" : "Copiar link da loja")
             ),
             h("section", { className: "react-affiliate-products" },
@@ -2167,7 +2167,7 @@
                 h("h2", null, "Compartilhar e vender")
               ),
               products.map((product) => h("article", { className: "react-affiliate-product", key: product.id },
-                h("a", { className: "react-affiliate-thumb", href: `/react/produto?slug=${encodeURIComponent(product.slug)}&ref=${encodeURIComponent(affiliate.code || "")}` },
+                h("a", { className: "react-affiliate-thumb", href: `/produto?slug=${encodeURIComponent(product.slug)}&ref=${encodeURIComponent(affiliate.code || "")}` },
                   product.image ? h("img", { src: product.image, alt: product.name }) : h("span", null, "Produto")
                 ),
                 h("div", null,
@@ -2187,7 +2187,7 @@
             h("span", { className: "material-symbols-rounded" }, "manage_accounts"),
             h("strong", null, "Afiliado ainda não ativo"),
             h("p", null, status || "Peça para a Basa ativar seu cadastro de afiliado no admin usando este e-mail."),
-            h("a", { className: "react-buy", href: "/react/chat" }, "Falar com a Basa")
+            h("a", { className: "react-buy", href: "/chat" }, "Falar com a Basa")
           )
     );
   }
@@ -2392,7 +2392,7 @@
         saveCart([]);
         setItems([]);
         setCount(0);
-        window.location.href = data.payment?.checkoutUrl || `/obrigado.html?pedido=${data.order?.id || ""}`;
+        window.location.href = data.payment?.checkoutUrl || `/obrigado?pedido=${data.order?.id || ""}`;
       } catch (error) {
         setCartStatus(error.message || "Não foi possível criar o pedido.");
         setSubmitting(false);
@@ -2410,7 +2410,7 @@
           ? h(React.Fragment, null,
             h("section", { className: "react-cart-list" },
               enriched.map((item, index) => h("article", { className: "react-cart-item", key: `${item.id || item.slug || index}-${item.colorName || ""}` },
-                h("a", { className: "react-cart-media", href: item.slug ? `/react/produto?slug=${encodeURIComponent(item.slug)}` : "/react" },
+                h("a", { className: "react-cart-media", href: item.slug ? `/produto?slug=${encodeURIComponent(item.slug)}` : "" },
                   item.image ? h("img", { src: item.image, alt: item.name }) : h("span", null, "Imagem")
                 ),
                 h("div", { className: "react-cart-info" },
@@ -2507,7 +2507,7 @@
               discount > 0 ? h("div", null, h("span", null, "Desconto"), h("strong", null, `-${money(discount)}`)) : null,
               h("div", null, h("span", null, "Frete"), h("strong", null, freeShipping ? "Grátis" : shipping === null ? "A calcular" : money(shipping))),
               h("div", null, h("span", null, "Total"), h("strong", null, money(total))),
-              !loggedIn ? h("a", { className: "react-account-cta", href: "/react/conta?next=/react/carrinho" }, "Entrar ou criar conta") : null,
+              !loggedIn ? h("a", { className: "react-account-cta", href: "/conta?next=/carrinho" }, "Entrar ou criar conta") : null,
               h("button", { type: "button", onClick: checkout, disabled: submitting }, submitting ? "Processando..." : "Finalizar pedido"),
               cartStatus ? h("p", { className: "react-cart-status" }, cartStatus) : null
             )
@@ -2516,8 +2516,33 @@
             h("span", { className: "material-symbols-rounded" }, "shopping_bag"),
             h("h2", null, "Seu carrinho está vazio"),
             h("p", null, "Escolha um produto para continuar a compra."),
-            h("a", { className: "react-buy", href: "/react" }, "Ver produtos")
+            h("a", { className: "react-buy", href: "/" }, "Ver produtos")
           )
+    );
+  }
+
+  function ThankYouPage() {
+    const status = getQuery("status");
+    const orderId = getQuery("pedido");
+    const approved = status === "approved";
+    const pending = status === "pending" || !status;
+    const title = approved ? "Pedido confirmado" : pending ? "Pedido recebido" : "Pagamento não concluído";
+    const message = approved
+      ? "Recebemos a confirmação do pagamento. Você pode acompanhar produção e entrega em seus pedidos."
+      : pending
+        ? "Seu pedido ficou aguardando pagamento. Se você saiu do Mercado Pago, pode concluir em Meus pedidos."
+        : "Não recebemos a confirmação do pagamento. O pedido pode ser retomado em Meus pedidos.";
+    return h("main", { className: "react-page-shell" },
+      h("section", { className: "react-detail-card react-empty-cart" },
+        h("span", { className: "material-symbols-rounded" }, approved ? "check_circle" : "receipt_long"),
+        h("h1", null, title),
+        orderId ? h("p", null, `Pedido ${orderId}`) : null,
+        h("p", null, message),
+        h("div", { className: "react-account-actions" },
+          h("a", { className: "react-buy", href: "/pedidos" }, "Ver meus pedidos"),
+          h("a", { className: "react-secondary-link", href: "/" }, "Voltar para a loja")
+        )
+      )
     );
   }
 
@@ -2566,14 +2591,16 @@
       return () => window.removeEventListener("basa-favorites-change", updateFavorites);
     }, []);
 
-    const isProductPage = window.location.pathname.startsWith("/react/produto");
-    const isCartPage = window.location.pathname.startsWith("/react/carrinho");
-    const isAccountPage = window.location.pathname.startsWith("/react/conta");
-    const isProfilePage = window.location.pathname.startsWith("/react/perfil");
-    const isOrdersPage = window.location.pathname.startsWith("/react/pedidos");
-    const isRequestsPage = window.location.pathname.startsWith("/react/encomendas");
-    const isChatPage = window.location.pathname.startsWith("/react/chat");
-    const isAffiliatePage = window.location.pathname.startsWith("/react/afiliado");
+    const routePath = window.location.pathname.replace(/^\/react(?=\/|$)/, "") || "/";
+    const isProductPage = routePath.startsWith("/produto");
+    const isCartPage = routePath.startsWith("/carrinho");
+    const isAccountPage = routePath.startsWith("/conta");
+    const isProfilePage = routePath.startsWith("/perfil");
+    const isOrdersPage = routePath.startsWith("/pedidos");
+    const isRequestsPage = routePath.startsWith("/encomendas");
+    const isChatPage = routePath.startsWith("/chat");
+    const isAffiliatePage = routePath.startsWith("/afiliado");
+    const isThankYouPage = routePath.startsWith("/obrigado");
 
     if (isProductPage) {
       return h(React.Fragment, null,
@@ -2628,6 +2655,13 @@
       return h(React.Fragment, null,
         h(Topbar, { count, detail: true }),
         h(AffiliatePage)
+      );
+    }
+
+    if (isThankYouPage) {
+      return h(React.Fragment, null,
+        h(Topbar, { count, detail: true }),
+        h(ThankYouPage)
       );
     }
 

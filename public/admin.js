@@ -1150,7 +1150,7 @@ function renderPeopleLists() {
 
   $("#affiliatesList").innerHTML = affiliates.length ? affiliates.map((affiliate) => {
     const metrics = affiliateMetrics(affiliate);
-    const shareUrl = `${location.origin}/react?ref=${encodeURIComponent(affiliate.code || "")}`;
+    const shareUrl = `${location.origin}/?ref=${encodeURIComponent(affiliate.code || "")}`;
     return `
     <article class="people-card">
       <div>

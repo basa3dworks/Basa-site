@@ -17,7 +17,7 @@ from zoneinfo import ZoneInfo
 from django.conf import settings
 from django.core.signing import BadSignature, TimestampSigner
 from django.core.mail import send_mail
-from django.http import FileResponse, Http404, HttpResponse, JsonResponse
+from django.http import FileResponse, Http404, HttpResponse, HttpResponseRedirect, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
 from .store import BASE_DIR, read_db, read_upload, save_upload, write_db
@@ -302,7 +302,7 @@ def _google_oauth_enabled():
 
 def _google_state(next_url):
     return signer.sign(json.dumps({
-        "next": next_url if str(next_url or "").startswith("/") else "/conta.html",
+        "next": next_url if str(next_url or "").startswith("/") else "/conta",
         "nonce": secrets.token_urlsafe(12),
         "createdAt": _now(),
     }))
@@ -313,7 +313,7 @@ def _google_state_payload(value):
         raw = signer.unsign(value, max_age=60 * 10)
         return json.loads(raw)
     except Exception:
-        return {"next": "/conta.html"}
+        return {"next": "/conta"}
 
 
 def _google_token(code, request):
@@ -703,7 +703,7 @@ def _affiliate_dashboard_payload(request, db, affiliate):
             "freeShipping": bool(public_product.get("shipping", {}).get("sellerPaysShipping")),
             "commissionPercent": percent,
             "commissionAmount": round(price * percent / 100, 2),
-            "shareUrl": f"{base_url}/react/produto?slug={urllib.parse.quote(str(slug))}&ref={urllib.parse.quote(str(code or ''))}",
+            "shareUrl": f"{base_url}/produto?slug={urllib.parse.quote(str(slug))}&ref={urllib.parse.quote(str(code or ''))}",
         })
     products.sort(key=lambda item: (item["commissionAmount"], item["price"]), reverse=True)
     return {
@@ -1256,9 +1256,9 @@ def _create_mercado_pago_preference(order, request):
             },
         },
         "back_urls": {
-            "success": f"{origin}/obrigado.html?pedido={order.get('id')}&status=approved",
-            "pending": f"{origin}/obrigado.html?pedido={order.get('id')}&status=pending",
-            "failure": f"{origin}/obrigado.html?pedido={order.get('id')}&status=failure",
+            "success": f"{origin}/obrigado?pedido={order.get('id')}&status=approved",
+            "pending": f"{origin}/obrigado?pedido={order.get('id')}&status=pending",
+            "failure": f"{origin}/obrigado?pedido={order.get('id')}&status=failure",
         },
         "metadata": {
             "order_id": order.get("id"),
@@ -1313,7 +1313,7 @@ def _create_payment(order, request):
         "provider": "mock",
         "status": "approved",
         "paymentId": f"mock_{order.get('id')}",
-        "checkoutUrl": f"/obrigado.html?pedido={order.get('id')}",
+        "checkoutUrl": f"/obrigado?pedido={order.get('id')}",
         "updatedAt": _now(),
     }
 
@@ -1510,6 +1510,18 @@ def public_page(request, page="index.html"):
     safe_page = Path(page).name
     if Path(safe_page).suffix != ".html":
         safe_page = f"{safe_page}.html"
+    legacy_routes = {
+        "index.html": "/",
+        "produto.html": "/produto",
+        "conta.html": "/conta",
+        "obrigado.html": "/obrigado",
+    }
+    if safe_page in legacy_routes:
+        query = request.META.get("QUERY_STRING", "")
+        target = legacy_routes[safe_page]
+        if query:
+            target = f"{target}?{query}"
+        return HttpResponseRedirect(target)
     file_path = PUBLIC_DIR / safe_page
     if not file_path.exists() or file_path.suffix != ".html":
         raise Http404()
@@ -1948,7 +1960,7 @@ def api_customer_profile(request):
 def api_customer_google_start(request):
     if not _google_oauth_enabled():
         return JsonResponse({"error": "Login com Google ainda nao configurado."}, status=503)
-    next_url = request.GET.get("next") or "/conta.html"
+    next_url = request.GET.get("next") or "/conta"
     params = urllib.parse.urlencode({
         "client_id": GOOGLE_CLIENT_ID,
         "redirect_uri": _google_oauth_redirect_uri(request),
@@ -1964,7 +1976,7 @@ def api_customer_google_start(request):
 def api_customer_google_callback(request):
     code = request.GET.get("code", "")
     state_payload = _google_state_payload(request.GET.get("state", ""))
-    next_url = state_payload.get("next") or "/conta.html"
+    next_url = state_payload.get("next") or "/conta"
     if not code:
         return HttpResponse(status=302, headers={"Location": f"{next_url}?google=error"})
     try:

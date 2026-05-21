@@ -3,7 +3,8 @@
 Este diretorio e a primeira etapa da migracao segura do front para React.
 
 - A loja atual continua em `/`.
-- A previa React fica em `/react`.
+- A loja React é a experiência pública principal e fica em `/`.
+- O caminho `/react` continua aceito como compatibilidade temporária.
 - O shell React consome as APIs atuais do Django.
 - Nenhuma pagina publica foi substituida ainda.
 
