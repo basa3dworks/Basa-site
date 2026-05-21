@@ -50,6 +50,7 @@
           <button class="admin-tab" type="button" data-admin-tab="insights"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3v4m0 10v4M5.6 5.6l2.8 2.8m7.2 7.2 2.8 2.8M3 12h4m10 0h4M5.6 18.4l2.8-2.8m7.2-7.2 2.8-2.8"/></svg></span>Analytics IA</button>
           <span class="admin-nav-label">Pessoas</span>
           <button class="admin-tab" type="button" data-admin-tab="people"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M10 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-6 7a6 6 0 0 1 12 0m2-7 3 3m0-3-3 3"/></svg></span>Clientes</button>
+          <button class="admin-tab" type="button" data-admin-tab="affiliates"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h16v10H4zM7 10h4m-4 3h6m4-3 2 2-2 2m-7 5 2 2 2-2"/></svg></span>Afiliados</button>
           <span class="admin-nav-label">Loja</span>
           <button class="admin-tab" type="button" data-admin-tab="products"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m4 7 8-4 8 4-8 4-8-4Zm0 0v10l8 4 8-4V7M12 11v10"/></svg></span>Produtos</button>
           <button class="admin-tab" type="button" data-admin-tab="pricing"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM8 9h8M8 13h3m5 0h0M8 17h3m5 0h0"/></svg></span>Precificação</button>
@@ -526,10 +527,10 @@
           <div class="section-head compact">
             <div>
               <p class="eyebrow">Relacionamento</p>
-              <h2>Pessoas</h2>
+              <h2>Clientes</h2>
             </div>
-            <label class="admin-search">Pesquisar pessoas
-              <input id="peopleSearchInput" type="search" placeholder="Nome, email, código ou status">
+            <label class="admin-search">Pesquisar clientes
+              <input id="peopleSearchInput" type="search" placeholder="Nome, email, perfil ou status">
             </label>
           </div>
           <div class="admin-filter-tabs" id="customerStatusTabs" aria-label="Filtrar clientes por status">
@@ -538,36 +539,7 @@
             <button type="button" data-customer-status="lead">Leads</button>
             <button type="button" data-customer-status="blocked">Bloqueados</button>
           </div>
-          <section class="affiliate-command-panel" aria-label="Painel de afiliados">
-            <div class="panel-head compact">
-              <div>
-                <h3>Gestão de afiliados</h3>
-                <p>Comissões, links rastreados, ranking e oportunidades para divulgar.</p>
-              </div>
-              <div class="admin-filter-tabs affiliate-status-tabs" id="affiliateStatusTabs">
-                <button type="button" class="active" data-affiliate-status="all">Todos</button>
-                <button type="button" data-affiliate-status="active">Ativos</button>
-                <button type="button" data-affiliate-status="lead">Leads</button>
-                <button type="button" data-affiliate-status="paused">Pausados</button>
-              </div>
-            </div>
-            <div class="affiliate-kpi-grid" id="affiliateKpiGrid"></div>
-            <div class="affiliate-dashboard-grid">
-              <section class="affiliate-dashboard-card">
-                <h3>Ranking</h3>
-                <div class="affiliate-rank-list" id="affiliateLeaderboard"></div>
-              </section>
-              <section class="affiliate-dashboard-card">
-                <h3>Comissões recentes</h3>
-                <div class="affiliate-commission-list" id="affiliateCommissionTable"></div>
-              </section>
-              <section class="affiliate-dashboard-card affiliate-products-card">
-                <h3>Melhores produtos para divulgar</h3>
-                <div class="affiliate-product-list" id="affiliateProductOpportunities"></div>
-              </section>
-            </div>
-          </section>
-          <div class="people-grid">
+          <div class="people-grid affiliate-only-grid">
             <form id="customerAdminForm" class="stack-form people-form">
               <input name="id" type="hidden">
               <h3>Cliente</h3>
@@ -605,6 +577,54 @@
               </div>
               <p class="form-status" id="customerAdminStatus"></p>
             </form>
+            <section>
+              <h3>Clientes</h3>
+              <p class="helper-text">Use “Promover a afiliado” para criar uma ficha de afiliado a partir de um cliente existente.</p>
+              <div class="people-list" id="customersList"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="panel" data-admin-panel="affiliates" hidden>
+          <div class="section-head compact">
+            <div>
+              <p class="eyebrow">Parcerias</p>
+              <h2>Afiliados</h2>
+            </div>
+            <label class="admin-search">Pesquisar afiliados
+              <input id="affiliateSearchInput" type="search" placeholder="Nome, email, código ou status">
+            </label>
+          </div>
+          <section class="affiliate-command-panel" aria-label="Painel de afiliados">
+            <div class="panel-head compact">
+              <div>
+                <h3>Gestão de afiliados</h3>
+                <p>Comissões, links rastreados, ranking e oportunidades para divulgar.</p>
+              </div>
+              <div class="admin-filter-tabs affiliate-status-tabs" id="affiliateStatusTabs">
+                <button type="button" class="active" data-affiliate-status="all">Todos</button>
+                <button type="button" data-affiliate-status="active">Ativos</button>
+                <button type="button" data-affiliate-status="lead">Leads</button>
+                <button type="button" data-affiliate-status="paused">Pausados</button>
+              </div>
+            </div>
+            <div class="affiliate-kpi-grid" id="affiliateKpiGrid"></div>
+            <div class="affiliate-dashboard-grid">
+              <section class="affiliate-dashboard-card">
+                <h3>Ranking</h3>
+                <div class="affiliate-rank-list" id="affiliateLeaderboard"></div>
+              </section>
+              <section class="affiliate-dashboard-card">
+                <h3>Comissões recentes</h3>
+                <div class="affiliate-commission-list" id="affiliateCommissionTable"></div>
+              </section>
+              <section class="affiliate-dashboard-card affiliate-products-card">
+                <h3>Melhores produtos para divulgar</h3>
+                <div class="affiliate-product-list" id="affiliateProductOpportunities"></div>
+              </section>
+            </div>
+          </section>
+          <div class="people-grid affiliate-only-grid">
             <form id="affiliateForm" class="stack-form people-form">
               <input name="id" type="hidden">
               <h3>Afiliado</h3>
@@ -633,16 +653,12 @@
               <span>A comissão principal do afiliado fica no cadastro dele. No produto você pode definir uma comissão específica para campanha, controlando o que vale mais a pena divulgar.</span>
             </aside>
           </div>
-          <div class="people-lists">
-            <section>
-              <h3>Clientes</h3>
-              <div class="people-list" id="customersList"></div>
-            </section>
-            <section>
-              <h3>Afiliados</h3>
+          <section class="people-lists affiliate-only-list">
+            <div>
+              <h3>Afiliados cadastrados</h3>
               <div class="people-list" id="affiliatesList"></div>
-            </section>
-          </div>
+            </div>
+          </section>
         </section>
       </section>
     </main>

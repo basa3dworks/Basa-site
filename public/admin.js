@@ -69,6 +69,14 @@ function matchesSearch(text, query) {
   return !normalizedQuery || normalizeSearch(text).includes(normalizedQuery);
 }
 
+function affiliateCodeFromCustomer(account) {
+  const customer = account.customer || {};
+  return normalizeSearch(customer.displayName || account.username || customer.name || customer.email || "afiliado")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 32) || "afiliado";
+}
+
 function escapeHtml(value) {
   return String(value || "")
     .replaceAll("&", "&amp;")
@@ -1088,13 +1096,14 @@ function renderAffiliateDashboard(affiliates) {
 
 function renderPeopleLists() {
   const query = $("#peopleSearchInput")?.value || "";
+  const affiliateQuery = $("#affiliateSearchInput")?.value || "";
   const customers = currentCustomers.filter((item) =>
     (customerStatusFilter === "all" || (item.status || "active") === customerStatusFilter)
     && matchesSearch(customerSearchText(item), query)
   );
   const affiliates = currentAffiliates.filter((item) =>
     (affiliateStatusFilter === "all" || (item.status || "lead") === affiliateStatusFilter)
-    && matchesSearch(partnerSearchText(item), query)
+    && matchesSearch(partnerSearchText(item), affiliateQuery)
   );
   const customerCounts = currentCustomers.reduce((acc, item) => {
     const status = item.status || "active";
@@ -1130,6 +1139,7 @@ function renderPeopleLists() {
           </div>
           <div class="story-admin-actions">
             <button class="ghost-button table-action" type="button" data-start-chat-customer="${account.id}">Chat</button>
+            <button class="ghost-button table-action" type="button" data-promote-customer-affiliate="${account.id}">Promover a afiliado</button>
             <button class="ghost-button table-action" type="button" data-edit-customer="${account.id}">Editar</button>
             <button class="ghost-button table-action" type="button" data-delete-customer="${account.id}">Excluir</button>
           </div>
@@ -1165,6 +1175,7 @@ function renderPeopleLists() {
   }));
   document.querySelectorAll("[data-edit-affiliate]").forEach((button) => button.addEventListener("click", () => editAffiliate(button.dataset.editAffiliate)));
   document.querySelectorAll("[data-delete-affiliate]").forEach((button) => button.addEventListener("click", () => deleteAffiliate(button.dataset.deleteAffiliate)));
+  document.querySelectorAll("[data-promote-customer-affiliate]").forEach((button) => button.addEventListener("click", () => promoteCustomerToAffiliate(button.dataset.promoteCustomerAffiliate)));
   document.querySelectorAll("[data-edit-customer]").forEach((button) => button.addEventListener("click", () => editCustomer(button.dataset.editCustomer)));
   document.querySelectorAll("[data-delete-customer]").forEach((button) => button.addEventListener("click", () => deleteCustomer(button.dataset.deleteCustomer)));
   document.querySelectorAll("[data-start-chat-customer]").forEach((button) => button.addEventListener("click", () => openStartChatForCustomer(button.dataset.startChatCustomer)));
@@ -1767,6 +1778,27 @@ function editAffiliate(id) {
   $("#cancelAffiliateEditButton").hidden = false;
   $("#affiliateStatus").textContent = `Editando ${affiliate.name}`;
   $("#affiliateForm").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function promoteCustomerToAffiliate(id) {
+  const account = currentCustomers.find((item) => item.id === id);
+  if (!account) return;
+  const customer = account.customer || {};
+  const form = $("#affiliateForm");
+  form.reset();
+  form.elements.id.value = "";
+  form.elements.name.value = customer.name || customer.displayName || account.username || "";
+  form.elements.code.value = affiliateCodeFromCustomer(account);
+  form.elements.email.value = customer.email || "";
+  form.elements.phone.value = customer.phone || "";
+  form.elements.document.value = customer.document || "";
+  form.elements.commissionPercent.value = "0";
+  form.elements.status.value = "lead";
+  form.elements.notes.value = `Promovido a partir do cliente ${customer.name || account.username || account.id}.`;
+  $("#cancelAffiliateEditButton").hidden = false;
+  $("#affiliateStatus").textContent = "Revise os dados e salve para transformar este cliente em afiliado.";
+  jumpAdminPanel("affiliates");
+  form.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function editSeller(id) {
@@ -2594,6 +2626,7 @@ document.querySelectorAll("[data-chat-status]").forEach((button) => {
 $("#requestSearchInput").addEventListener("input", renderAdminRequests);
 $("#adminStartChatForm")?.addEventListener("submit", startAdminChat);
 $("#peopleSearchInput").addEventListener("input", renderPeopleLists);
+$("#affiliateSearchInput")?.addEventListener("input", renderPeopleLists);
 document.querySelectorAll("[data-customer-status]").forEach((button) => {
   button.addEventListener("click", () => {
     customerStatusFilter = button.dataset.customerStatus || "all";
