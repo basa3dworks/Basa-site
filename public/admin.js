@@ -23,6 +23,7 @@ let currentOrders = [];
 let currentRequests = [];
 let currentCoupons = [];
 let currentCustomers = [];
+let currentCarts = [];
 let currentAffiliates = [];
 let currentSellers = [];
 let selectedOrderId = "";
@@ -1210,6 +1211,7 @@ function renderAdminDashboard() {
   const newOrders = currentOrders.filter((order) => ["created", "awaiting_payment"].includes(order.status));
   const customRequests = currentRequests.filter((request) => requestKind(request) !== "chat");
   const openRequests = customRequests.filter((request) => !["completed", "canceled"].includes(request.status));
+  const activeCartCount = currentCarts.filter((cart) => cart.status === "active" && (cart.items || []).length).length;
   const paidLast30 = paidOrders("30");
   const revenue30 = paidLast30.reduce((sum, order) => sum + Number(order.total || 0), 0);
 
@@ -1219,6 +1221,7 @@ function renderAdminDashboard() {
     <div><span>Receita - 30 dias</span><strong>${money(revenue30)}</strong><small>Pedidos pagos/concluídos</small></div>
     <div><span>Produtos ativos</span><strong>${activeProducts.length}</strong><small>Visíveis na loja</small></div>
     <div><span>Stories ativos</span><strong>${activeStories.length}</strong><small>Exibidos no topo</small></div>
+    <div><span>Carrinhos ativos</span><strong>${activeCartCount}</strong><small>Clientes com produtos salvos</small></div>
   `;
 
   $("#dashboardOrdersList").innerHTML = currentOrders.slice(0, 4).length
@@ -1238,6 +1241,23 @@ function renderAdminDashboard() {
       </article>
     `).join("")
     : `<div class="dashboard-empty"><strong>Nenhuma encomenda ainda.</strong><span>Os orçamentos sob medida aparecerão aqui.</span></div>`;
+
+  const activeCarts = currentCarts
+    .filter((cart) => cart.status === "active" && (cart.items || []).length)
+    .slice(0, 6);
+  $("#dashboardCartsList").innerHTML = activeCarts.length
+    ? activeCarts.map((cart) => {
+      const customer = cart.customer || {};
+      const products = (cart.items || []).map((item) => `${item.quantity || 1}x ${item.name}`).join(", ");
+      const affiliate = cart.affiliate?.code ? ` | afiliado ${cart.affiliate.code}` : "";
+      return `
+        <article>
+          <div><strong>${escapeHtml(customer.name || customer.email || "Cliente")}</strong><span>No carrinho${affiliate} | ${escapeHtml(products || "Produto")}</span></div>
+          <b>${money(cart.total || cart.subtotal || 0)}</b>
+        </article>
+      `;
+    }).join("")
+    : `<div class="dashboard-empty"><strong>Nenhum carrinho ativo.</strong><span>Quando clientes adicionarem produtos, você verá aqui.</span></div>`;
 
   $("#dashboardProductsTable").innerHTML = currentProducts.slice(0, 6).length
     ? currentProducts.slice(0, 6).map((product) => `
@@ -2351,6 +2371,7 @@ async function loadDashboard() {
   currentRequests = data.customRequests || [];
   currentCoupons = data.coupons || [];
   currentCustomers = data.customers || [];
+  currentCarts = data.carts || [];
   currentAffiliates = data.affiliates || [];
   currentSellers = data.sellers || [];
   currentSettings = data.settings;

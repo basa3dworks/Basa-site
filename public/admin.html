@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Admin | Basa 3D Works</title>
-    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/styles.css?v=20260521-cart-tracking">
   </head>
   <body class="admin-body">
     <header class="topbar">
@@ -84,6 +84,13 @@
                 <button class="ghost-button table-action" type="button" data-admin-jump="requests">Ver todas</button>
               </div>
               <div class="dashboard-list" id="dashboardRequestsList"></div>
+            </section>
+            <section class="panel">
+              <div class="panel-head">
+                <h2>Carrinhos ativos</h2>
+                <span>Produtos em carrinhos de clientes</span>
+              </div>
+              <div class="dashboard-list" id="dashboardCartsList"></div>
             </section>
           </div>
           <section class="panel">
@@ -663,7 +670,7 @@
       </section>
     </main>
 
-    <script src="/admin.js" type="module"></script>
+    <script src="/admin.js?v=20260521-cart-tracking" type="module"></script>
   </body>
 </html>
 

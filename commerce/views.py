@@ -663,6 +663,84 @@ def _refresh_order_affiliate(db, order):
         }
 
 
+def _cart_customer_payload(raw_customer):
+    customer = raw_customer or {}
+    return {
+        "name": str(customer.get("displayName") or customer.get("name") or customer.get("email") or "").strip(),
+        "email": str(customer.get("email") or "").strip().lower(),
+        "phone": str(customer.get("phone") or "").strip(),
+        "zipCode": re.sub(r"\D", "", str(customer.get("zipCode") or "")),
+        "city": str(customer.get("city") or "").strip(),
+        "state": str(customer.get("state") or "").strip().upper(),
+    }
+
+
+def _cart_snapshot_payload(request, db, body):
+    cart_id = str(body.get("cartId") or "").strip()[:80]
+    if not cart_id:
+        source = json.dumps(body.get("items", []), sort_keys=True, ensure_ascii=False)
+        cart_id = f"cart-{hashlib.sha1(source.encode('utf-8')).hexdigest()[:18]}"
+    customer = _cart_customer_payload(body.get("customer") or {})
+    lines, subtotal, _discount, _shipping, total, free_shipping, shipping_benefit = _cart_totals(
+        db,
+        body.get("items", []),
+        None,
+        None,
+        zip_code=customer.get("zipCode", ""),
+    )
+    affiliate = _active_affiliate(db, body.get("affiliateRef") or body.get("ref"), "")
+    item_count = sum(int(line.get("quantity") or 0) for line in lines)
+    status = "active" if lines else "empty"
+    existing = next((item for item in db.setdefault("carts", []) if item.get("id") == cart_id), {})
+    snapshot = {
+        **existing,
+        "id": cart_id,
+        "status": status,
+        "customer": customer,
+        "items": lines,
+        "itemCount": item_count,
+        "subtotal": subtotal,
+        "total": total,
+        "freeShipping": free_shipping,
+        "shippingBenefit": shipping_benefit,
+        "affiliate": {
+            "affiliateId": affiliate.get("id"),
+            "code": affiliate.get("code"),
+            "name": affiliate.get("name"),
+            "email": affiliate.get("email"),
+        } if affiliate else None,
+        "source": body.get("source") or "react",
+        "createdAt": existing.get("createdAt") or _now(),
+        "updatedAt": _now(),
+        "lastSeenAt": _now(),
+    }
+    return snapshot
+
+
+def _upsert_cart_snapshot(db, snapshot):
+    carts = db.setdefault("carts", [])
+    for index, item in enumerate(carts):
+        if item.get("id") == snapshot.get("id"):
+            carts[index] = snapshot
+            break
+    else:
+        carts.insert(0, snapshot)
+    db["carts"] = sorted(carts, key=lambda item: item.get("updatedAt") or "", reverse=True)[:250]
+
+
+def _mark_cart_converted(db, cart_id, order):
+    if not cart_id:
+        return
+    carts = db.setdefault("carts", [])
+    for cart in carts:
+        if cart.get("id") == cart_id:
+            cart["status"] = "converted"
+            cart["convertedOrderId"] = order.get("id")
+            cart["orderStatus"] = order.get("status")
+            cart["updatedAt"] = _now()
+            return
+
+
 def _affiliate_dashboard_payload(request, db, affiliate):
     code = affiliate.get("code")
     affiliate_id = affiliate.get("id")
@@ -681,6 +759,14 @@ def _affiliate_dashboard_payload(request, db, affiliate):
         totals[status] = round(totals.get(status, 0.0) + amount, 2)
         if status in {"confirmed", "available", "paid"}:
             sold_total = round(sold_total + float(order.get("subtotal") or order.get("total") or 0), 2)
+    related_carts = [
+        cart for cart in db.get("carts", [])
+        if (cart.get("items") or []) and (
+            (cart.get("affiliate") or {}).get("affiliateId") == affiliate_id
+            or str((cart.get("affiliate") or {}).get("code", "")).lower() == str(code or "").lower()
+        )
+    ]
+    active_carts = [cart for cart in related_carts if cart.get("status") == "active"]
     base_url = _public_base_url(request).rstrip("/")
     default_percent = max(0, float(affiliate.get("commissionPercent") or 0))
     products = []
@@ -718,7 +804,22 @@ def _affiliate_dashboard_payload(request, db, affiliate):
             "canceled": totals.get("canceled", 0.0),
             "receivable": round(totals.get("confirmed", 0.0) + totals.get("available", 0.0), 2),
             "orders": len(related_orders),
+            "activeCarts": len(active_carts),
+            "cartSubtotal": round(sum(float(cart.get("subtotal") or 0) for cart in active_carts), 2),
         },
+        "carts": [
+            {
+                "id": cart.get("id"),
+                "status": cart.get("status"),
+                "updatedAt": cart.get("updatedAt"),
+                "customer": cart.get("customer"),
+                "items": cart.get("items", [])[:4],
+                "itemCount": cart.get("itemCount"),
+                "subtotal": cart.get("subtotal"),
+                "total": cart.get("total"),
+            }
+            for cart in related_carts[:30]
+        ],
         "products": products,
         "orders": [
             {
@@ -726,6 +827,7 @@ def _affiliate_dashboard_payload(request, db, affiliate):
                 "createdAt": order.get("createdAt"),
                 "status": order.get("status"),
                 "total": order.get("total"),
+                "items": order.get("items", [])[:4],
                 "commission": order.get("affiliate"),
             }
             for order in related_orders[:30]
@@ -1694,6 +1796,18 @@ def api_shipping_quote(request):
 
 
 @csrf_exempt
+def api_cart_sync(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "Metodo nao permitido."}, status=405)
+    body = _json_body(request)
+    db = read_db()
+    snapshot = _cart_snapshot_payload(request, db, body)
+    _upsert_cart_snapshot(db, snapshot)
+    write_db(db)
+    return JsonResponse({"cart": snapshot})
+
+
+@csrf_exempt
 def api_coupons_validate(request):
     body = _json_body(request)
     db = read_db()
@@ -1733,8 +1847,15 @@ def api_checkout(request):
         return JsonResponse({"error": "Calcule e selecione uma opcao de entrega antes de finalizar o pedido."}, status=400)
     customer_email = str(body.get("customer", {}).get("email", "")).strip().lower()
     affiliate = _active_affiliate(db, body.get("affiliateRef") or body.get("ref"), "")
+    cart_id = str(body.get("cartId") or "").strip()[:80]
+    if cart_id:
+        cart_snapshot = _cart_snapshot_payload(request, db, body)
+        _upsert_cart_snapshot(db, cart_snapshot)
     recent_order = _recent_pending_checkout(db, customer_email, lines, total, affiliate)
     if recent_order:
+        _mark_cart_converted(db, cart_id, recent_order)
+        if cart_id:
+            write_db(db)
         public_order = _public_order(recent_order)
         return JsonResponse({"order": public_order, "payment": public_order.get("payment"), "reused": True})
     order = {
@@ -1754,6 +1875,8 @@ def api_checkout(request):
         "payment": None,
         "history": [],
     }
+    if cart_id:
+        order["cartId"] = cart_id
     affiliate_snapshot = _affiliate_order_snapshot(db, affiliate, lines, order["status"])
     if affiliate_snapshot:
         order["affiliate"] = affiliate_snapshot
@@ -1773,6 +1896,7 @@ def api_checkout(request):
         "Pagamento aprovado na criacao do pedido." if order["status"] == "paid" else "Pedido aguardando confirmacao automatica do pagamento.",
     )
     _apply_paid_order_stock(db, order, payment.get("provider") or PAYMENT_PROVIDER)
+    _mark_cart_converted(db, cart_id, order)
     db.setdefault("orders", []).insert(0, order)
     write_db(db)
     if order["status"] == "awaiting_payment":
@@ -2299,6 +2423,7 @@ def api_admin_dashboard(request):
         "coupons": db.get("coupons", []),
         "customRequests": db.get("customRequests", []),
         "customers": customers,
+        "carts": db.get("carts", []),
         "affiliates": db.get("affiliates", []),
         "sellers": db.get("sellers", []),
     })

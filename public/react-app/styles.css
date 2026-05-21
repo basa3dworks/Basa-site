@@ -2314,6 +2314,65 @@ main {
   background: #eaf6f0;
 }
 
+.react-affiliate-flow {
+  align-content: start;
+}
+
+.react-affiliate-flow-card {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfdfb;
+}
+
+.react-affiliate-flow-card strong,
+.react-affiliate-flow-card p,
+.react-affiliate-flow-card small,
+.react-affiliate-flow-card time {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.react-affiliate-flow-card p {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.react-affiliate-flow-card time {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.react-affiliate-flow-status {
+  justify-self: start;
+  border-radius: 999px;
+  padding: 5px 9px;
+  color: var(--brand);
+  background: #eaf6f0;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.react-affiliate-flow-status.order {
+  color: #9a5a00;
+  background: #fff4dc;
+}
+
+.react-affiliate-empty {
+  padding: 14px;
+  border-radius: 8px;
+  color: var(--muted);
+  background: var(--soft);
+  font-weight: 800;
+  line-height: 1.35;
+}
+
 .react-profile-summary {
   display: grid;
   grid-template-columns: 78px minmax(0, 1fr);

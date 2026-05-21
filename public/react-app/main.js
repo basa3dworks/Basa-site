@@ -2,6 +2,7 @@
   const h = React.createElement;
   const { useEffect, useMemo, useState } = React;
   const CART_KEY = "basa_cart";
+  const CART_SESSION_KEY = "basa_cart_session";
   const CUSTOMER_SESSION_KEY = "basa_customer_session";
   const SUPPORT_CHAT_KEY = "basa_support_chat";
   const AFFILIATE_REF_KEY = "basa_affiliate_ref";
@@ -445,6 +446,14 @@
     }[status] || status || "Criado";
   }
 
+  function cartStatusLabel(status) {
+    return {
+      active: "Entrou no carrinho",
+      converted: "Virou pedido",
+      empty: "Carrinho vazio"
+    }[status] || status || "No carrinho";
+  }
+
   function paymentExpiryLabel(order) {
     if (!order?.payment?.expiresAt) return "";
     const expiresAt = new Date(order.payment.expiresAt).getTime();
@@ -525,6 +534,32 @@
       quantity: Number(item.quantity || 1),
       variant: item.colorName ? { color: item.colorName, colorHex: item.colorHex || "" } : (item.variant || {})
     })).filter((item) => item.productId);
+  }
+
+  function cartSessionId() {
+    let id = localStorage.getItem(CART_SESSION_KEY);
+    if (!id) {
+      const randomId = window.crypto?.randomUUID ? window.crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      id = `cart-${randomId}`;
+      localStorage.setItem(CART_SESSION_KEY, id);
+    }
+    return id;
+  }
+
+  function syncCartSnapshot(items = cartItems(), source = "react") {
+    const session = customerSession();
+    fetch("/api/cart/sync", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        cartId: cartSessionId(),
+        items: apiCartItems(items),
+        customer: session?.customer || {},
+        affiliateRef: affiliateRef(),
+        source
+      }),
+      keepalive: true
+    }).catch(() => {});
   }
 
   function shippingQuoteId(quote) {
@@ -636,6 +671,7 @@
     });
     localStorage.setItem(CART_KEY, JSON.stringify(merged));
     window.dispatchEvent(new Event("basa-cart-change"));
+    syncCartSnapshot(merged, "save-cart");
   }
 
   function addToCart(product, quantity, color) {
@@ -2135,6 +2171,8 @@
     const summary = dashboard?.summary || {};
     const affiliate = dashboard?.affiliate || {};
     const products = dashboard?.products || [];
+    const carts = dashboard?.carts || [];
+    const orders = dashboard?.orders || [];
     return h("main", { className: "react-affiliate-page" },
       h("section", { className: "react-page-title" },
         h("p", null, "Afiliados"),
@@ -2149,7 +2187,8 @@
               h("div", null, h("span", null, "Comissão geral"), h("strong", null, `${Number(summary.commissionPercent || 0)}%`)),
               h("div", null, h("span", null, "Tem a receber"), h("strong", null, money(summary.receivable))),
               h("div", null, h("span", null, "Pendente"), h("strong", null, money(summary.pending))),
-              h("div", null, h("span", null, "Vendas rastreadas"), h("strong", null, money(summary.soldTotal)))
+              h("div", null, h("span", null, "Vendas rastreadas"), h("strong", null, money(summary.soldTotal))),
+              h("div", null, h("span", null, "Carrinhos ativos"), h("strong", null, Number(summary.activeCarts || 0)))
             ),
             h("section", { className: "react-affiliate-code" },
               h("div", null,
@@ -2160,6 +2199,30 @@
                 type: "button",
                 onClick: () => copyLink(`${location.origin}?ref=${encodeURIComponent(affiliate.code || "")}`, "home")
               }, copied === "home" ? "Copiado" : "Copiar link da loja")
+            ),
+            h("section", { className: "react-affiliate-products react-affiliate-flow" },
+              h("div", { className: "react-section-heading" },
+                h("p", null, "Transparência"),
+                h("h2", null, "Carrinhos e pedidos")
+              ),
+              carts.length || orders.length
+                ? h(React.Fragment, null,
+                  carts.slice(0, 6).map((cart) => h("article", { className: "react-affiliate-flow-card", key: `cart-${cart.id}` },
+                    h("span", { className: "react-affiliate-flow-status" }, cartStatusLabel(cart.status)),
+                    h("strong", null, `${Number(cart.itemCount || 0)} ${Number(cart.itemCount || 0) === 1 ? "item" : "itens"} | ${money(cart.total || cart.subtotal || 0)}`),
+                    h("small", null, cart.customer?.name || cart.customer?.email || "Cliente acompanhando"),
+                    h("p", null, (cart.items || []).map((item) => `${item.quantity || 1}x ${item.name}`).join(", ") || "Produto no carrinho"),
+                    h("time", null, new Date(cart.updatedAt || Date.now()).toLocaleString("pt-BR"))
+                  )),
+                  orders.slice(0, 8).map((order) => h("article", { className: "react-affiliate-flow-card", key: `order-${order.id}` },
+                    h("span", { className: "react-affiliate-flow-status order" }, orderStatusLabel(order.status)),
+                    h("strong", null, `${order.id} | ${money(order.total || 0)}`),
+                    h("small", null, order.commission?.status ? `Comissão: ${order.commission.status}` : "Pedido rastreado"),
+                    h("p", null, (order.items || []).map((item) => `${item.quantity || 1}x ${item.name}`).join(", ") || "Pedido registrado"),
+                    h("time", null, new Date(order.createdAt || Date.now()).toLocaleString("pt-BR"))
+                  ))
+                )
+                : h("div", { className: "react-affiliate-empty" }, "Quando alguém entrar no carrinho ou comprar pelo seu link, aparece aqui.")
             ),
             h("section", { className: "react-affiliate-products" },
               h("div", { className: "react-section-heading" },
@@ -2208,6 +2271,10 @@
       window.addEventListener("basa-cart-change", sync);
       return () => window.removeEventListener("basa-cart-change", sync);
     }, []);
+
+    useEffect(() => {
+      syncCartSnapshot(items, "view-cart");
+    }, [items]);
 
     useEffect(() => {
       const zipCode = String(address.zipCode || "").replace(/\D/g, "");
@@ -2378,6 +2445,7 @@
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
+            cartId: cartSessionId(),
             items: apiCartItems(items),
             customer,
             customerLoggedIn: true,
@@ -2389,6 +2457,7 @@
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.error || "Não foi possível criar o pedido.");
+        localStorage.removeItem(CART_SESSION_KEY);
         saveCart([]);
         setItems([]);
         setCount(0);

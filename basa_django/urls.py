@@ -22,6 +22,7 @@ urlpatterns = [
     path("api/products", views.api_products),
     path("api/cep/<str:cep>", views.api_cep),
     path("api/shipping/quote", views.api_shipping_quote),
+    path("api/cart/sync", views.api_cart_sync),
     path("api/coupons/validate", views.api_coupons_validate),
     path("api/checkout", views.api_checkout),
     path("api/webhooks/mercado-pago", views.api_mercado_pago_webhook),
