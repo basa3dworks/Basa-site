@@ -27,6 +27,7 @@ urlpatterns = [
     path("api/customer/verify-email", views.api_customer_verify_email),
     path("api/customer/password-reset/request", views.api_customer_password_reset_request),
     path("api/customer/password-reset/confirm", views.api_customer_password_reset_confirm),
+    path("api/affiliate/dashboard", views.api_affiliate_dashboard),
     path("api/custom-requests", views.api_custom_requests),
     path("api/custom-requests/<str:request_id>/messages", views.api_custom_request_messages),
     path("api/admin/dashboard", views.api_admin_dashboard),

@@ -4,6 +4,7 @@
   const CART_KEY = "basa_cart";
   const CUSTOMER_SESSION_KEY = "basa_customer_session";
   const SUPPORT_CHAT_KEY = "basa_support_chat";
+  const AFFILIATE_REF_KEY = "basa_affiliate_ref";
   const STORY_DURATION_MS = 6500;
 
   function money(value) {
@@ -13,6 +14,17 @@
   function moneyParts(value) {
     const [main, cents = "00"] = money(value).split(",");
     return { main, cents };
+  }
+
+  function captureAffiliateRef() {
+    const params = new URLSearchParams(window.location.search);
+    const ref = String(params.get("ref") || params.get("afiliado") || "").trim().toLowerCase();
+    if (ref) localStorage.setItem(AFFILIATE_REF_KEY, ref);
+    return ref || localStorage.getItem(AFFILIATE_REF_KEY) || "";
+  }
+
+  function affiliateRef() {
+    return localStorage.getItem(AFFILIATE_REF_KEY) || "";
   }
 
   function discountPercent(product) {
@@ -667,6 +679,7 @@
         ["account_circle", "Perfil e dados", "Cadastro, foto e endereço.", "/react/perfil"],
         ["receipt_long", "Pedidos", "Compras, pagamentos e entrega.", "/react/pedidos"],
         ["inventory_2", "Encomendas", "Solicitações sob medida.", "/react/encomendas"],
+        ["percent", "Afiliado", "Comissões e links.", "/react/afiliado"],
         ["forum", "Chat", "Fale com a Basa.", "/react/chat"],
         ["shopping_bag", "Carrinho", "Itens e entrega.", "/react/carrinho"]
       ]
@@ -2060,6 +2073,125 @@
     );
   }
 
+  function AffiliatePage() {
+    const session = customerSession();
+    const customer = session?.customer || null;
+    const [dashboard, setDashboard] = useState(null);
+    const [loading, setLoading] = useState(Boolean(customer));
+    const [status, setStatus] = useState("");
+    const [copied, setCopied] = useState("");
+
+    useEffect(() => {
+      if (!customer?.email) return undefined;
+      let active = true;
+      setLoading(true);
+      fetch(`/api/affiliate/dashboard?email=${encodeURIComponent(customer.email)}`)
+        .then((response) => response.json().then((data) => ({ response, data })))
+        .then(({ response, data }) => {
+          if (!active) return;
+          if (!response.ok) {
+            setDashboard(null);
+            setStatus(data.error || "Seu painel de afiliado ainda não está ativo.");
+            return;
+          }
+          setDashboard(data);
+          setStatus("");
+        })
+        .catch(() => {
+          if (active) setStatus("Não foi possível carregar o painel de afiliado.");
+        })
+        .finally(() => {
+          if (active) setLoading(false);
+        });
+      return () => { active = false; };
+    }, [customer?.email]);
+
+    const copyLink = async (url, productId) => {
+      try {
+        await navigator.clipboard.writeText(url);
+        setCopied(productId);
+        setTimeout(() => setCopied(""), 1800);
+      } catch {
+        setStatus("Não consegui copiar automaticamente. Toque e segure no link para copiar.");
+      }
+    };
+
+    if (!customer) {
+      return h("main", { className: "react-affiliate-page" },
+        h("section", { className: "react-page-title" },
+          h("p", null, "Afiliados"),
+          h("h1", null, "Painel do afiliado"),
+          h("span", null, "Entre para ver comissões, links e produtos para compartilhar.")
+        ),
+        h("section", { className: "react-empty-card" },
+          h("span", { className: "material-symbols-rounded" }, "percent"),
+          h("strong", null, "Login necessário"),
+          h("p", null, "Use sua conta Basa para acessar o painel de afiliado."),
+          h("a", { className: "react-buy", href: "/react/conta?next=/react/afiliado" }, "Entrar ou criar conta")
+        )
+      );
+    }
+
+    const summary = dashboard?.summary || {};
+    const affiliate = dashboard?.affiliate || {};
+    const products = dashboard?.products || [];
+    return h("main", { className: "react-affiliate-page" },
+      h("section", { className: "react-page-title" },
+        h("p", null, "Afiliados"),
+        h("h1", null, "Meus ganhos"),
+        h("span", null, "Acompanhe sua comissão e compartilhe produtos com seu link.")
+      ),
+      loading
+        ? h("section", { className: "react-section" }, h("p", null, "Carregando painel..."))
+        : dashboard
+          ? h(React.Fragment, null,
+            h("section", { className: "react-affiliate-hero" },
+              h("div", null, h("span", null, "Comissão geral"), h("strong", null, `${Number(summary.commissionPercent || 0)}%`)),
+              h("div", null, h("span", null, "Tem a receber"), h("strong", null, money(summary.receivable))),
+              h("div", null, h("span", null, "Pendente"), h("strong", null, money(summary.pending))),
+              h("div", null, h("span", null, "Vendas rastreadas"), h("strong", null, money(summary.soldTotal)))
+            ),
+            h("section", { className: "react-affiliate-code" },
+              h("div", null,
+                h("small", null, "Seu código"),
+                h("strong", null, affiliate.code || "sem-codigo")
+              ),
+              h("button", {
+                type: "button",
+                onClick: () => copyLink(`${location.origin}/react?ref=${encodeURIComponent(affiliate.code || "")}`, "home")
+              }, copied === "home" ? "Copiado" : "Copiar link da loja")
+            ),
+            h("section", { className: "react-affiliate-products" },
+              h("div", { className: "react-section-heading" },
+                h("p", null, "Produtos"),
+                h("h2", null, "Compartilhar e vender")
+              ),
+              products.map((product) => h("article", { className: "react-affiliate-product", key: product.id },
+                h("a", { className: "react-affiliate-thumb", href: `/react/produto?slug=${encodeURIComponent(product.slug)}&ref=${encodeURIComponent(affiliate.code || "")}` },
+                  product.image ? h("img", { src: product.image, alt: product.name }) : h("span", null, "Produto")
+                ),
+                h("div", null,
+                  h("small", null, product.category || "Produto"),
+                  h("strong", null, product.name),
+                  h("span", null, `${money(product.price)} | comissão ${Number(product.commissionPercent || 0)}%`),
+                  h("b", null, `Você recebe ${money(product.commissionAmount)}`)
+                ),
+                h("div", { className: "react-affiliate-actions" },
+                  h("button", { type: "button", onClick: () => copyLink(product.shareUrl, product.id) }, copied === product.id ? "Copiado" : "Copiar link"),
+                  h("a", { href: `https://wa.me/?text=${encodeURIComponent(`Olha esse produto da Basa 3D Works: ${product.shareUrl}`)}`, target: "_blank", rel: "noreferrer" }, "WhatsApp")
+                )
+              ))
+            )
+          )
+          : h("section", { className: "react-empty-card" },
+            h("span", { className: "material-symbols-rounded" }, "manage_accounts"),
+            h("strong", null, "Afiliado ainda não ativo"),
+            h("p", null, status || "Peça para a Basa ativar seu cadastro de afiliado no admin usando este e-mail."),
+            h("a", { className: "react-buy", href: "/react/chat" }, "Falar com a Basa")
+          )
+    );
+  }
+
   function CartPage({ products, loading, setCount }) {
     const [items, setItems] = useState(cartItems());
     const [coupon, setCoupon] = useState("");
@@ -2251,7 +2383,8 @@
             customerLoggedIn: true,
             shippingOption: freeShipping ? null : selectedQuote,
             zipCode: customer.zipCode,
-            coupon: coupon.trim().toUpperCase()
+            coupon: coupon.trim().toUpperCase(),
+            affiliateRef: affiliateRef()
           })
         });
         const data = await response.json().catch(() => ({}));
@@ -2397,6 +2530,10 @@
     const [favoriteVersion, setFavoriteVersion] = useState(0);
 
     useEffect(() => {
+      captureAffiliateRef();
+    }, []);
+
+    useEffect(() => {
       let active = true;
       fetch("/api/products")
         .then((response) => response.json())
@@ -2436,6 +2573,7 @@
     const isOrdersPage = window.location.pathname.startsWith("/react/pedidos");
     const isRequestsPage = window.location.pathname.startsWith("/react/encomendas");
     const isChatPage = window.location.pathname.startsWith("/react/chat");
+    const isAffiliatePage = window.location.pathname.startsWith("/react/afiliado");
 
     if (isProductPage) {
       return h(React.Fragment, null,
@@ -2483,6 +2621,13 @@
       return h(React.Fragment, null,
         h(Topbar, { count, detail: true }),
         h(ChatPage)
+      );
+    }
+
+    if (isAffiliatePage) {
+      return h(React.Fragment, null,
+        h(Topbar, { count, detail: true }),
+        h(AffiliatePage)
       );
     }
 

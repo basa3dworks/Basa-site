@@ -591,6 +591,148 @@ def _partner_payload(body, existing=None, kind="affiliate"):
     }
 
 
+def _active_affiliate(db, ref="", email=""):
+    ref = str(ref or "").strip().lower()
+    email = str(email or "").strip().lower()
+    for affiliate in db.get("affiliates", []):
+        if affiliate.get("status") != "active":
+            continue
+        code = str(affiliate.get("code", "")).strip().lower()
+        affiliate_email = str(affiliate.get("email", "")).strip().lower()
+        if ref and code == ref:
+            return affiliate
+        if email and affiliate_email == email:
+            return affiliate
+    return None
+
+
+def _affiliate_commission_status(order_status):
+    if order_status in {"paid", "in_production", "shipped"}:
+        return "confirmed"
+    if order_status == "completed":
+        return "available"
+    if order_status in {"canceled", "refunded"}:
+        return "canceled"
+    return "pending"
+
+
+def _affiliate_order_snapshot(db, affiliate, lines, order_status="awaiting_payment"):
+    if not affiliate:
+        return None
+    products = {product.get("id"): product for product in db.get("products", [])}
+    default_percent = max(0, float(affiliate.get("commissionPercent") or 0))
+    commission_lines = []
+    amount = 0.0
+    for line in lines:
+        product = products.get(line.get("productId"), {})
+        percent = float(product.get("affiliateCommissionPercent") or default_percent or 0)
+        base = round(float(line.get("total") or 0), 2)
+        line_amount = round(base * percent / 100, 2)
+        amount += line_amount
+        commission_lines.append({
+            "productId": line.get("productId"),
+            "name": line.get("name"),
+            "quantity": line.get("quantity"),
+            "base": base,
+            "percent": percent,
+            "amount": line_amount,
+        })
+    return {
+        "affiliateId": affiliate.get("id"),
+        "code": affiliate.get("code"),
+        "name": affiliate.get("name"),
+        "email": affiliate.get("email"),
+        "commissionPercent": default_percent,
+        "amount": round(amount, 2),
+        "status": _affiliate_commission_status(order_status),
+        "lines": commission_lines,
+        "updatedAt": _now(),
+    }
+
+
+def _refresh_order_affiliate(db, order):
+    affiliate_info = order.get("affiliate")
+    if not affiliate_info:
+        return
+    affiliate = _active_affiliate(db, affiliate_info.get("code"), affiliate_info.get("email")) or affiliate_info
+    refreshed = _affiliate_order_snapshot(db, affiliate, order.get("items", []), order.get("status"))
+    if refreshed:
+        order["affiliate"] = {
+            **affiliate_info,
+            **refreshed,
+        }
+
+
+def _affiliate_dashboard_payload(request, db, affiliate):
+    code = affiliate.get("code")
+    affiliate_id = affiliate.get("id")
+    related_orders = [
+        order for order in db.get("orders", [])
+        if (order.get("affiliate") or {}).get("affiliateId") == affiliate_id
+        or str((order.get("affiliate") or {}).get("code", "")).lower() == str(code or "").lower()
+    ]
+    totals = {"pending": 0.0, "confirmed": 0.0, "available": 0.0, "paid": 0.0, "canceled": 0.0}
+    sold_total = 0.0
+    for order in related_orders:
+        _refresh_order_affiliate(db, order)
+        info = order.get("affiliate") or {}
+        status = info.get("status") or _affiliate_commission_status(order.get("status"))
+        amount = round(float(info.get("amount") or 0), 2)
+        totals[status] = round(totals.get(status, 0.0) + amount, 2)
+        if status in {"confirmed", "available", "paid"}:
+            sold_total = round(sold_total + float(order.get("subtotal") or order.get("total") or 0), 2)
+    base_url = _public_base_url(request).rstrip("/")
+    default_percent = max(0, float(affiliate.get("commissionPercent") or 0))
+    products = []
+    for product in db.get("products", []):
+        if product.get("status") != "active":
+            continue
+        public_product = _public_product(product, db)
+        percent = float(product.get("affiliateCommissionPercent") or default_percent or 0)
+        price = float(public_product.get("price") or product.get("price") or 0)
+        slug = public_product.get("slug") or public_product.get("id")
+        products.append({
+            "id": public_product.get("id"),
+            "slug": slug,
+            "name": public_product.get("name"),
+            "image": public_product.get("image"),
+            "category": public_product.get("category"),
+            "price": price,
+            "regularPrice": public_product.get("regularPrice"),
+            "campaign": public_product.get("campaign"),
+            "freeShipping": bool(public_product.get("shipping", {}).get("sellerPaysShipping")),
+            "commissionPercent": percent,
+            "commissionAmount": round(price * percent / 100, 2),
+            "shareUrl": f"{base_url}/react/produto?slug={urllib.parse.quote(str(slug))}&ref={urllib.parse.quote(str(code or ''))}",
+        })
+    products.sort(key=lambda item: (item["commissionAmount"], item["price"]), reverse=True)
+    return {
+        "affiliate": affiliate,
+        "summary": {
+            "commissionPercent": default_percent,
+            "soldTotal": round(sold_total, 2),
+            "pending": totals.get("pending", 0.0),
+            "confirmed": totals.get("confirmed", 0.0),
+            "available": totals.get("available", 0.0),
+            "paid": totals.get("paid", 0.0),
+            "canceled": totals.get("canceled", 0.0),
+            "receivable": round(totals.get("confirmed", 0.0) + totals.get("available", 0.0), 2),
+            "orders": len(related_orders),
+        },
+        "products": products,
+        "orders": [
+            {
+                "id": order.get("id"),
+                "createdAt": order.get("createdAt"),
+                "status": order.get("status"),
+                "total": order.get("total"),
+                "commission": order.get("affiliate"),
+            }
+            for order in related_orders[:30]
+        ],
+    }
+
+
 def _campaign_payload(body):
     starts_at = body.get("startsAt", "")
     ends_at = body.get("endsAt", "")
@@ -1250,9 +1392,10 @@ def _order_cart_signature(items):
     return sorted(signature)
 
 
-def _recent_pending_checkout(db, email, lines, total):
+def _recent_pending_checkout(db, email, lines, total, affiliate=None):
     if not email:
         return None
+    affiliate_code = str((affiliate or {}).get("code") or "").strip().lower()
     cutoff = datetime.now(timezone.utc) - timedelta(minutes=3)
     signature = _order_cart_signature(lines)
     for order in db.get("orders", []):
@@ -1262,6 +1405,9 @@ def _recent_pending_checkout(db, email, lines, total):
             continue
         created_at = _parse_dt(order.get("createdAt"))
         if not created_at or created_at < cutoff:
+            continue
+        order_affiliate_code = str((order.get("affiliate") or {}).get("code") or "").strip().lower()
+        if affiliate_code != order_affiliate_code:
             continue
         if abs(float(order.get("total") or 0) - float(total or 0)) > 0.01:
             continue
@@ -1292,6 +1438,7 @@ def _expire_pending_orders(db):
         payment["status"] = "expired"
         payment["updatedAt"] = _now()
         order["payment"] = payment
+        _refresh_order_affiliate(db, order)
         _append_order_history(
             order,
             "payment",
@@ -1573,7 +1720,8 @@ def api_checkout(request):
     if not free_shipping and not shipping_option:
         return JsonResponse({"error": "Calcule e selecione uma opcao de entrega antes de finalizar o pedido."}, status=400)
     customer_email = str(body.get("customer", {}).get("email", "")).strip().lower()
-    recent_order = _recent_pending_checkout(db, customer_email, lines, total)
+    affiliate = _active_affiliate(db, body.get("affiliateRef") or body.get("ref"), "")
+    recent_order = _recent_pending_checkout(db, customer_email, lines, total, affiliate)
     if recent_order:
         public_order = _public_order(recent_order)
         return JsonResponse({"order": public_order, "payment": public_order.get("payment"), "reused": True})
@@ -1594,12 +1742,16 @@ def api_checkout(request):
         "payment": None,
         "history": [],
     }
+    affiliate_snapshot = _affiliate_order_snapshot(db, affiliate, lines, order["status"])
+    if affiliate_snapshot:
+        order["affiliate"] = affiliate_snapshot
     try:
         payment = _create_payment(order, request)
     except ValueError as error:
         return JsonResponse({"error": str(error)}, status=502)
     order["payment"] = payment
     order["status"] = "paid" if payment.get("status") in {"approved", "paid", "authorized"} else "awaiting_payment"
+    _refresh_order_affiliate(db, order)
     _append_order_history(order, "order", "django", order["status"], f"Pedido criado. {shipping_benefit.get('message', '')}".strip())
     _append_order_history(
         order,
@@ -1683,6 +1835,7 @@ def api_mercado_pago_webhook(request):
         previous_status,
     )
     _apply_paid_order_stock(db, order, "mercado-pago")
+    _refresh_order_affiliate(db, order)
     write_db(db)
     if status_changed and order.get("status") == "paid":
         _send_order_email(order, f"Pagamento confirmado - {order['id']}", "Seu pagamento foi confirmado. Vamos preparar seu pedido.", include_payment=False)
@@ -1921,6 +2074,24 @@ def api_customer_password_reset_confirm(request):
     account["updatedAt"] = _now()
     write_db(db)
     return JsonResponse({"ok": True})
+
+
+def api_affiliate_dashboard(request):
+    email = str(request.GET.get("email", "")).strip().lower()
+    code = str(request.GET.get("code") or request.GET.get("ref") or "").strip().lower()
+    db = read_db()
+    affiliate = _active_affiliate(db, code, email)
+    if not affiliate:
+        return JsonResponse({
+            "error": "Afiliado nao encontrado ou ainda nao ativo.",
+            "affiliate": None,
+            "summary": None,
+            "products": [],
+            "orders": [],
+        }, status=404)
+    payload = _affiliate_dashboard_payload(request, db, affiliate)
+    write_db(db)
+    return JsonResponse(payload)
 
 
 def api_customer_orders(request):
@@ -2664,6 +2835,7 @@ def api_admin_order_detail(request, order_id):
         order["payment"]["updatedAt"] = _now()
         order["updatedAt"] = _now()
         _append_order_history(order, "payment", "admin", "canceled", body.get("note") or "Pedido cancelado manualmente no painel.", previous_status)
+        _refresh_order_affiliate(db, order)
         write_db(db)
         return JsonResponse({"order": order})
     if action == "resend_payment":
@@ -2698,6 +2870,7 @@ def api_admin_order_detail(request, order_id):
             subject_prefix, intro = status_messages[next_status]
             _send_order_email(order, f"{subject_prefix} - {order['id']}", intro, include_payment=next_status == "awaiting_payment")
         _apply_paid_order_stock(db, order, "admin")
+        _refresh_order_affiliate(db, order)
     order["updatedAt"] = _now()
     write_db(db)
     return JsonResponse({"order": order})

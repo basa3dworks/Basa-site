@@ -1786,6 +1786,8 @@ function renderOrdersList() {
     formatShipping(order),
     order.payment?.provider,
     order.payment?.status,
+    order.affiliate?.code,
+    order.affiliate?.name,
     (order.items || []).map((item) => item.name).join(" ")
   ].join(" "), query));
 
@@ -1892,6 +1894,16 @@ function renderSelectedOrderDetail(order) {
             ${["created", "awaiting_payment", "paid", "in_production", "shipped", "completed", "canceled"].map((status) => `<option value="${status}" ${order.status === status ? "selected" : ""}>${orderStatusLabel(status)}</option>`).join("")}
           </select>
         </label>
+      </section>
+      <section>
+        <h3>Afiliado</h3>
+        ${order.affiliate ? `
+          <span><strong>${order.affiliate.name || order.affiliate.code}</strong></span>
+          <span>Código: ${order.affiliate.code || "não informado"}</span>
+          <span>Status comissão: ${order.affiliate.status || "pendente"}</span>
+          <span>Comissão: <strong>${money(order.affiliate.amount || 0)}</strong></span>
+          <small>${(order.affiliate.lines || []).map((line) => `${line.name}: ${Number(line.percent || 0)}%`).join(" | ")}</small>
+        ` : "<span>Nenhum afiliado neste pedido.</span>"}
       </section>
       <section>
         <h3>Integrações automáticas</h3>
