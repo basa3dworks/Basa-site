@@ -528,22 +528,26 @@ main {
 
 .react-story-bubble span {
   position: relative;
-  display: grid;
-  place-items: center;
+  display: block;
+  flex: 0 0 auto;
   width: 66px;
   height: 66px;
+  aspect-ratio: 1 / 1;
   padding: 3px;
-  border-radius: 999px;
+  overflow: hidden;
+  border-radius: 50%;
   background: linear-gradient(135deg, var(--accent), var(--brand), var(--steel));
   box-sizing: border-box;
 }
 
 .react-story-bubble img {
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  inset: 4px;
+  width: calc(100% - 8px);
+  height: calc(100% - 8px);
   display: block;
-  border: 3px solid #fff;
-  border-radius: 999px;
+  border: 2px solid #fff;
+  border-radius: 50%;
   object-fit: cover;
   box-sizing: border-box;
   background: #fff;
