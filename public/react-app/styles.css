@@ -307,7 +307,8 @@ main {
   overflow-x: auto;
   padding: 10px 12px;
   border-bottom: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.94);
+  background: #fff;
+  box-shadow: 0 8px 18px rgba(13, 30, 25, 0.08);
 }
 
 .react-topbar.has-customer-row + .react-tabs {
@@ -425,7 +426,10 @@ main {
 }
 
 .react-hero {
-  padding: 52px 18px;
+  position: relative;
+  z-index: 0;
+  overflow: hidden;
+  padding: 34px 18px 42px;
   color: #fff;
   background:
     linear-gradient(115deg, rgba(13, 30, 25, 0.96), rgba(33, 116, 86, 0.58)),
@@ -443,8 +447,8 @@ main {
 
 .react-hero h1 {
   margin: 0 0 16px;
-  font-size: clamp(3rem, 16vw, 4.7rem);
-  line-height: 0.96;
+  font-size: clamp(2.7rem, 13vw, 4.1rem);
+  line-height: 0.98;
 }
 
 .react-hero span {
@@ -457,7 +461,7 @@ main {
 .react-stories-section {
   display: grid;
   gap: 10px;
-  padding: 16px 12px 10px;
+  padding: 18px 12px 18px;
   background: #fff;
 }
 
@@ -482,11 +486,12 @@ main {
 .react-stories-row {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: 76px;
+  grid-auto-columns: 84px;
+  align-items: start;
   gap: 10px;
   overflow-x: auto;
   overscroll-behavior-x: contain;
-  padding: 2px 0 8px;
+  padding: 2px 0 14px;
   scrollbar-width: none;
 }
 
@@ -498,6 +503,7 @@ main {
   display: grid;
   justify-items: center;
   gap: 6px;
+  min-height: 104px;
   min-width: 0;
   border: 0;
   padding: 0;
@@ -546,7 +552,10 @@ main {
   line-height: 1.15;
   text-align: center;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
 }
 
 .react-story-viewer {
