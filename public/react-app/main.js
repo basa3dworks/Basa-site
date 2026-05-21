@@ -951,21 +951,36 @@
     const item = items[index] || items[0];
     const previous = () => setIndex((index - 1 + items.length) % items.length);
     const next = () => setIndex((index + 1) % items.length);
-    return h("div", { className: "react-lightbox", role: "dialog", "aria-modal": "true" },
+    useEffect(() => {
+      const onKeyDown = (event) => {
+        if (event.key === "Escape") onClose();
+        if (event.key === "ArrowLeft" && items.length > 1) previous();
+        if (event.key === "ArrowRight" && items.length > 1) next();
+      };
+      document.body.classList.add("react-lightbox-open");
+      window.addEventListener("keydown", onKeyDown);
+      return () => {
+        document.body.classList.remove("react-lightbox-open");
+        window.removeEventListener("keydown", onKeyDown);
+      };
+    }, [index, items.length]);
+    const stop = (event) => event.stopPropagation();
+    return h("div", { className: "react-lightbox", role: "dialog", "aria-modal": "true", onClick: onClose },
       h("button", { className: "react-lightbox-close", type: "button", onClick: onClose, "aria-label": "Fechar" },
         h("span", { className: "material-symbols-rounded" }, "close")
       ),
-      items.length > 1 && h("button", { className: "react-lightbox-arrow left", type: "button", onClick: previous, "aria-label": "Anterior" },
+      items.length > 1 && h("button", { className: "react-lightbox-arrow left", type: "button", onClick: (event) => { stop(event); previous(); }, "aria-label": "Anterior" },
         h("span", { className: "material-symbols-rounded" }, "chevron_left")
       ),
-      h("div", { className: "react-lightbox-media" }, item.type === "video"
+      h("div", { className: "react-lightbox-media", onClick: stop }, item.type === "video"
         ? h("video", { src: item.src, poster: item.poster, controls: true, playsInline: true })
         : h("img", { src: item.src, alt: item.label || "Mídia do comentário" })
       ),
-      items.length > 1 && h("button", { className: "react-lightbox-arrow right", type: "button", onClick: next, "aria-label": "Próxima" },
+      items.length > 1 && h("button", { className: "react-lightbox-arrow right", type: "button", onClick: (event) => { stop(event); next(); }, "aria-label": "Próxima" },
         h("span", { className: "material-symbols-rounded" }, "chevron_right")
       ),
-      h("span", { className: "react-lightbox-count" }, `${index + 1} / ${items.length}`)
+      h("span", { className: "react-lightbox-count" }, `${index + 1} / ${items.length}`),
+      h("button", { className: "react-lightbox-bottom-close", type: "button", onClick: onClose }, "Fechar")
     );
   }
 

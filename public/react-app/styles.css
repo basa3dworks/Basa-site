@@ -1554,11 +1554,15 @@ main {
 .react-lightbox {
   position: fixed;
   inset: 0;
-  z-index: 30;
+  z-index: 140;
   display: grid;
   place-items: center;
-  padding: 20px;
+  padding: max(18px, env(safe-area-inset-top)) 14px max(72px, env(safe-area-inset-bottom));
   background: rgba(13, 30, 25, 0.92);
+}
+
+body.react-lightbox-open {
+  overflow: hidden;
 }
 
 .react-lightbox-media {
@@ -1577,7 +1581,8 @@ main {
 }
 
 .react-lightbox-close,
-.react-lightbox-arrow {
+.react-lightbox-arrow,
+.react-lightbox-bottom-close {
   position: fixed;
   display: grid;
   width: 44px;
@@ -1587,11 +1592,12 @@ main {
   border-radius: 999px;
   color: var(--brand);
   background: #fff;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.24);
 }
 
 .react-lightbox-close {
-  top: 18px;
-  right: 18px;
+  top: max(14px, env(safe-area-inset-top));
+  right: max(14px, calc((100vw - min(520px, 100vw)) / 2 + 14px));
 }
 
 .react-lightbox-arrow.left {
@@ -1604,12 +1610,23 @@ main {
 
 .react-lightbox-count {
   position: fixed;
-  bottom: 24px;
+  bottom: max(82px, calc(env(safe-area-inset-bottom) + 62px));
   left: 50%;
   padding: 6px 12px;
   border-radius: 999px;
   color: #fff;
   background: rgba(255, 255, 255, 0.18);
+  font-weight: 900;
+  transform: translateX(-50%);
+}
+
+.react-lightbox-bottom-close {
+  bottom: max(16px, env(safe-area-inset-bottom));
+  left: 50%;
+  width: min(220px, calc(100vw - 40px));
+  height: 48px;
+  border-radius: 8px;
+  color: var(--ink);
   font-weight: 900;
   transform: translateX(-50%);
 }
