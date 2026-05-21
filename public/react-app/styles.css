@@ -460,8 +460,8 @@ main {
 
 .react-stories-section {
   display: grid;
-  gap: 10px;
-  padding: 18px 12px 18px;
+  gap: 8px;
+  padding: 12px 12px 8px;
   background: #fff;
 }
 
@@ -472,7 +472,7 @@ main {
 
 .react-stories-head small {
   color: var(--accent);
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   font-weight: 900;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -480,18 +480,19 @@ main {
 
 .react-stories-head h2 {
   margin: 0;
-  font-size: 1.06rem;
+  font-size: 0.96rem;
 }
 
 .react-stories-row {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: 84px;
+  grid-auto-columns: 66px;
   align-items: start;
-  gap: 10px;
+  gap: 9px;
   overflow-x: auto;
   overscroll-behavior-x: contain;
-  padding: 2px 0 14px;
+  min-height: 86px;
+  padding: 1px 0 6px;
   scrollbar-width: none;
 }
 
@@ -502,8 +503,9 @@ main {
 .react-story-bubble {
   display: grid;
   justify-items: center;
-  gap: 6px;
-  min-height: 104px;
+  align-content: start;
+  gap: 5px;
+  min-height: 82px;
   min-width: 0;
   border: 0;
   padding: 0;
@@ -516,8 +518,8 @@ main {
 .react-story-bubble span {
   position: relative;
   display: grid;
-  width: 64px;
-  height: 64px;
+  width: 56px;
+  height: 56px;
   padding: 3px;
   border-radius: 999px;
   background: linear-gradient(135deg, var(--accent), var(--brand), #7ca99a);
@@ -548,8 +550,8 @@ main {
   width: 100%;
   overflow: hidden;
   color: var(--muted);
-  font-size: 0.68rem;
-  line-height: 1.15;
+  font-size: 0.6rem;
+  line-height: 1.1;
   text-align: center;
   text-overflow: ellipsis;
   display: -webkit-box;
