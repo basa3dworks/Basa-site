@@ -2491,7 +2491,6 @@
       h(FeedTabs, { feed, setFeed, products }),
       h("main", null,
         h(Hero),
-        !loading ? h(StorySection, { stories, products }) : null,
         loading
           ? h("section", { className: "react-section" }, h("p", null, "Carregando produtos..."))
           : h(ProductGrid, { products, feed, favoriteVersion })
