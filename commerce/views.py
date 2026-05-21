@@ -1079,6 +1079,7 @@ def _cart_totals(db, items, shipping_option=None, coupon=None, zip_code=""):
         subtotal += total
         product_shipping = product.get("shipping", {})
         all_items_seller_paid = all_items_seller_paid and bool(product_shipping.get("sellerPaysShipping"))
+        cart_added_at = str(item.get("addedAt") or item.get("cartAddedAt") or "").strip()
         lines.append({
             "productId": product.get("id"),
             "slug": product.get("slug"),
@@ -1091,6 +1092,7 @@ def _cart_totals(db, items, shipping_option=None, coupon=None, zip_code=""):
             "campaignDiscountPercent": pricing["campaignDiscountPercent"],
             "total": total,
             "variant": item.get("variant") or {},
+            "cartAddedAt": cart_added_at,
             "productionDays": _production_days_from_product(product),
         })
     subtotal = round(subtotal, 2)

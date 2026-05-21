@@ -10,6 +10,18 @@ const decimalValue = (value, fallback = 0) => {
   const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : fallback;
 };
+const relativeTimeLabel = (value) => {
+  const timestamp = Date.parse(value || "");
+  if (!Number.isFinite(timestamp)) return "";
+  const seconds = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
+  if (seconds < 60) return "há instantes";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `há ${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `há ${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `há ${days} dia${days === 1 ? "" : "s"}`;
+};
 const themes = [
   { id: "atelier", name: "Atelier", description: "Verde, argila e metal. Atual e artesanal." },
   { id: "graphite", name: "Grafite", description: "Escuro, tecnico e premium." },
@@ -1248,7 +1260,10 @@ function renderAdminDashboard() {
   $("#dashboardCartsList").innerHTML = activeCarts.length
     ? activeCarts.map((cart) => {
       const customer = cart.customer || {};
-      const products = (cart.items || []).map((item) => `${item.quantity || 1}x ${item.name}`).join(", ");
+      const products = (cart.items || []).map((item) => {
+        const age = item.cartAddedAt ? ` (${relativeTimeLabel(item.cartAddedAt)})` : "";
+        return `${item.quantity || 1}x ${item.name}${age}`;
+      }).join(", ");
       const affiliate = cart.affiliate?.code ? ` | afiliado ${cart.affiliate.code}` : "";
       return `
         <article>

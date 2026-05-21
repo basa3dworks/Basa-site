@@ -488,6 +488,19 @@
     return totalDays ? `${totalDays} dias uteis` : "Prazo a confirmar";
   }
 
+  function relativeTimeLabel(value) {
+    const timestamp = Date.parse(value || "");
+    if (!Number.isFinite(timestamp)) return "";
+    const seconds = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
+    if (seconds < 60) return "há instantes";
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `há ${minutes} min`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `há ${hours}h`;
+    const days = Math.floor(hours / 24);
+    return `há ${days} dia${days === 1 ? "" : "s"}`;
+  }
+
   function orderItemImage(item, products = []) {
     const product = products.find((candidate) => String(candidate.id) === String(item.productId || item.id));
     return item.image || productImage(product || {}) || "";
@@ -532,7 +545,8 @@
     return items.map((item) => ({
       productId: item.productId || item.id,
       quantity: Number(item.quantity || 1),
-      variant: item.colorName ? { color: item.colorName, colorHex: item.colorHex || "" } : (item.variant || {})
+      variant: item.colorName ? { color: item.colorName, colorHex: item.colorHex || "" } : (item.variant || {}),
+      addedAt: item.addedAt || item.cartAddedAt || new Date().toISOString()
     })).filter((item) => item.productId);
   }
 
@@ -657,16 +671,19 @@
 
   function saveCart(items) {
     const merged = [];
+    const now = new Date().toISOString();
     items.forEach((item) => {
+      const normalized = { ...item, quantity: Number(item.quantity || 1), addedAt: item.addedAt || item.cartAddedAt || now };
       const identifiers = cartItemIdentifiers(item);
       const existing = merged.find((candidate) =>
         cartVariantKey(candidate) === cartVariantKey(item)
         && cartItemIdentifiers(candidate).some((identifier) => identifiers.includes(identifier))
       );
       if (existing) {
-        existing.quantity = Number(existing.quantity || 0) + Number(item.quantity || 0);
+        existing.quantity = Number(existing.quantity || 0) + Number(normalized.quantity || 0);
+        existing.addedAt = existing.addedAt || normalized.addedAt;
       } else {
-        merged.push({ ...item, quantity: Number(item.quantity || 1) });
+        merged.push(normalized);
       }
     });
     localStorage.setItem(CART_KEY, JSON.stringify(merged));
@@ -690,6 +707,7 @@
         price: product.price,
         image: productImage(product),
         quantity,
+        addedAt: new Date().toISOString(),
         colorName,
         colorHex,
         sellerPaysShipping: productHasFreeShipping(product)
@@ -2211,7 +2229,7 @@
                     h("span", { className: "react-affiliate-flow-status" }, cartStatusLabel(cart.status)),
                     h("strong", null, `${Number(cart.itemCount || 0)} ${Number(cart.itemCount || 0) === 1 ? "item" : "itens"} | ${money(cart.total || cart.subtotal || 0)}`),
                     h("small", null, cart.customer?.name || cart.customer?.email || "Cliente acompanhando"),
-                    h("p", null, (cart.items || []).map((item) => `${item.quantity || 1}x ${item.name}`).join(", ") || "Produto no carrinho"),
+                    h("p", null, (cart.items || []).map((item) => `${item.quantity || 1}x ${item.name}${item.cartAddedAt ? ` (${relativeTimeLabel(item.cartAddedAt)})` : ""}`).join(", ") || "Produto no carrinho"),
                     h("time", null, new Date(cart.updatedAt || Date.now()).toLocaleString("pt-BR"))
                   )),
                   orders.slice(0, 8).map((order) => h("article", { className: "react-affiliate-flow-card", key: `order-${order.id}` },
