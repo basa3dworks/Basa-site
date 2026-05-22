@@ -2415,7 +2415,10 @@
     };
 
     const changeQuantity = (index, quantity) => {
-      const nextItems = items.map((item, itemIndex) => itemIndex === index ? { ...item, quantity } : item);
+      const currentItem = items[index] || {};
+      const maxQuantity = Math.max(1, Math.min(99, Number(currentItem.stock || 99)));
+      const nextQuantity = Math.max(0, Math.min(maxQuantity, Number(quantity || 0)));
+      const nextItems = items.map((item, itemIndex) => itemIndex === index ? { ...item, quantity: nextQuantity } : item);
       updateItems(nextItems.filter((item) => Number(item.quantity || 0) > 0));
     };
 
@@ -2512,7 +2515,10 @@
         : enriched.length
           ? h(React.Fragment, null,
             h("section", { className: "react-cart-list" },
-              enriched.map((item, index) => h("article", { className: "react-cart-item", key: `${item.id || item.slug || index}-${item.colorName || ""}` },
+              enriched.map((item, index) => {
+                const itemQuantity = Number(item.quantity || 1);
+                const maxQuantity = Math.max(1, Math.min(99, Number(item.stock || 99)));
+                return h("article", { className: "react-cart-item", key: `${item.id || item.slug || index}-${item.colorName || ""}` },
                 h("a", { className: "react-cart-media", href: item.slug ? `/produto?slug=${encodeURIComponent(item.slug)}` : "" },
                   item.image ? h("img", { src: item.image, alt: item.name }) : h("span", null, "Imagem")
                 ),
@@ -2523,17 +2529,26 @@
                   h("b", null, money(Number(item.price || 0) * Number(item.quantity || 0)))
                 ),
                 h("div", { className: "react-cart-controls" },
-                  h("select", {
-                    value: Number(item.quantity || 1),
-                    onChange: (event) => changeQuantity(index, Number(event.target.value))
-                  }, Array.from({ length: 10 }, (_, optionIndex) =>
-                    h("option", { key: optionIndex + 1, value: optionIndex + 1 }, optionIndex + 1)
-                  )),
+                  h("div", { className: "react-cart-stepper", "aria-label": "Quantidade" },
+                    h("button", {
+                      type: "button",
+                      onClick: () => changeQuantity(index, itemQuantity - 1),
+                      "aria-label": "Diminuir quantidade"
+                    }, h("span", { className: "material-symbols-rounded" }, "remove")),
+                    h("strong", null, itemQuantity),
+                    h("button", {
+                      type: "button",
+                      onClick: () => changeQuantity(index, itemQuantity + 1),
+                      disabled: itemQuantity >= maxQuantity,
+                      "aria-label": "Aumentar quantidade"
+                    }, h("span", { className: "material-symbols-rounded" }, "add"))
+                  ),
                   h("button", { type: "button", onClick: () => removeItem(index), "aria-label": "Remover item" },
                     h("span", { className: "material-symbols-rounded" }, "delete")
                   )
                 )
-              ))
+              );
+              })
             ),
             h("section", { className: "react-detail-card react-cart-delivery" },
               h("small", null, "Endereço da entrega"),
