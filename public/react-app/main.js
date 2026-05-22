@@ -454,6 +454,16 @@
     }[status] || status || "No carrinho";
   }
 
+  function commissionStatusLabel(status) {
+    return {
+      pending: "Pendente",
+      confirmed: "Confirmado",
+      available: "Disponivel",
+      paid: "Pago",
+      canceled: "Cancelado"
+    }[status] || status || "Pendente";
+  }
+
   function paymentExpiryLabel(order) {
     if (!order?.payment?.expiresAt) return "";
     const expiresAt = new Date(order.payment.expiresAt).getTime();
@@ -734,6 +744,7 @@
         ["receipt_long", "Pedidos", "Compras, pagamentos e entrega.", "/pedidos"],
         ["inventory_2", "Encomendas", "Solicitações sob medida.", "/encomendas"],
         ["percent", "Afiliado", "Comissões e links.", "/afiliado"],
+        ["store", "Parceiro", "Produtos e repasses.", "/parceiro"],
         ["forum", "Chat", "Fale com a Basa.", "/chat"],
         ["shopping_bag", "Carrinho", "Itens e entrega.", "/carrinho"]
       ]
@@ -2296,6 +2307,119 @@
     );
   }
 
+  function PartnerPage() {
+    const session = customerSession();
+    const customer = session?.customer || null;
+    const [dashboard, setDashboard] = useState(null);
+    const [loading, setLoading] = useState(Boolean(customer));
+    const [status, setStatus] = useState("");
+
+    useEffect(() => {
+      if (!customer?.email) return undefined;
+      let active = true;
+      setLoading(true);
+      fetch("/api/partner/dashboard", { credentials: "same-origin" })
+        .then((response) => response.json().then((data) => ({ response, data })))
+        .then(({ response, data }) => {
+          if (!active) return;
+          if (!response.ok) {
+            setDashboard(null);
+            setStatus(data.error || "Seu painel de parceiro ainda nao esta ativo.");
+            return;
+          }
+          setDashboard(data);
+          setStatus("");
+        })
+        .catch(() => {
+          if (active) setStatus("Nao foi possivel carregar o painel de parceiro.");
+        })
+        .finally(() => {
+          if (active) setLoading(false);
+        });
+      return () => { active = false; };
+    }, [customer?.email]);
+
+    if (!customer) {
+      return h("main", { className: "react-affiliate-page" },
+        h("section", { className: "react-page-title" },
+          h("p", null, "Parceiros"),
+          h("h1", null, "Painel do parceiro"),
+          h("span", null, "Entre para acompanhar produtos, pedidos e repasses.")
+        ),
+        h("section", { className: "react-empty-card" },
+          h("span", { className: "material-symbols-rounded" }, "store"),
+          h("strong", null, "Login necessario"),
+          h("p", null, "Use a conta cadastrada pela Basa para acessar o painel de parceiro."),
+          h("a", { className: "react-buy", href: "/conta?next=/parceiro" }, "Entrar ou criar conta")
+        )
+      );
+    }
+
+    const summary = dashboard?.summary || {};
+    const partner = dashboard?.partner || {};
+    const products = dashboard?.products || [];
+    const orders = dashboard?.orders || [];
+    return h("main", { className: "react-affiliate-page" },
+      h("section", { className: "react-page-title" },
+        h("p", null, "Parceiros"),
+        h("h1", null, partner.brandName || "Meus produtos"),
+        h("span", null, "Acompanhe vendas, frete alocado, descontos e previsao de repasse.")
+      ),
+      loading
+        ? h("section", { className: "react-section" }, h("p", null, "Carregando painel..."))
+        : dashboard
+          ? h(React.Fragment, null,
+            h("section", { className: "react-affiliate-hero" },
+              h("div", null, h("span", null, "A receber"), h("strong", null, money(summary.receivable))),
+              h("div", null, h("span", null, "Pendente"), h("strong", null, money(summary.pending))),
+              h("div", null, h("span", null, "Frete no calculo"), h("strong", null, money(summary.shippingShare))),
+              h("div", null, h("span", null, "Comissao Basa"), h("strong", null, money(summary.storeCommission))),
+              h("div", null, h("span", null, "Produtos"), h("strong", null, Number(summary.products || 0)))
+            ),
+            h("section", { className: "react-affiliate-products react-affiliate-flow" },
+              h("div", { className: "react-section-heading" },
+                h("p", null, "Transparencia"),
+                h("h2", null, "Pedidos vinculados")
+              ),
+              orders.length
+                ? orders.map((order) => h("article", { className: "react-affiliate-flow-card", key: order.id },
+                  h("span", { className: "react-affiliate-flow-status order" }, orderStatusLabel(order.status)),
+                  h("strong", null, `${order.id} | ${money(order.total || 0)}`),
+                  h("small", null, `${order.customer?.city || "Cidade"}${order.customer?.state ? `/${order.customer.state}` : ""}`),
+                  h("p", null, (order.settlements || []).map((item) => `${item.quantity || 1}x ${item.productName} - repasse ${money(item.partnerReceivable || 0)} (${commissionStatusLabel(item.payoutStatus)})`).join(", ")),
+                  h("time", null, new Date(order.createdAt || Date.now()).toLocaleString("pt-BR"))
+                ))
+                : h("div", { className: "react-affiliate-empty" }, "Quando um produto parceiro vender, aparece aqui.")
+            ),
+            h("section", { className: "react-affiliate-products" },
+              h("div", { className: "react-section-heading" },
+                h("p", null, "Catalogo"),
+                h("h2", null, "Produtos vinculados")
+              ),
+              products.length
+                ? products.map((product) => h("article", { className: "react-affiliate-product", key: product.id },
+                  h("a", { className: "react-affiliate-thumb", href: `/produto?slug=${encodeURIComponent(product.slug)}` },
+                    product.image ? h("img", { src: product.image, alt: product.name }) : h("span", null, "Produto")
+                  ),
+                  h("div", null,
+                    h("small", null, product.category || "Produto"),
+                    h("strong", null, product.name),
+                    h("span", null, `${money(product.price)} | estoque ${Number(product.stock || 0)}`),
+                    h("b", null, `Comissao Basa ${Number(product.storeCommissionPercent || 0)}%`)
+                  )
+                ))
+                : h("div", { className: "react-affiliate-empty" }, "A Basa ainda nao vinculou produtos a este parceiro.")
+            )
+          )
+          : h("section", { className: "react-empty-card" },
+            h("span", { className: "material-symbols-rounded" }, "store"),
+            h("strong", null, "Parceiro ainda nao ativo"),
+            h("p", null, status || "Peça para a Basa ativar seu cadastro de parceiro no admin usando este e-mail."),
+            h("a", { className: "react-buy", href: "/chat" }, "Falar com a Basa")
+          )
+    );
+  }
+
   function CartPage({ products, loading, setCount }) {
     const [items, setItems] = useState(cartItems());
     const [coupon, setCoupon] = useState("");
@@ -2725,6 +2849,7 @@
     const isRequestsPage = routePath.startsWith("/encomendas");
     const isChatPage = routePath.startsWith("/chat");
     const isAffiliatePage = routePath.startsWith("/afiliado");
+    const isPartnerPage = routePath.startsWith("/parceiro");
     const isThankYouPage = routePath.startsWith("/obrigado");
 
     if (isProductPage) {
@@ -2780,6 +2905,13 @@
       return h(React.Fragment, null,
         h(Topbar, { count, detail: true }),
         h(AffiliatePage)
+      );
+    }
+
+    if (isPartnerPage) {
+      return h(React.Fragment, null,
+        h(Topbar, { count, detail: true }),
+        h(PartnerPage)
       );
     }
 

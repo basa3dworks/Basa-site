@@ -51,6 +51,7 @@
           <span class="admin-nav-label">Pessoas</span>
           <button class="admin-tab" type="button" data-admin-tab="people"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M10 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-6 7a6 6 0 0 1 12 0m2-7 3 3m0-3-3 3"/></svg></span>Clientes</button>
           <button class="admin-tab" type="button" data-admin-tab="affiliates"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h16v10H4zM7 10h4m-4 3h6m4-3 2 2-2 2m-7 5 2 2 2-2"/></svg></span>Afiliados</button>
+          <button class="admin-tab" type="button" data-admin-tab="partners"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 5h14v5H5zM5 12h6v7H5zm8 0h6v7h-6z"/></svg></span>Parceiros</button>
           <span class="admin-nav-label">Loja</span>
           <button class="admin-tab" type="button" data-admin-tab="products"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m4 7 8-4 8 4-8 4-8-4Zm0 0v10l8 4 8-4V7M12 11v10"/></svg></span>Produtos</button>
           <button class="admin-tab" type="button" data-admin-tab="stories"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 4h6a4 4 0 0 1 4 4v8a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4V8a4 4 0 0 1 4-4Zm3 5v6m-3-3h6"/></svg></span>Stories</button>
@@ -149,6 +150,12 @@
               <label>Preço antigo<input name="compareAtPrice" inputmode="decimal" placeholder="Opcional"></label>
               <label>Estoque<input name="stock" type="number" min="0" required></label>
               <label>Comissão afiliado %<input name="affiliateCommissionPercent" inputmode="decimal" value="0"></label>
+              <label>Parceiro produtor
+                <select name="partnerId" id="productPartnerSelect">
+                  <option value="">Produto próprio Basa</option>
+                </select>
+              </label>
+              <label>Comissão Basa no parceiro %<input name="partnerStoreCommissionPercent" inputmode="decimal" value="0" placeholder="Ex: 25"></label>
               <fieldset class="repeatable-field product-color-field">
                 <div class="repeatable-head">
                   <div>
@@ -440,7 +447,7 @@
           </div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>SKU</th><th>Produto</th><th>Categoria</th><th>Preço</th><th>Preço antigo</th><th>Desconto</th><th>Afiliado</th><th>Estoque</th><th>Status</th><th>Ações</th></tr></thead>
+              <thead><tr><th>SKU</th><th>Produto</th><th>Categoria</th><th>Preço</th><th>Preço antigo</th><th>Desconto</th><th>Afiliado</th><th>Parceiro</th><th>Estoque</th><th>Status</th><th>Ações</th></tr></thead>
               <tbody id="productsTable"></tbody>
             </table>
           </div>
@@ -655,10 +662,78 @@
             </div>
           </section>
         </section>
+
+        <section class="panel" data-admin-panel="partners" hidden>
+          <div class="section-head compact">
+            <div>
+              <p class="eyebrow">Terceirizados</p>
+              <h2>Parceiros</h2>
+            </div>
+            <label class="admin-search">Pesquisar parceiros
+              <input id="partnerSearchInput" type="search" placeholder="Nome, email, marca ou status">
+            </label>
+          </div>
+          <section class="affiliate-command-panel" aria-label="Painel de parceiros">
+            <div class="panel-head compact">
+              <div>
+                <h3>Gestão de parceiros</h3>
+                <p>Produtos terceirizados, repasses, frete alocado e status dos pedidos.</p>
+              </div>
+            </div>
+            <div class="affiliate-kpi-grid" id="partnerKpiGrid"></div>
+            <div class="affiliate-dashboard-grid">
+              <section class="affiliate-dashboard-card">
+                <h3>Repasses recentes</h3>
+                <div class="affiliate-commission-list" id="partnerSettlementTable"></div>
+              </section>
+              <section class="affiliate-dashboard-card affiliate-products-card">
+                <h3>Produtos vinculados</h3>
+                <div class="affiliate-product-list" id="partnerProductList"></div>
+              </section>
+            </div>
+          </section>
+          <div class="people-grid affiliate-only-grid">
+            <form id="sellerForm" class="stack-form people-form">
+              <input name="id" type="hidden">
+              <h3>Parceiro</h3>
+              <label>Nome do responsável<input name="name" required></label>
+              <label>Marca / empresa<input name="brandName" placeholder="Ex: Ateliê da Ana"></label>
+              <label>Código<input name="code" placeholder="ex: parceiro-ana"></label>
+              <label>Email<input name="email" type="email" required></label>
+              <label>Telefone<input name="phone" inputmode="numeric"></label>
+              <label>CPF/CNPJ<input name="document" inputmode="numeric"></label>
+              <label>Comissão Basa padrão %<input name="commissionPercent" type="number" min="0" max="100" step="0.1" value="0"></label>
+              <label>Chave/conta de pagamento<input name="paymentAccountId" placeholder="Pix, banco ou observação de repasse"></label>
+              <label>Status
+                <select name="status">
+                  <option value="lead">Lead</option>
+                  <option value="active">Ativo</option>
+                  <option value="paused">Pausado</option>
+                </select>
+              </label>
+              <label>Observações<textarea name="notes" rows="3"></textarea></label>
+              <div class="form-actions">
+                <button class="primary-button" type="submit">Salvar parceiro</button>
+                <button class="ghost-button" id="cancelSellerEditButton" type="button" hidden>Cancelar</button>
+              </div>
+              <p class="form-status" id="sellerStatus"></p>
+            </form>
+            <aside class="affiliate-note">
+              <strong>Como o cálculo nasce</strong>
+              <span>No pedido, o sistema tira o desconto proporcional, soma o frete proporcional e calcula a comissão da Basa sobre essa base. O parceiro vê o status do pedido e o valor estimado de repasse.</span>
+            </aside>
+          </div>
+          <section class="people-lists affiliate-only-list">
+            <div>
+              <h3>Parceiros cadastrados</h3>
+              <div class="people-list" id="sellersList"></div>
+            </div>
+          </section>
+        </section>
       </section>
     </main>
 
-    <script src="/admin.js?v=20260521-admin-no-pricing" type="module"></script>
+    <script src="/admin.js?v=20260522-partners-panel" type="module"></script>
   </body>
 </html>
 

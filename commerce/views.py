@@ -528,6 +528,9 @@ def _public_product(product, db):
     )
     pricing = _campaign_pricing(product)
     payload = dict(product)
+    payload.pop("partnerId", None)
+    payload.pop("partnerStoreCommissionPercent", None)
+    payload.pop("partnerPaymentNotes", None)
     payload.update(
         {
             "price": pricing["price"],
@@ -786,6 +789,116 @@ def _refresh_order_affiliate(db, order):
             **affiliate_info,
             **refreshed,
         }
+
+
+def _active_partner(db, partner_id="", email=""):
+    partner_id = str(partner_id or "").strip()
+    email = str(email or "").strip().lower()
+    for partner in db.get("sellers", []):
+        if partner.get("status") != "active":
+            continue
+        partner_email = str(partner.get("email", "")).strip().lower()
+        if partner_id and partner.get("id") == partner_id:
+            return partner
+        if email and partner_email == email:
+            return partner
+    return None
+
+
+def _safe_partner_public(partner):
+    return {
+        "id": partner.get("id"),
+        "code": partner.get("code"),
+        "name": partner.get("name"),
+        "brandName": partner.get("brandName"),
+        "email": partner.get("email"),
+        "status": partner.get("status"),
+        "commissionPercent": float(partner.get("commissionPercent") or 0),
+        "paymentAccountId": partner.get("paymentAccountId", ""),
+    }
+
+
+def _partner_payout_status(order_status):
+    if order_status in {"canceled", "refunded"}:
+        return "canceled"
+    if order_status == "completed":
+        return "available"
+    if order_status in {"paid", "in_production", "shipped"}:
+        return "confirmed"
+    return "pending"
+
+
+def _partner_settlements_snapshot(db, order):
+    products = {product.get("id"): product for product in db.get("products", [])}
+    lines = order.get("items", [])
+    subtotal = max(0.0, float(order.get("subtotal") or sum(float(line.get("total") or 0) for line in lines) or 0))
+    discount_total = max(0.0, float(order.get("discount") or 0))
+    shipping_total = max(0.0, float(order.get("shipping") or 0))
+    status = _partner_payout_status(order.get("status"))
+    summaries = {}
+    settlement_lines = []
+    for line in lines:
+        product = products.get(line.get("productId"), {})
+        partner = _active_partner(db, product.get("partnerId"), "")
+        if not partner:
+            line.pop("partnerSettlement", None)
+            continue
+        line_total = round(float(line.get("total") or 0), 2)
+        ratio = (line_total / subtotal) if subtotal > 0 else 0
+        discount_share = round(discount_total * ratio, 2)
+        shipping_share = round(shipping_total * ratio, 2)
+        net_item_total = round(max(0, line_total - discount_share), 2)
+        settlement_base = round(max(0, net_item_total + shipping_share), 2)
+        commission_percent = max(0, min(100, float(
+            product.get("partnerStoreCommissionPercent")
+            or partner.get("commissionPercent")
+            or 0
+        )))
+        store_commission = round(settlement_base * commission_percent / 100, 2)
+        partner_receivable = round(max(0, settlement_base - store_commission), 2)
+        snapshot = {
+            "partnerId": partner.get("id"),
+            "partnerName": partner.get("brandName") or partner.get("name"),
+            "partnerEmail": partner.get("email"),
+            "productId": line.get("productId"),
+            "productName": line.get("name"),
+            "quantity": int(float(line.get("quantity") or 0)),
+            "grossItemTotal": line_total,
+            "discountShare": discount_share,
+            "shippingShare": shipping_share,
+            "netItemTotal": net_item_total,
+            "settlementBase": settlement_base,
+            "storeCommissionPercent": commission_percent,
+            "storeCommission": store_commission,
+            "partnerReceivable": partner_receivable,
+            "payoutStatus": status,
+            "updatedAt": _now(),
+        }
+        line["partnerSettlement"] = snapshot
+        settlement_lines.append(snapshot)
+        summary = summaries.setdefault(partner.get("id"), {
+            "partnerId": partner.get("id"),
+            "partnerName": partner.get("brandName") or partner.get("name"),
+            "partnerEmail": partner.get("email"),
+            "grossItemTotal": 0.0,
+            "discountShare": 0.0,
+            "shippingShare": 0.0,
+            "settlementBase": 0.0,
+            "storeCommission": 0.0,
+            "partnerReceivable": 0.0,
+            "payoutStatus": status,
+            "lines": [],
+            "updatedAt": _now(),
+        })
+        for key in ["grossItemTotal", "discountShare", "shippingShare", "settlementBase", "storeCommission", "partnerReceivable"]:
+            summary[key] = round(summary[key] + snapshot[key], 2)
+        summary["lines"].append(snapshot)
+    order["partnerSettlements"] = list(summaries.values())
+    return settlement_lines
+
+
+def _refresh_order_partners(db, order):
+    _partner_settlements_snapshot(db, order)
 
 
 def _cart_customer_payload(raw_customer):
@@ -1297,6 +1410,8 @@ def _product_payload(body, existing=None):
         "price": price,
         "compareAtPrice": round(float(body.get("compareAtPrice") or existing.get("compareAtPrice") or 0), 2),
         "affiliateCommissionPercent": max(0, min(100, float(body.get("affiliateCommissionPercent") or existing.get("affiliateCommissionPercent") or 0))),
+        "partnerId": str(body.get("partnerId", existing.get("partnerId", "")) or "").strip(),
+        "partnerStoreCommissionPercent": max(0, min(100, float(body.get("partnerStoreCommissionPercent") or existing.get("partnerStoreCommissionPercent") or 0))),
         "stock": int(float(body.get("stock") or existing.get("stock") or 0)),
         "status": body.get("status") or existing.get("status") or "active",
         "category": body.get("category") or existing.get("category") or "Geral",
@@ -2068,6 +2183,7 @@ def api_checkout(request):
     affiliate_snapshot = _affiliate_order_snapshot(db, affiliate, lines, order["status"])
     if affiliate_snapshot:
         order["affiliate"] = affiliate_snapshot
+    _refresh_order_partners(db, order)
     try:
         payment = _create_payment(order, request)
     except ValueError as error:
@@ -2075,6 +2191,7 @@ def api_checkout(request):
     order["payment"] = payment
     order["status"] = "paid" if payment.get("status") in {"approved", "paid", "authorized"} else "awaiting_payment"
     _refresh_order_affiliate(db, order)
+    _refresh_order_partners(db, order)
     _append_order_history(order, "order", "django", order["status"], f"Pedido criado. {shipping_benefit.get('message', '')}".strip())
     _append_order_history(
         order,
@@ -2447,6 +2564,87 @@ def api_affiliate_dashboard(request):
     return JsonResponse(payload)
 
 
+def _partner_dashboard_payload(db, partner):
+    partner_id = partner.get("id")
+    products = [product for product in db.get("products", []) if product.get("partnerId") == partner_id]
+    orders = []
+    totals = {
+        "pending": 0.0,
+        "confirmed": 0.0,
+        "available": 0.0,
+        "paid": 0.0,
+        "canceled": 0.0,
+        "grossItemTotal": 0.0,
+        "discountShare": 0.0,
+        "shippingShare": 0.0,
+        "storeCommission": 0.0,
+        "partnerReceivable": 0.0,
+    }
+    for order in db.get("orders", []):
+        _refresh_order_partners(db, order)
+        matches = [item for item in order.get("partnerSettlements", []) if item.get("partnerId") == partner_id]
+        if not matches:
+            continue
+        status = matches[0].get("payoutStatus") or _partner_payout_status(order.get("status"))
+        amount = round(sum(float(item.get("partnerReceivable") or 0) for item in matches), 2)
+        totals[status] = round(totals.get(status, 0.0) + amount, 2)
+        for key in ["grossItemTotal", "discountShare", "shippingShare", "storeCommission", "partnerReceivable"]:
+            totals[key] = round(totals.get(key, 0.0) + sum(float(item.get(key) or 0) for item in matches), 2)
+        orders.append({
+            "id": order.get("id"),
+            "createdAt": order.get("createdAt"),
+            "status": order.get("status"),
+            "total": order.get("total"),
+            "shipping": order.get("shipping"),
+            "customer": {
+                "name": order.get("customer", {}).get("name", "Cliente"),
+                "city": order.get("customer", {}).get("city", ""),
+                "state": order.get("customer", {}).get("state", ""),
+            },
+            "settlements": matches,
+        })
+    return {
+        "partner": _safe_partner_public(partner),
+        "summary": {
+            **totals,
+            "orders": len(orders),
+            "products": len(products),
+            "receivable": round(totals.get("confirmed", 0.0) + totals.get("available", 0.0), 2),
+        },
+        "products": [{
+            "id": product.get("id"),
+            "slug": product.get("slug"),
+            "name": product.get("name"),
+            "image": product.get("image") or (product.get("gallery") or [""])[0],
+            "category": product.get("category"),
+            "status": product.get("status"),
+            "stock": product.get("stock"),
+            "price": _campaign_pricing(product).get("price"),
+            "storeCommissionPercent": float(product.get("partnerStoreCommissionPercent") or partner.get("commissionPercent") or 0),
+        } for product in products],
+        "orders": orders[:50],
+    }
+
+
+def api_partner_dashboard(request):
+    db = read_db()
+    account, auth_error = _require_customer_account(request, db)
+    if auth_error:
+        return auth_error
+    partner = _active_partner(db, "", _customer_email(account))
+    if not partner:
+        return JsonResponse({
+            "error": "Parceiro nao encontrado ou ainda nao ativo.",
+            "partner": None,
+            "summary": None,
+            "products": [],
+            "orders": [],
+        }, status=404)
+    payload = _partner_dashboard_payload(db, partner)
+    write_db(db)
+    return JsonResponse(payload)
+
+
 def api_customer_orders(request):
     db = read_db()
     account, auth_error = _require_customer_account(request, db)
@@ -2657,6 +2855,7 @@ def api_admin_dashboard(request):
         "carts": db.get("carts", []),
         "affiliates": db.get("affiliates", []),
         "sellers": db.get("sellers", []),
+        "partners": db.get("sellers", []),
     })
 
 
@@ -3204,6 +3403,7 @@ def api_admin_order_detail(request, order_id):
         order["updatedAt"] = _now()
         _append_order_history(order, "payment", "admin", "canceled", body.get("note") or "Pedido cancelado manualmente no painel.", previous_status)
         _refresh_order_affiliate(db, order)
+        _refresh_order_partners(db, order)
         write_db(db)
         return JsonResponse({"order": order})
     if action == "resend_payment":
@@ -3239,6 +3439,7 @@ def api_admin_order_detail(request, order_id):
             _send_order_email(order, f"{subject_prefix} - {order['id']}", intro, include_payment=next_status == "awaiting_payment")
         _apply_paid_order_stock(db, order, "admin")
         _refresh_order_affiliate(db, order)
+        _refresh_order_partners(db, order)
     order["updatedAt"] = _now()
     write_db(db)
     return JsonResponse({"order": order})

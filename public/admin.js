@@ -44,6 +44,7 @@ let currentSocialProductId = "";
 let chatStatusFilter = "all";
 let customerStatusFilter = "all";
 let affiliateStatusFilter = "all";
+let partnerSearchDebounce = "";
 let productSaveInProgress = false;
 let settingsSaveInProgress = false;
 
@@ -1006,6 +1007,42 @@ function affiliateMetrics(affiliate) {
   return totals;
 }
 
+function partnerSettlementRows() {
+  return currentOrders.flatMap((order) =>
+    (order.partnerSettlements || []).map((settlement) => ({
+      order,
+      settlement,
+      status: settlement.payoutStatus || "pending",
+      amount: Number(settlement.partnerReceivable || 0)
+    }))
+  );
+}
+
+function partnerMetrics(partner) {
+  const rows = partnerSettlementRows().filter((row) => row.settlement.partnerId === partner.id);
+  const totals = rows.reduce((acc, row) => {
+    acc.orders += 1;
+    acc.gross += Number(row.settlement.grossItemTotal || 0);
+    acc.discount += Number(row.settlement.discountShare || 0);
+    acc.shipping += Number(row.settlement.shippingShare || 0);
+    acc.store += Number(row.settlement.storeCommission || 0);
+    acc[row.status] = (acc[row.status] || 0) + row.amount;
+    if (["confirmed", "available", "paid"].includes(row.status)) acc.receivable += row.amount;
+    return acc;
+  }, { orders: 0, gross: 0, discount: 0, shipping: 0, store: 0, receivable: 0, pending: 0, confirmed: 0, available: 0, paid: 0, canceled: 0 });
+  totals.products = currentProducts.filter((product) => product.partnerId === partner.id).length;
+  return totals;
+}
+
+function renderProductPartnerOptions(selectedId = "") {
+  const select = $("#productPartnerSelect");
+  if (!select) return;
+  const partners = currentSellers.filter((partner) => partner.status === "active");
+  select.innerHTML = `<option value="">Produto próprio Basa</option>${partners.map((partner) => `
+    <option value="${partner.id}" ${partner.id === selectedId ? "selected" : ""}>${escapeHtml(partner.brandName || partner.name)} (${Number(partner.commissionPercent || 0)}%)</option>
+  `).join("")}`;
+}
+
 function affiliateProductOpportunities() {
   const activeAffiliates = currentAffiliates.filter((affiliate) => affiliate.status === "active");
   const defaultPercent = activeAffiliates.length
@@ -1107,9 +1144,58 @@ function renderAffiliateDashboard(affiliates) {
   });
 }
 
+function renderPartnerDashboard(partners) {
+  const rows = partnerSettlementRows();
+  const totals = rows.reduce((acc, row) => {
+    acc.receivable += ["confirmed", "available"].includes(row.status) ? row.amount : 0;
+    acc.pending += row.status === "pending" ? row.amount : 0;
+    acc.shipping += Number(row.settlement.shippingShare || 0);
+    acc.store += Number(row.settlement.storeCommission || 0);
+    return acc;
+  }, { receivable: 0, pending: 0, shipping: 0, store: 0 });
+  const kpi = $("#partnerKpiGrid");
+  if (kpi) {
+    kpi.innerHTML = `
+      <article><span>Parceiros</span><strong>${partners.length}</strong><small>${partners.filter((item) => item.status === "active").length} ativos</small></article>
+      <article><span>A repassar</span><strong>${money(totals.receivable)}</strong><small>Confirmado/disponível</small></article>
+      <article><span>Pendente</span><strong>${money(totals.pending)}</strong><small>Aguardando pagamento</small></article>
+      <article><span>Frete alocado</span><strong>${money(totals.shipping)}</strong><small>Incluído no cálculo</small></article>
+      <article><span>Comissão Basa</span><strong>${money(totals.store)}</strong><small>Sobre produtos parceiros</small></article>
+    `;
+  }
+  const settlementTable = $("#partnerSettlementTable");
+  if (settlementTable) {
+    settlementTable.innerHTML = rows.slice(0, 10).length ? rows.slice(0, 10).map((row) => `
+      <article class="affiliate-commission-row">
+        <span>${escapeHtml(row.settlement.partnerName || "Parceiro")}</span>
+        <small>${row.order.id} | ${escapeHtml(row.settlement.productName || "Produto")} | ${commissionStatusLabel(row.status)}</small>
+        <b>${money(row.amount)}</b>
+      </article>
+    `).join("") : `<p>Quando um produto parceiro vender, o repasse aparece aqui.</p>`;
+  }
+  const productList = $("#partnerProductList");
+  if (productList) {
+    const linked = currentProducts.filter((product) => product.partnerId).slice(0, 10);
+    productList.innerHTML = linked.length ? linked.map((product) => {
+      const partner = currentSellers.find((item) => item.id === product.partnerId);
+      return `
+        <article class="affiliate-product-opportunity">
+          ${product.image ? `<img src="${product.image}" alt="">` : `<span class="product-placeholder">Produto</span>`}
+          <div>
+            <strong>${escapeHtml(product.name || "Produto")}</strong>
+            <span>${escapeHtml(partner?.brandName || partner?.name || "Parceiro")} | ${money(Number(product.price || 0))}</span>
+            <small>Comissão Basa ${Number(product.partnerStoreCommissionPercent || partner?.commissionPercent || 0)}%</small>
+          </div>
+        </article>
+      `;
+    }).join("") : `<p>Vincule um parceiro no cadastro do produto.</p>`;
+  }
+}
+
 function renderPeopleLists() {
   const query = $("#peopleSearchInput")?.value || "";
   const affiliateQuery = $("#affiliateSearchInput")?.value || "";
+  const partnerQuery = $("#partnerSearchInput")?.value || "";
   const customers = currentCustomers.filter((item) =>
     (customerStatusFilter === "all" || (item.status || "active") === customerStatusFilter)
     && matchesSearch(customerSearchText(item), query)
@@ -1118,6 +1204,7 @@ function renderPeopleLists() {
     (affiliateStatusFilter === "all" || (item.status || "lead") === affiliateStatusFilter)
     && matchesSearch(partnerSearchText(item), affiliateQuery)
   );
+  const partners = currentSellers.filter((item) => matchesSearch(partnerSearchText(item), partnerQuery));
   const customerCounts = currentCustomers.reduce((acc, item) => {
     const status = item.status || "active";
     acc.all += 1;
@@ -1138,6 +1225,7 @@ function renderPeopleLists() {
   });
 
   renderAffiliateDashboard(affiliates);
+  renderPartnerDashboard(partners);
 
   const customersList = $("#customersList");
   if (customersList) {
@@ -1181,6 +1269,27 @@ function renderPeopleLists() {
   `;
   }).join("") : "<p>Nenhum afiliado cadastrado.</p>";
 
+  const sellersList = $("#sellersList");
+  if (sellersList) {
+    sellersList.innerHTML = partners.length ? partners.map((partner) => {
+      const metrics = partnerMetrics(partner);
+      return `
+        <article class="people-card">
+          <div>
+            <strong>${escapeHtml(partner.brandName || partner.name)}</strong>
+            <span>${escapeHtml(partner.email || "")}${partner.phone ? ` | ${escapeHtml(partner.phone)}` : ""}</span>
+            <small>${partner.code ? `Código: ${escapeHtml(partner.code)} | ` : ""}${personStatusLabel(partner.status)} | Comissão Basa ${Number(partner.commissionPercent || 0)}%</small>
+            <small>${metrics.products} produto(s) | ${metrics.orders} repasse(s) | ${money(metrics.receivable)} a repassar | frete ${money(metrics.shipping)}</small>
+          </div>
+          <div class="story-admin-actions">
+            <button class="ghost-button table-action" type="button" data-edit-seller="${partner.id}">Editar</button>
+            <button class="ghost-button table-action danger-button" type="button" data-delete-seller="${partner.id}">Excluir</button>
+          </div>
+        </article>
+      `;
+    }).join("") : "<p>Nenhum parceiro cadastrado.</p>";
+  }
+
   document.querySelectorAll("[data-copy-affiliate-link]").forEach((button) => button.addEventListener("click", async () => {
     await navigator.clipboard?.writeText(button.dataset.copyAffiliateLink || "");
     button.textContent = "Copiado";
@@ -1192,6 +1301,8 @@ function renderPeopleLists() {
   document.querySelectorAll("[data-edit-customer]").forEach((button) => button.addEventListener("click", () => editCustomer(button.dataset.editCustomer)));
   document.querySelectorAll("[data-delete-customer]").forEach((button) => button.addEventListener("click", () => deleteCustomer(button.dataset.deleteCustomer)));
   document.querySelectorAll("[data-start-chat-customer]").forEach((button) => button.addEventListener("click", () => openStartChatForCustomer(button.dataset.startChatCustomer)));
+  document.querySelectorAll("[data-edit-seller]").forEach((button) => button.addEventListener("click", () => editSeller(button.dataset.editSeller)));
+  document.querySelectorAll("[data-delete-seller]").forEach((button) => button.addEventListener("click", () => deleteSeller(button.dataset.deleteSeller)));
 }
 
 function customerChatLabel(account) {
@@ -1532,6 +1643,8 @@ function resetProductForm() {
   form.elements.sku.value = "";
   form.elements.tags.value = "";
   form.elements.affiliateCommissionPercent.value = "0";
+  renderProductPartnerOptions();
+  form.elements.partnerStoreCommissionPercent.value = "0";
   form.elements.weightKg.value = "0.30";
   form.elements.widthCm.value = "12";
   form.elements.heightCm.value = "8";
@@ -1707,6 +1820,8 @@ function editProduct(productId) {
   form.elements.compareAtPrice.value = productBaseCompareAtPrice(product) || "";
   form.elements.stock.value = product.stock || 0;
   form.elements.affiliateCommissionPercent.value = product.affiliateCommissionPercent || 0;
+  renderProductPartnerOptions(product.partnerId || "");
+  form.elements.partnerStoreCommissionPercent.value = product.partnerStoreCommissionPercent || 0;
   $("#colorsList").innerHTML = "";
   const colors = product.variants?.colors || [];
   (colors.length ? colors : [{ name: "Branco", hex: "#ffffff" }]).forEach((color) => addColor(color));
@@ -1967,6 +2082,7 @@ function renderProductsTable() {
     product.description,
     product.shipping?.sellerPaysShipping ? "frete gratis" : "",
     product.affiliateCommissionPercent ? `afiliado ${product.affiliateCommissionPercent}%` : "",
+    product.partnerId ? `parceiro ${currentSellers.find((item) => item.id === product.partnerId)?.brandName || ""}` : "",
     product.variants?.colors?.join(" "),
     discountPercent(product) ? `${discountPercent(product)} off` : ""
   ].join(" "), query));
@@ -1980,6 +2096,7 @@ function renderProductsTable() {
       <td>${product.compareAtPrice ? money(product.compareAtPrice) : "-"}</td>
       <td>${discountPercent(product) ? `${discountPercent(product)}% OFF` : "-"}</td>
       <td>${Number(product.affiliateCommissionPercent || 0)}%</td>
+      <td>${escapeHtml(currentSellers.find((item) => item.id === product.partnerId)?.brandName || currentSellers.find((item) => item.id === product.partnerId)?.name || "-")}</td>
       <td>${product.stock}</td>
       <td>${product.status}${product.shipping?.sellerPaysShipping ? " / frete grátis" : " / frete cobrado"}</td>
       <td>
@@ -1987,7 +2104,7 @@ function renderProductsTable() {
         <button class="ghost-button table-action danger-button" type="button" data-delete-product="${product.id}">Excluir</button>
       </td>
     </tr>
-  `).join("") : `<tr><td colspan="10">${currentProducts.length ? "Nenhum produto encontrado." : "Nenhum produto cadastrado ainda."}</td></tr>`;
+  `).join("") : `<tr><td colspan="11">${currentProducts.length ? "Nenhum produto encontrado." : "Nenhum produto cadastrado ainda."}</td></tr>`;
 
   document.querySelectorAll("[data-edit-product]").forEach((button) => {
     button.addEventListener("click", () => editProduct(button.dataset.editProduct));
@@ -2128,6 +2245,17 @@ function renderSelectedOrderDetail(order) {
           <span>Comissão: <strong>${money(order.affiliate.amount || 0)}</strong></span>
           <small>${(order.affiliate.lines || []).map((line) => `${line.name}: ${Number(line.percent || 0)}%`).join(" | ")}</small>
         ` : "<span>Nenhum afiliado neste pedido.</span>"}
+      </section>
+      <section>
+        <h3>Parceiro</h3>
+        ${order.partnerSettlements?.length ? order.partnerSettlements.map((settlement) => `
+          <span><strong>${escapeHtml(settlement.partnerName || "Parceiro")}</strong></span>
+          <span>Status: ${commissionStatusLabel(settlement.payoutStatus)}</span>
+          <span>Base com frete: <strong>${money(settlement.settlementBase || 0)}</strong></span>
+          <span>Frete alocado: ${money(settlement.shippingShare || 0)} | Desconto: ${money(settlement.discountShare || 0)}</span>
+          <span>Comissão Basa: ${Number(settlement.storeCommissionPercent || 0)}% (${money(settlement.storeCommission || 0)})</span>
+          <span>Repasse parceiro: <strong>${money(settlement.partnerReceivable || 0)}</strong></span>
+        `).join("<hr>") : "<span>Nenhum parceiro neste pedido.</span>"}
       </section>
       <section>
         <h3>Integrações automáticas</h3>
@@ -2388,7 +2516,7 @@ async function loadDashboard() {
   currentCustomers = data.customers || [];
   currentCarts = data.carts || [];
   currentAffiliates = data.affiliates || [];
-  currentSellers = data.sellers || [];
+  currentSellers = data.partners || data.sellers || [];
   currentSettings = data.settings;
   $("#loginCard").hidden = true;
   $("#dashboard").hidden = false;
@@ -2409,6 +2537,7 @@ async function loadDashboard() {
   renderStoryProductOptions({ keepSelected: true });
   renderSocialProductOptions({ keepSelected: true });
   renderCampaignProductOptions({ keepSelected: true });
+  renderProductPartnerOptions($("#productForm")?.elements.partnerId?.value || "");
   renderCampaignList();
   renderStoryAdminList();
   updateEmbeddedShippingPreview();
@@ -2596,7 +2725,7 @@ $("#productForm").addEventListener("submit", async (event) => {
       return [key, value];
     }).filter(([key, value]) => key && value));
     body.set("sellerPaysShipping", form.elements.sellerPaysShipping.checked ? "true" : "false");
-    ["price", "compareAtPrice", "affiliateCommissionPercent", "weightKg", "widthCm", "heightCm", "lengthCm"].forEach((field) => {
+    ["price", "compareAtPrice", "affiliateCommissionPercent", "partnerStoreCommissionPercent", "weightKg", "widthCm", "heightCm", "lengthCm"].forEach((field) => {
       if (!body.has(field)) return;
       const raw = body.get(field);
       const parsed = decimalValue(raw, raw === "" ? 0 : NaN);
@@ -2663,6 +2792,7 @@ $("#requestSearchInput").addEventListener("input", renderAdminRequests);
 $("#adminStartChatForm")?.addEventListener("submit", startAdminChat);
 $("#peopleSearchInput").addEventListener("input", renderPeopleLists);
 $("#affiliateSearchInput")?.addEventListener("input", renderPeopleLists);
+$("#partnerSearchInput")?.addEventListener("input", renderPeopleLists);
 document.querySelectorAll("[data-customer-status]").forEach((button) => {
   button.addEventListener("click", () => {
     customerStatusFilter = button.dataset.customerStatus || "all";
