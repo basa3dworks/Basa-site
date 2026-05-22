@@ -50,6 +50,18 @@ customer_signer = TimestampSigner(key=SESSION_SECRET, salt="basa-customer")
 CUSTOMER_SESSION_COOKIE = "basa_customer"
 CUSTOMER_SESSION_MAX_AGE = 60 * 60 * 24 * 30
 SAFE_HTTP_METHODS = {"GET", "HEAD", "OPTIONS"}
+RATE_LIMIT_BUCKETS = {}
+RATE_LIMIT_LOCK = threading.Lock()
+RATE_LIMITS = {
+    "admin-login": (6, 600),
+    "customer-access": (10, 600),
+    "password-reset": (5, 600),
+    "coupon": (24, 600),
+    "checkout": (12, 600),
+    "chat": (30, 600),
+    "shipping": (60, 600),
+    "cep": (80, 600),
+}
 
 
 def _now():
@@ -128,6 +140,42 @@ def _require_same_origin(request):
     if _same_origin_ok(request):
         return None
     return JsonResponse({"error": "Origem da requisicao nao permitida."}, status=403)
+
+
+def _client_ip(request):
+    forwarded = request.headers.get("X-Forwarded-For", "")
+    if forwarded:
+        return forwarded.split(",", 1)[0].strip()
+    return request.META.get("REMOTE_ADDR", "") or "unknown"
+
+
+def _rate_identity(value):
+    return re.sub(r"[^a-z0-9@._:-]", "", str(value or "").strip().lower())[:120] or "anon"
+
+
+def _rate_limited(request, scope, *identities):
+    limit, window_seconds = RATE_LIMITS.get(scope, (60, 600))
+    now = datetime.now(timezone.utc).timestamp()
+    keys = [f"{scope}:ip:{_rate_identity(_client_ip(request))}"]
+    keys.extend(f"{scope}:id:{_rate_identity(identity)}" for identity in identities if identity)
+    with RATE_LIMIT_LOCK:
+        cutoff = now - window_seconds
+        if len(RATE_LIMIT_BUCKETS) > 5000:
+            for key in list(RATE_LIMIT_BUCKETS.keys()):
+                RATE_LIMIT_BUCKETS[key] = [stamp for stamp in RATE_LIMIT_BUCKETS[key] if stamp >= cutoff]
+                if not RATE_LIMIT_BUCKETS[key]:
+                    RATE_LIMIT_BUCKETS.pop(key, None)
+        for key in keys:
+            hits = [stamp for stamp in RATE_LIMIT_BUCKETS.get(key, []) if stamp >= cutoff]
+            if len(hits) >= limit:
+                retry_after = max(1, int(window_seconds - (now - hits[0])))
+                response = JsonResponse({"error": "Muitas tentativas. Tente novamente em instantes."}, status=429)
+                response["Retry-After"] = str(retry_after)
+                RATE_LIMIT_BUCKETS[key] = hits
+                return response
+        for key in keys:
+            RATE_LIMIT_BUCKETS.setdefault(key, []).append(now)
+    return None
 
 
 def _require_admin(request):
@@ -1760,6 +1808,9 @@ def api_login(request):
     if origin_error:
         return origin_error
     body = _json_body(request)
+    rate_error = _rate_limited(request, "admin-login", body.get("email"))
+    if rate_error:
+        return rate_error
     ok = body.get("email") == ADMIN_USER and body.get("password") == ADMIN_PASSWORD
     if not ok:
         return JsonResponse({"error": "Credenciais invalidas."}, status=401)
@@ -1824,6 +1875,9 @@ def _cep_payload_from_brasilapi(digits):
 
 
 def api_cep(request, cep):
+    rate_error = _rate_limited(request, "cep", cep)
+    if rate_error:
+        return rate_error
     digits = re.sub(r"\D", "", cep)
     if len(digits) != 8:
         return JsonResponse({"error": "CEP invalido."}, status=400)
@@ -1852,6 +1906,9 @@ def api_shipping_quote(request):
     if origin_error:
         return origin_error
     body = _json_body(request)
+    rate_error = _rate_limited(request, "shipping", body.get("zipCode"))
+    if rate_error:
+        return rate_error
     db = read_db()
     items = body.get("items", [])
     zip_code = _digits(body.get("zipCode"))
@@ -1914,6 +1971,9 @@ def api_coupons_validate(request):
     if origin_error:
         return origin_error
     body = _json_body(request)
+    rate_error = _rate_limited(request, "coupon", body.get("code"))
+    if rate_error:
+        return rate_error
     db = read_db()
     code = str(body.get("code", "")).strip().upper()
     coupon = next((item for item in db.get("coupons", []) if str(item.get("code", "")).upper() == code), None)
@@ -1928,6 +1988,13 @@ def api_coupons_validate(request):
 @csrf_exempt
 def api_checkout(request):
     body = _json_body(request)
+    rate_error = _rate_limited(
+        request,
+        "checkout",
+        body.get("customer", {}).get("email") if isinstance(body.get("customer"), dict) else "",
+    )
+    if rate_error:
+        return rate_error
     db = read_db()
     session_account, auth_error = _require_customer_account(request, db)
     if auth_error:
@@ -2110,6 +2177,9 @@ def api_customer_access(request):
         return origin_error
     body = _json_body(request)
     email = str(body.get("email", "")).strip().lower()
+    rate_error = _rate_limited(request, "customer-access", email)
+    if rate_error:
+        return rate_error
     password = str(body.get("password", ""))
     if not email:
         return JsonResponse({"error": "Informe o email."}, status=400)
@@ -2266,6 +2336,9 @@ def api_customer_resend_verification(request):
         return origin_error
     body = _json_body(request)
     email = str(body.get("email", "")).strip().lower()
+    rate_error = _rate_limited(request, "password-reset", email)
+    if rate_error:
+        return rate_error
     db = read_db()
     account = next((item for item in db.get("customers", []) if _customer_email(item) == email), None)
     if not account:
@@ -2308,6 +2381,9 @@ def api_customer_password_reset_request(request):
         return origin_error
     body = _json_body(request)
     email = str(body.get("email", "")).strip().lower()
+    rate_error = _rate_limited(request, "password-reset", email)
+    if rate_error:
+        return rate_error
     db = read_db()
     account = next((item for item in db.get("customers", []) if _customer_email(item) == email), None)
     preview_link = ""
@@ -2329,6 +2405,9 @@ def api_customer_password_reset_confirm(request):
         return origin_error
     body = _json_body(request)
     token = str(body.get("token", "")).strip()
+    rate_error = _rate_limited(request, "password-reset", token[:16])
+    if rate_error:
+        return rate_error
     password = str(body.get("password", "")).strip()
     if len(password) < 6:
         return JsonResponse({"error": "A senha precisa ter pelo menos 6 caracteres."}, status=400)
@@ -2484,6 +2563,9 @@ def api_custom_requests(request):
     account, auth_error = _require_customer_account(request, db)
     if auth_error:
         return auth_error
+    rate_error = _rate_limited(request, "chat", _customer_email(account))
+    if rate_error:
+        return rate_error
     safe_account = _safe_customer_account(account)
     session_customer = {
         **safe_account.get("customer", {}),
@@ -2535,6 +2617,9 @@ def api_custom_request_messages(request, request_id):
     account, auth_error = _require_customer_account(request, db)
     if auth_error:
         return auth_error
+    rate_error = _rate_limited(request, "chat", _customer_email(account))
+    if rate_error:
+        return rate_error
     email = _customer_email(account)
     item = next((request_item for request_item in db.get("customRequests", []) if request_item.get("id") == request_id and str(request_item.get("customer", {}).get("email", "")).lower() == email), None)
     if not item:
