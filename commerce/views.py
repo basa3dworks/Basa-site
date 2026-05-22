@@ -46,6 +46,9 @@ PROFILE_NAME_COOLDOWN_DAYS = 30
 PROFILE_NAME_RE = re.compile(r"^[a-z0-9._]{1,15}$")
 LOCAL_TZ = ZoneInfo(os.environ.get("TIME_ZONE", "America/Sao_Paulo"))
 signer = TimestampSigner(key=SESSION_SECRET, salt="basa-admin")
+customer_signer = TimestampSigner(key=SESSION_SECRET, salt="basa-customer")
+CUSTOMER_SESSION_COOKIE = "basa_customer"
+CUSTOMER_SESSION_MAX_AGE = 60 * 60 * 24 * 30
 
 
 def _now():
@@ -103,6 +106,39 @@ def _require_admin(request):
     if not _admin_ok(request):
         return JsonResponse({"error": "Nao autenticado."}, status=401)
     return None
+
+
+def _customer_session_id(request):
+    token = request.COOKIES.get(CUSTOMER_SESSION_COOKIE, "")
+    if not token:
+        return ""
+    try:
+        return customer_signer.unsign(token, max_age=CUSTOMER_SESSION_MAX_AGE)
+    except BadSignature:
+        return ""
+
+
+def _customer_session_account(request, db):
+    customer_id = _customer_session_id(request)
+    if not customer_id:
+        return None
+    account = next((item for item in db.get("customers", []) if item.get("id") == customer_id), None)
+    if not account or account.get("status") == "blocked":
+        return None
+    return account
+
+
+def _set_customer_session_cookie(response, account, request):
+    response.set_cookie(
+        CUSTOMER_SESSION_COOKIE,
+        customer_signer.sign(account.get("id", "")),
+        max_age=CUSTOMER_SESSION_MAX_AGE,
+        httponly=True,
+        secure=request.is_secure(),
+        samesite="Lax",
+        path="/",
+    )
+    return response
 
 
 def _hash_password(password):
@@ -1692,6 +1728,7 @@ def api_login(request):
 def api_logout(request):
     response = JsonResponse({"ok": True})
     response.delete_cookie("basa_admin")
+    response.delete_cookie(CUSTOMER_SESSION_COOKIE, path="/")
     return response
 
 
@@ -1835,9 +1872,10 @@ def api_coupons_validate(request):
 @csrf_exempt
 def api_checkout(request):
     body = _json_body(request)
-    if not body.get("customerLoggedIn"):
-        return JsonResponse({"error": "Cliente precisa estar logado para finalizar a compra."}, status=401)
     db = read_db()
+    session_account = _customer_session_account(request, db)
+    if not session_account:
+        return JsonResponse({"error": "Entre novamente para finalizar a compra com seguranca."}, status=401)
     if _expire_pending_orders(db):
         write_db(db)
     coupon = None
@@ -1856,7 +1894,23 @@ def api_checkout(request):
         return JsonResponse({"error": "Carrinho vazio."}, status=400)
     if not free_shipping and not shipping_option:
         return JsonResponse({"error": "Calcule e selecione uma opcao de entrega antes de finalizar o pedido."}, status=400)
-    customer_email = str(body.get("customer", {}).get("email", "")).strip().lower()
+    safe_account = _safe_customer_account(session_account)
+    session_customer = safe_account.get("customer", {})
+    body_customer = body.get("customer", {}) if isinstance(body.get("customer"), dict) else {}
+    customer = {
+        **session_customer,
+        "email": _customer_email(session_account),
+        "name": session_customer.get("name") or session_customer.get("displayName") or safe_account.get("username") or "Cliente Basa",
+        "zipCode": _digits(body_customer.get("zipCode") or body.get("zipCode") or session_customer.get("zipCode")),
+        "number": str(body_customer.get("number") or session_customer.get("number") or "").strip(),
+        "complement": str(body_customer.get("complement") or session_customer.get("complement") or "").strip(),
+        "street": str(body_customer.get("street") or session_customer.get("street") or "").strip(),
+        "neighborhood": str(body_customer.get("neighborhood") or session_customer.get("neighborhood") or "").strip(),
+        "city": str(body_customer.get("city") or session_customer.get("city") or "").strip(),
+        "state": str(body_customer.get("state") or session_customer.get("state") or "").upper()[:2],
+        "ibge": _digits(body_customer.get("ibge") or session_customer.get("ibge")),
+    }
+    customer_email = _customer_email(session_account)
     affiliate = _active_affiliate(db, body.get("affiliateRef") or body.get("ref"), "")
     cart_id = str(body.get("cartId") or "").strip()[:80]
     if cart_id:
@@ -1874,7 +1928,7 @@ def api_checkout(request):
         "createdAt": _now(),
         "updatedAt": _now(),
         "status": "awaiting_payment",
-        "customer": body.get("customer", {}),
+        "customer": customer,
         "items": lines,
         "subtotal": subtotal,
         "discount": discount,
@@ -2021,13 +2075,14 @@ def api_customer_access(request):
     customer["updatedAt"] = _now()
     write_db(db)
     account = _safe_customer_account(customer)
-    return JsonResponse({
+    response = JsonResponse({
         "account": account,
         "customer": account,
         "created": created,
         "emailVerificationRequired": not account.get("emailVerified"),
         "verificationPreviewUrl": verification_link if settings.EMAIL_BACKEND.endswith("console.EmailBackend") else "",
     }, status=201 if created else 200)
+    return _set_customer_session_cookie(response, customer, request)
 
 
 @csrf_exempt
@@ -2130,7 +2185,7 @@ def api_customer_google_callback(request):
     }
     target = json.dumps(next_url)
     session_json = json.dumps(session, ensure_ascii=False)
-    return HttpResponse(f"""
+    response = HttpResponse(f"""
 <!doctype html>
 <html lang="pt-BR">
   <head><meta charset="utf-8"><title>Entrando...</title></head>
@@ -2142,6 +2197,7 @@ def api_customer_google_callback(request):
   </body>
 </html>
 """, content_type="text/html; charset=utf-8")
+    return _set_customer_session_cookie(response, account, request)
 
 
 @csrf_exempt

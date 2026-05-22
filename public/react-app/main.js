@@ -1397,6 +1397,7 @@
       try {
         const response = await fetch("/api/customer/access", {
           method: "POST",
+          credentials: "same-origin",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             name: form.name,
@@ -1436,6 +1437,7 @@
     };
 
     const logout = () => {
+      fetch("/api/logout", { method: "POST", credentials: "same-origin" }).catch(() => {});
       localStorage.removeItem(CUSTOMER_SESSION_KEY);
       setSession(null);
       setForm(defaultAccountForm(null));
@@ -2480,12 +2482,12 @@
       try {
         const response = await fetch("/api/checkout", {
           method: "POST",
+          credentials: "same-origin",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             cartId: cartSessionId(),
             items: apiCartItems(items),
             customer,
-            customerLoggedIn: true,
             shippingOption: freeShipping ? null : selectedQuote,
             zipCode: customer.zipCode,
             coupon: coupon.trim().toUpperCase(),
