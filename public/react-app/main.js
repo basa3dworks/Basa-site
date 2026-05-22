@@ -1599,7 +1599,7 @@
       setSavingProfile(true);
       setStatus("Salvando perfil...");
       try {
-        const response = await fetch("/api/customer/profile", { method: "POST", body });
+        const response = await fetch("/api/customer/profile", { method: "POST", credentials: "same-origin", body });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.error || "Não foi possível salvar o perfil.");
         refreshSession(data.account);
@@ -1622,7 +1622,7 @@
       setSavingData(true);
       setStatus("Salvando dados...");
       try {
-        const response = await fetch("/api/customer/profile", { method: "POST", body });
+        const response = await fetch("/api/customer/profile", { method: "POST", credentials: "same-origin", body });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.error || "Não foi possível salvar os dados.");
         refreshSession(data.account);
@@ -1752,7 +1752,7 @@
         return;
       }
       setLoading(true);
-      fetch(`/api/custom-requests?email=${encodeURIComponent(customer.email)}`)
+      fetch("/api/custom-requests", { credentials: "same-origin" })
         .then(async (response) => {
           const data = await response.json().catch(() => ({}));
           if (!response.ok) throw new Error(data.error || "Não foi possível carregar encomendas.");
@@ -1780,6 +1780,7 @@
       try {
         const response = await fetch("/api/custom-requests", {
           method: "POST",
+          credentials: "same-origin",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             customer,
@@ -1808,8 +1809,9 @@
       try {
         const response = await fetch(`/api/custom-requests/${encodeURIComponent(requestId)}/messages`, {
           method: "POST",
+          credentials: "same-origin",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ email: customer.email, text })
+          body: JSON.stringify({ text })
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.error || "Não foi possível enviar a mensagem.");
@@ -1916,7 +1918,7 @@
       }
       setLoading(true);
       const saved = supportChatState() || { email: customer.email, seenAdminCount: 0 };
-      fetch(`/api/custom-requests?email=${encodeURIComponent(customer.email)}`)
+      fetch("/api/custom-requests", { credentials: "same-origin" })
         .then(async (response) => {
           const data = await response.json().catch(() => ({}));
           if (!response.ok) throw new Error(data.error || "Não foi possível carregar o chat.");
@@ -1950,10 +1952,12 @@
       try {
         const response = chat ? await fetch(`/api/custom-requests/${encodeURIComponent(chat.id)}/messages`, {
           method: "POST",
+          credentials: "same-origin",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ email: customer.email, text })
+          body: JSON.stringify({ text })
         }) : await fetch("/api/custom-requests", {
           method: "POST",
+          credentials: "same-origin",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             title: "Atendimento pelo chat",
@@ -2036,7 +2040,7 @@
         return;
       }
       setLoading(true);
-      fetch(`/api/customer/orders?email=${encodeURIComponent(customer.email)}`)
+      fetch("/api/customer/orders", { credentials: "same-origin" })
         .then(async (response) => {
           const data = await response.json().catch(() => ({}));
           if (!response.ok) throw new Error(data.error || "Não foi possível carregar pedidos.");
@@ -2069,8 +2073,9 @@
       try {
         const response = await fetch(`/api/customer/orders/${encodeURIComponent(orderId)}`, {
           method: "PATCH",
+          credentials: "same-origin",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ email: customer.email, action: "cancel_payment" })
+          body: JSON.stringify({ action: "cancel_payment" })
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.error || "Não foi possível cancelar este pedido.");
@@ -2157,7 +2162,7 @@
       if (!customer?.email) return undefined;
       let active = true;
       setLoading(true);
-      fetch(`/api/affiliate/dashboard?email=${encodeURIComponent(customer.email)}`)
+      fetch("/api/affiliate/dashboard", { credentials: "same-origin" })
         .then((response) => response.json().then((data) => ({ response, data })))
         .then(({ response, data }) => {
           if (!active) return;

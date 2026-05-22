@@ -128,6 +128,13 @@ def _customer_session_account(request, db):
     return account
 
 
+def _require_customer_account(request, db):
+    account = _customer_session_account(request, db)
+    if not account:
+        return None, JsonResponse({"error": "Entre novamente para continuar com seguranca."}, status=401)
+    return account, None
+
+
 def _set_customer_session_cookie(response, account, request):
     response.set_cookie(
         CUSTOMER_SESSION_COOKIE,
@@ -2058,17 +2065,20 @@ def api_customer_access(request):
     customers = db.setdefault("customers", [])
     customer = next((item for item in customers if _customer_email(item) == email), None)
     created = False
-    if body.get("loginOnly"):
-        if not customer or (customer.get("passwordHash") and not _verify_password(password, customer.get("passwordHash"))):
+    if customer:
+        if not customer.get("passwordHash"):
+            return JsonResponse({"error": "Use o login com Google ou redefina sua senha para acessar esta conta."}, status=403)
+        if not password or not _verify_password(password, customer.get("passwordHash")):
             return JsonResponse({"error": "Conta nao encontrada ou senha invalida."}, status=404)
-    if not customer:
-        customer = _customer_payload({**body, "email": email, "username": body.get("username") or email.split("@")[0]})
-        customers.append(customer)
-        created = True
-    if password:
+    else:
+        if body.get("loginOnly"):
+            return JsonResponse({"error": "Conta nao encontrada ou senha invalida."}, status=404)
         if len(password) < 6:
             return JsonResponse({"error": "A senha precisa ter pelo menos 6 caracteres."}, status=400)
+        customer = _customer_payload({**body, "email": email, "username": body.get("username") or email.split("@")[0]})
         customer["passwordHash"] = _hash_password(password)
+        customers.append(customer)
+        created = True
     verification_link = ""
     if created and not customer.get("emailVerified"):
         verification_link = _issue_email_verification(customer, request)
@@ -2090,13 +2100,10 @@ def api_customer_profile(request):
     if request.method not in {"POST", "PATCH"}:
         return JsonResponse({"error": "Metodo nao permitido."}, status=405)
     body = request.POST if request.content_type and "multipart/form-data" in request.content_type else _json_body(request)
-    email = str(body.get("email", "")).strip().lower()
-    if not email:
-        return JsonResponse({"error": "Informe o email."}, status=400)
     db = read_db()
-    account = next((item for item in db.get("customers", []) if _customer_email(item) == email), None)
-    if not account:
-        return JsonResponse({"error": "Conta nao encontrada."}, status=404)
+    account, error = _require_customer_account(request, db)
+    if error:
+        return error
     customer = account.setdefault("customer", {})
     try:
         display_name = _profile_display_name(body.get("displayName") or customer.get("displayName") or account.get("username") or "")
@@ -2280,9 +2287,12 @@ def api_customer_password_reset_confirm(request):
 
 
 def api_affiliate_dashboard(request):
-    email = str(request.GET.get("email", "")).strip().lower()
     code = str(request.GET.get("code") or request.GET.get("ref") or "").strip().lower()
     db = read_db()
+    account, auth_error = _require_customer_account(request, db)
+    if auth_error:
+        return auth_error
+    email = _customer_email(account)
     affiliate = _active_affiliate(db, code, email)
     if not affiliate:
         return JsonResponse({
@@ -2298,12 +2308,14 @@ def api_affiliate_dashboard(request):
 
 
 def api_customer_orders(request):
-    email = str(request.GET.get("email", "")).strip().lower()
     db = read_db()
+    account, auth_error = _require_customer_account(request, db)
+    if auth_error:
+        return auth_error
     if _expire_pending_orders(db):
         write_db(db)
+    email = _customer_email(account)
     orders = [order for order in db.get("orders", []) if str(order.get("customer", {}).get("email", "")).lower() == email]
-    account = next((item for item in db.get("customers", []) if _customer_email(item) == email), None)
     return JsonResponse({
         "orders": [_public_order(order) for order in orders],
         "account": _safe_customer_account(account) if account else None,
@@ -2313,10 +2325,13 @@ def api_customer_orders(request):
 @csrf_exempt
 def api_customer_order_detail(request, order_id):
     body = _json_body(request)
-    email = str(body.get("email") or request.GET.get("email", "")).strip().lower()
     db = read_db()
+    account, auth_error = _require_customer_account(request, db)
+    if auth_error:
+        return auth_error
     if _expire_pending_orders(db):
         write_db(db)
+    email = _customer_email(account)
     order = next((item for item in db.get("orders", []) if item.get("id") == order_id and str(item.get("customer", {}).get("email", "")).lower() == email), None)
     if not order:
         return JsonResponse({"error": "Pedido nao encontrado."}, status=404)
@@ -2342,24 +2357,26 @@ def api_customer_order_detail(request, order_id):
 def api_customer_product_reviews(request, product_id):
     if request.method != "POST":
         return JsonResponse({"error": "Metodo nao permitido."}, status=405)
-    email = str(request.POST.get("email", "")).strip().lower()
     order_id = str(request.POST.get("orderId", "")).strip()
-    if not email or not order_id:
-        return JsonResponse({"error": "Cliente e pedido sao obrigatorios."}, status=400)
+    if not order_id:
+        return JsonResponse({"error": "Pedido e obrigatorio."}, status=400)
     db = read_db()
+    account, auth_error = _require_customer_account(request, db)
+    if auth_error:
+        return auth_error
+    email = _customer_email(account)
     product = next((item for item in db.get("products", []) if item.get("id") == product_id), None)
     if not product:
         return JsonResponse({"error": "Produto nao encontrado."}, status=404)
-    paid_statuses = {"paid", "in_production", "shipped", "completed"}
     order = next((
         item for item in db.get("orders", [])
         if item.get("id") == order_id
         and str(item.get("customer", {}).get("email", "")).lower() == email
-        and item.get("status") in paid_statuses
+        and item.get("status") == "completed"
         and any(line.get("productId") == product_id for line in item.get("items", []))
     ), None)
     if not order:
-        return JsonResponse({"error": "Avaliacao disponivel apenas para produto comprado e pago."}, status=403)
+        return JsonResponse({"error": "Avaliacao disponivel apenas para pedido concluido."}, status=403)
 
     upload_files = request.FILES.getlist("mediaFiles") or request.FILES.getlist("photos")
     try:
@@ -2382,7 +2399,6 @@ def api_customer_product_reviews(request, product_id):
     next_media = [*(existing or {}).get("media", []), *media] if existing else media
     next_photos = [*(existing or {}).get("photos", []), *photos] if existing else photos
     payload = request.POST.copy()
-    account = next((item for item in db.get("customers", []) if _customer_email(item) == email), None)
     public_customer = account.get("customer", {}) if account else order.get("customer", {})
     payload["customerName"] = public_customer.get("displayName") or public_customer.get("name") or "Cliente Basa"
     payload["approved"] = "true"
@@ -2404,28 +2420,27 @@ def api_customer_product_reviews(request, product_id):
 @csrf_exempt
 def api_custom_requests(request):
     db = read_db()
+    account, auth_error = _require_customer_account(request, db)
+    if auth_error:
+        return auth_error
+    safe_account = _safe_customer_account(account)
+    session_customer = {
+        **safe_account.get("customer", {}),
+        "email": _customer_email(account),
+    }
     if _close_inactive_chats(db):
         write_db(db)
     if request.method == "GET":
-        email = str(request.GET.get("email", "")).strip().lower()
+        email = _customer_email(account)
         requests = db.get("customRequests", [])
-        if email:
-            requests = [item for item in requests if str(item.get("customer", {}).get("email", "")).lower() == email]
+        requests = [item for item in requests if str(item.get("customer", {}).get("email", "")).lower() == email]
         return JsonResponse({"requests": requests})
     if request.content_type and "multipart/form-data" in request.content_type:
         body = request.POST
-        try:
-            customer = json.loads(body.get("customer") or "{}")
-        except json.JSONDecodeError:
-            customer = {}
         attachment = _save_upload(request.FILES.get("referenceImage"), "custom-requests")
     else:
         body = _json_body(request)
-        customer = body.get("customer", {})
         attachment = ""
-    email = str(customer.get("email", "")).strip().lower()
-    if not email:
-        return JsonResponse({"error": "Entre com seu cadastro antes de enviar uma encomenda."}, status=400)
     idea = str(body.get("idea", "")).strip()
     if not idea:
         return JsonResponse({"error": "Descreva sua ideia para pedirmos orcamento."}, status=400)
@@ -2440,7 +2455,7 @@ def api_custom_requests(request):
         "idea": idea,
         "budget": body.get("budget", ""),
         "deadline": body.get("deadline", ""),
-        "customer": customer,
+        "customer": session_customer,
         "attachment": attachment or None,
         "messages": [{"id": f"msg-{secrets.token_hex(6)}", "author": "customer", "text": idea, "createdAt": _now()}],
     }
@@ -2452,11 +2467,14 @@ def api_custom_requests(request):
 @csrf_exempt
 def api_custom_request_messages(request, request_id):
     body = _json_body(request)
-    email = str(body.get("email", "")).strip().lower()
     text = str(body.get("text", "")).strip()
     if not text:
         return JsonResponse({"error": "Escreva uma mensagem."}, status=400)
     db = read_db()
+    account, auth_error = _require_customer_account(request, db)
+    if auth_error:
+        return auth_error
+    email = _customer_email(account)
     item = next((request_item for request_item in db.get("customRequests", []) if request_item.get("id") == request_id and str(request_item.get("customer", {}).get("email", "")).lower() == email), None)
     if not item:
         return JsonResponse({"error": "Encomenda nao encontrada."}, status=404)
