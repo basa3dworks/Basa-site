@@ -49,6 +49,7 @@ signer = TimestampSigner(key=SESSION_SECRET, salt="basa-admin")
 customer_signer = TimestampSigner(key=SESSION_SECRET, salt="basa-customer")
 CUSTOMER_SESSION_COOKIE = "basa_customer"
 CUSTOMER_SESSION_MAX_AGE = 60 * 60 * 24 * 30
+SAFE_HTTP_METHODS = {"GET", "HEAD", "OPTIONS"}
 
 
 def _now():
@@ -102,7 +103,37 @@ def _admin_ok(request):
         return False
 
 
+def _host_without_port(value):
+    return str(value or "").split(":", 1)[0].lower()
+
+
+def _same_origin_ok(request):
+    if request.method in SAFE_HTTP_METHODS:
+        return True
+    source = request.headers.get("Origin") or request.headers.get("Referer") or ""
+    if not source:
+        return bool(settings.DEBUG)
+    parsed = urllib.parse.urlparse(source)
+    source_host = _host_without_port(parsed.netloc)
+    if not source_host:
+        return False
+    allowed_hosts = {_host_without_port(request.get_host())}
+    public_base = os.environ.get("PUBLIC_BASE_URL", "")
+    if public_base:
+        allowed_hosts.add(_host_without_port(urllib.parse.urlparse(public_base).netloc))
+    return source_host in {host for host in allowed_hosts if host}
+
+
+def _require_same_origin(request):
+    if _same_origin_ok(request):
+        return None
+    return JsonResponse({"error": "Origem da requisicao nao permitida."}, status=403)
+
+
 def _require_admin(request):
+    origin_error = _require_same_origin(request)
+    if origin_error:
+        return origin_error
     if not _admin_ok(request):
         return JsonResponse({"error": "Nao autenticado."}, status=401)
     return None
@@ -129,6 +160,9 @@ def _customer_session_account(request, db):
 
 
 def _require_customer_account(request, db):
+    origin_error = _require_same_origin(request)
+    if origin_error:
+        return None, origin_error
     account = _customer_session_account(request, db)
     if not account:
         return None, JsonResponse({"error": "Entre novamente para continuar com seguranca."}, status=401)
@@ -1722,6 +1756,9 @@ def api_session(request):
 
 @csrf_exempt
 def api_login(request):
+    origin_error = _require_same_origin(request)
+    if origin_error:
+        return origin_error
     body = _json_body(request)
     ok = body.get("email") == ADMIN_USER and body.get("password") == ADMIN_PASSWORD
     if not ok:
@@ -1733,6 +1770,9 @@ def api_login(request):
 
 @csrf_exempt
 def api_logout(request):
+    origin_error = _require_same_origin(request)
+    if origin_error:
+        return origin_error
     response = JsonResponse({"ok": True})
     response.delete_cookie("basa_admin")
     response.delete_cookie(CUSTOMER_SESSION_COOKIE, path="/")
@@ -1808,6 +1848,9 @@ def api_cep(request, cep):
 
 @csrf_exempt
 def api_shipping_quote(request):
+    origin_error = _require_same_origin(request)
+    if origin_error:
+        return origin_error
     body = _json_body(request)
     db = read_db()
     items = body.get("items", [])
@@ -1852,6 +1895,9 @@ def api_shipping_quote(request):
 
 @csrf_exempt
 def api_cart_sync(request):
+    origin_error = _require_same_origin(request)
+    if origin_error:
+        return origin_error
     if request.method != "POST":
         return JsonResponse({"error": "Metodo nao permitido."}, status=405)
     body = _json_body(request)
@@ -1864,6 +1910,9 @@ def api_cart_sync(request):
 
 @csrf_exempt
 def api_coupons_validate(request):
+    origin_error = _require_same_origin(request)
+    if origin_error:
+        return origin_error
     body = _json_body(request)
     db = read_db()
     code = str(body.get("code", "")).strip().upper()
@@ -1880,9 +1929,9 @@ def api_coupons_validate(request):
 def api_checkout(request):
     body = _json_body(request)
     db = read_db()
-    session_account = _customer_session_account(request, db)
-    if not session_account:
-        return JsonResponse({"error": "Entre novamente para finalizar a compra com seguranca."}, status=401)
+    session_account, auth_error = _require_customer_account(request, db)
+    if auth_error:
+        return auth_error
     if _expire_pending_orders(db):
         write_db(db)
     coupon = None
@@ -2056,6 +2105,9 @@ def api_mercado_pago_webhook(request):
 
 @csrf_exempt
 def api_customer_access(request):
+    origin_error = _require_same_origin(request)
+    if origin_error:
+        return origin_error
     body = _json_body(request)
     email = str(body.get("email", "")).strip().lower()
     password = str(body.get("password", ""))
@@ -2209,6 +2261,9 @@ def api_customer_google_callback(request):
 
 @csrf_exempt
 def api_customer_resend_verification(request):
+    origin_error = _require_same_origin(request)
+    if origin_error:
+        return origin_error
     body = _json_body(request)
     email = str(body.get("email", "")).strip().lower()
     db = read_db()
@@ -2248,6 +2303,9 @@ def api_customer_verify_email(request):
 
 @csrf_exempt
 def api_customer_password_reset_request(request):
+    origin_error = _require_same_origin(request)
+    if origin_error:
+        return origin_error
     body = _json_body(request)
     email = str(body.get("email", "")).strip().lower()
     db = read_db()
@@ -2266,6 +2324,9 @@ def api_customer_password_reset_request(request):
 
 @csrf_exempt
 def api_customer_password_reset_confirm(request):
+    origin_error = _require_same_origin(request)
+    if origin_error:
+        return origin_error
     body = _json_body(request)
     token = str(body.get("token", "")).strip()
     password = str(body.get("password", "")).strip()
