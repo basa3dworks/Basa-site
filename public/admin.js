@@ -44,7 +44,8 @@ let currentSocialProductId = "";
 let chatStatusFilter = "all";
 let customerStatusFilter = "all";
 let affiliateStatusFilter = "all";
-let partnerSearchDebounce = "";
+let partnerStatusFilter = "all";
+let selectedPartnerSettlementId = "";
 let productSaveInProgress = false;
 let settingsSaveInProgress = false;
 
@@ -1034,6 +1035,28 @@ function partnerMetrics(partner) {
   return totals;
 }
 
+function partnerMatchesStatus(partner, status) {
+  if (status === "all") return true;
+  if (["active", "lead", "paused"].includes(status)) return (partner.status || "lead") === status;
+  const metrics = partnerMetrics(partner);
+  if (status === "pending") return Number(metrics.pending || 0) > 0;
+  if (status === "available") return Number(metrics.confirmed || 0) + Number(metrics.available || 0) > 0;
+  if (status === "paid") return Number(metrics.paid || 0) > 0;
+  return true;
+}
+
+function partnerSettlementStatusLabel(status) {
+  return {
+    all: "Todos",
+    active: "Ativos",
+    lead: "Leads",
+    paused: "Pausados",
+    pending: "Repasse pendente",
+    available: "Disponível",
+    paid: "Pagos"
+  }[status] || personStatusLabel(status);
+}
+
 function renderProductPartnerOptions(selectedId = "") {
   const select = $("#productPartnerSelect");
   if (!select) return;
@@ -1041,6 +1064,68 @@ function renderProductPartnerOptions(selectedId = "") {
   select.innerHTML = `<option value="">Produto próprio Basa</option>${partners.map((partner) => `
     <option value="${partner.id}" ${partner.id === selectedId ? "selected" : ""}>${escapeHtml(partner.brandName || partner.name)} (${Number(partner.commissionPercent || 0)}%)</option>
   `).join("")}`;
+}
+
+function renderPartnerSettlementSelect(partners) {
+  const select = $("#partnerSettlementSelect");
+  if (!select) return;
+  const activeId = selectedPartnerSettlementId && currentSellers.some((partner) => partner.id === selectedPartnerSettlementId)
+    ? selectedPartnerSettlementId
+    : "";
+  selectedPartnerSettlementId = activeId;
+  select.innerHTML = `<option value="">Todos os parceiros</option>${partners.map((partner) => `
+    <option value="${partner.id}" ${partner.id === activeId ? "selected" : ""}>${escapeHtml(partner.brandName || partner.name)}</option>
+  `).join("")}`;
+}
+
+function partnerCloseRows() {
+  return partnerSettlementRows().filter((row) => {
+    const settlement = row.settlement || {};
+    if (selectedPartnerSettlementId && settlement.partnerId !== selectedPartnerSettlementId) return false;
+    return ["confirmed", "available"].includes(settlement.payoutStatus || row.status);
+  });
+}
+
+function renderPartnerSettlementClose(partners) {
+  renderPartnerSettlementSelect(partners);
+  const rows = partnerCloseRows();
+  const totals = rows.reduce((acc, row) => {
+    const settlement = row.settlement || {};
+    acc.base += Number(settlement.settlementBase || 0);
+    acc.discount += Number(settlement.discountShare || 0);
+    acc.shipping += Number(settlement.shippingShare || 0);
+    acc.store += Number(settlement.storeCommission || 0);
+    acc.partner += Number(settlement.partnerReceivable || 0);
+    return acc;
+  }, { base: 0, discount: 0, shipping: 0, store: 0, partner: 0 });
+  const kpi = $("#partnerSettlementKpiGrid");
+  if (kpi) {
+    kpi.innerHTML = `
+      <article><span>Pedidos</span><strong>${new Set(rows.map((row) => row.order.id)).size}</strong><small>Com repasse disponível</small></article>
+      <article><span>Base com frete</span><strong>${money(totals.base)}</strong><small>Desconto já abatido</small></article>
+      <article><span>Frete incluído</span><strong>${money(totals.shipping)}</strong><small>Proporcional por item</small></article>
+      <article><span>Comissão Basa</span><strong>${money(totals.store)}</strong><small>Retida no fechamento</small></article>
+      <article><span>Repasse</span><strong>${money(totals.partner)}</strong><small>Valor para pagar</small></article>
+    `;
+  }
+  const list = $("#partnerSettlementCloseList");
+  if (list) {
+    list.innerHTML = rows.length ? rows.map((row) => {
+      const settlement = row.settlement || {};
+      return `
+        <article class="affiliate-commission-row">
+          <div>
+            <span>${escapeHtml(settlement.partnerName || "Parceiro")}</span>
+            <small>${row.order.id} | ${escapeHtml(settlement.productName || "Produto")} | ${orderStatusLabel(row.order.status)} | ${commissionStatusLabel(settlement.payoutStatus)}</small>
+            <small>Base ${money(settlement.settlementBase || 0)} | frete ${money(settlement.shippingShare || 0)} | desconto ${money(settlement.discountShare || 0)} | Basa ${money(settlement.storeCommission || 0)}</small>
+          </div>
+          <b>${money(settlement.partnerReceivable || 0)}</b>
+        </article>
+      `;
+    }).join("") : `<p>Nenhum repasse disponível para fechamento.</p>`;
+  }
+  const button = $("#markPartnerSettlementsPaidButton");
+  if (button) button.disabled = rows.length === 0;
 }
 
 function affiliateProductOpportunities() {
@@ -1145,7 +1230,8 @@ function renderAffiliateDashboard(affiliates) {
 }
 
 function renderPartnerDashboard(partners) {
-  const rows = partnerSettlementRows();
+  const partnerIds = new Set(partners.map((partner) => partner.id));
+  const rows = partnerSettlementRows().filter((row) => !partnerIds.size || partnerIds.has(row.settlement.partnerId));
   const totals = rows.reduce((acc, row) => {
     acc.receivable += ["confirmed", "available"].includes(row.status) ? row.amount : 0;
     acc.pending += row.status === "pending" ? row.amount : 0;
@@ -1175,7 +1261,7 @@ function renderPartnerDashboard(partners) {
   }
   const productList = $("#partnerProductList");
   if (productList) {
-    const linked = currentProducts.filter((product) => product.partnerId).slice(0, 10);
+    const linked = currentProducts.filter((product) => product.partnerId && (!partnerIds.size || partnerIds.has(product.partnerId))).slice(0, 10);
     productList.innerHTML = linked.length ? linked.map((product) => {
       const partner = currentSellers.find((item) => item.id === product.partnerId);
       return `
@@ -1190,6 +1276,7 @@ function renderPartnerDashboard(partners) {
       `;
     }).join("") : `<p>Vincule um parceiro no cadastro do produto.</p>`;
   }
+  renderPartnerSettlementClose(partners);
 }
 
 function renderPeopleLists() {
@@ -1204,7 +1291,16 @@ function renderPeopleLists() {
     (affiliateStatusFilter === "all" || (item.status || "lead") === affiliateStatusFilter)
     && matchesSearch(partnerSearchText(item), affiliateQuery)
   );
-  const partners = currentSellers.filter((item) => matchesSearch(partnerSearchText(item), partnerQuery));
+  const partners = currentSellers.filter((item) =>
+    partnerMatchesStatus(item, partnerStatusFilter)
+    && matchesSearch(partnerSearchText(item), partnerQuery)
+  );
+  const partnerCounts = currentSellers.reduce((acc, item) => {
+    ["all", "active", "lead", "paused", "pending", "available", "paid"].forEach((status) => {
+      if (partnerMatchesStatus(item, status)) acc[status] = (acc[status] || 0) + 1;
+    });
+    return acc;
+  }, {});
   const customerCounts = currentCustomers.reduce((acc, item) => {
     const status = item.status || "active";
     acc.all += 1;
@@ -1226,6 +1322,12 @@ function renderPeopleLists() {
 
   renderAffiliateDashboard(affiliates);
   renderPartnerDashboard(partners);
+
+  document.querySelectorAll("[data-partner-status]").forEach((button) => {
+    const status = button.dataset.partnerStatus;
+    button.classList.toggle("active", status === partnerStatusFilter);
+    button.textContent = `${partnerSettlementStatusLabel(status)} (${partnerCounts[status] || 0})`;
+  });
 
   const customersList = $("#customersList");
   if (customersList) {
@@ -2629,6 +2731,34 @@ async function runPartnerPayoutAction(button) {
   }
 }
 
+async function markVisiblePartnerSettlementsPaid() {
+  const rows = partnerCloseRows();
+  if (!rows.length) return;
+  const partnerLabel = selectedPartnerSettlementId
+    ? currentSellers.find((partner) => partner.id === selectedPartnerSettlementId)?.brandName || currentSellers.find((partner) => partner.id === selectedPartnerSettlementId)?.name || "parceiro"
+    : "parceiros visíveis";
+  const note = prompt(`Observação para fechar ${rows.length} repasse(s) de ${partnerLabel}:`, "Fechamento financeiro pago ao parceiro.");
+  if (note === null) return;
+  const uniquePairs = [...new Map(rows.map((row) => [`${row.order.id}:${row.settlement.partnerId}`, row])).values()];
+  const button = $("#markPartnerSettlementsPaidButton");
+  const status = $("#partnerSettlementStatus");
+  if (button) button.disabled = true;
+  if (status) status.textContent = "Marcando repasses como pagos...";
+  try {
+    for (const row of uniquePairs) {
+      await api(`/api/admin/orders/${encodeURIComponent(row.order.id)}`, {
+        method: "PATCH",
+        body: JSON.stringify({ action: "mark_partner_paid", partnerId: row.settlement.partnerId, note })
+      });
+    }
+    if (status) status.textContent = "Fechamento registrado.";
+    await loadDashboard();
+  } catch (error) {
+    if (status) status.textContent = error.message;
+    if (button) button.disabled = false;
+  }
+}
+
 async function uploadHeroSlide(event) {
   event.preventDefault();
   $("#heroSlideStatus").textContent = "Enviando imagem...";
@@ -2826,6 +2956,11 @@ $("#adminStartChatForm")?.addEventListener("submit", startAdminChat);
 $("#peopleSearchInput").addEventListener("input", renderPeopleLists);
 $("#affiliateSearchInput")?.addEventListener("input", renderPeopleLists);
 $("#partnerSearchInput")?.addEventListener("input", renderPeopleLists);
+$("#partnerSettlementSelect")?.addEventListener("change", (event) => {
+  selectedPartnerSettlementId = event.currentTarget.value;
+  renderPeopleLists();
+});
+$("#markPartnerSettlementsPaidButton")?.addEventListener("click", markVisiblePartnerSettlementsPaid);
 document.querySelectorAll("[data-customer-status]").forEach((button) => {
   button.addEventListener("click", () => {
     customerStatusFilter = button.dataset.customerStatus || "all";
@@ -2835,6 +2970,12 @@ document.querySelectorAll("[data-customer-status]").forEach((button) => {
 document.querySelectorAll("[data-affiliate-status]").forEach((button) => {
   button.addEventListener("click", () => {
     affiliateStatusFilter = button.dataset.affiliateStatus || "all";
+    renderPeopleLists();
+  });
+});
+document.querySelectorAll("[data-partner-status]").forEach((button) => {
+  button.addEventListener("click", () => {
+    partnerStatusFilter = button.dataset.partnerStatus || "all";
     renderPeopleLists();
   });
 });

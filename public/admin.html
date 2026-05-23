@@ -673,6 +673,15 @@
               <input id="partnerSearchInput" type="search" placeholder="Nome, email, marca ou status">
             </label>
           </div>
+          <div class="admin-filter-tabs" id="partnerStatusTabs" aria-label="Filtrar parceiros por status">
+            <button type="button" class="active" data-partner-status="all">Todos</button>
+            <button type="button" data-partner-status="active">Ativos</button>
+            <button type="button" data-partner-status="lead">Leads</button>
+            <button type="button" data-partner-status="paused">Pausados</button>
+            <button type="button" data-partner-status="pending">Repasse pendente</button>
+            <button type="button" data-partner-status="available">Disponível</button>
+            <button type="button" data-partner-status="paid">Pagos</button>
+          </div>
           <section class="affiliate-command-panel" aria-label="Painel de parceiros">
             <div class="panel-head compact">
               <div>
@@ -691,6 +700,25 @@
                 <div class="affiliate-product-list" id="partnerProductList"></div>
               </section>
             </div>
+          </section>
+          <section class="affiliate-command-panel" aria-label="Fechamento financeiro de parceiros">
+            <div class="panel-head compact">
+              <div>
+                <h3>Fechamento financeiro</h3>
+                <p>Selecione um parceiro para fechar repasses disponíveis com desconto e frete já considerados.</p>
+              </div>
+              <label class="admin-search">Parceiro
+                <select id="partnerSettlementSelect">
+                  <option value="">Todos os parceiros</option>
+                </select>
+              </label>
+            </div>
+            <div class="affiliate-kpi-grid" id="partnerSettlementKpiGrid"></div>
+            <div class="affiliate-commission-list" id="partnerSettlementCloseList"></div>
+            <div class="form-actions">
+              <button class="primary-button" type="button" id="markPartnerSettlementsPaidButton">Marcar disponíveis como pagos</button>
+            </div>
+            <p class="form-status" id="partnerSettlementStatus"></p>
           </section>
           <div class="people-grid affiliate-only-grid">
             <form id="sellerForm" class="stack-form people-form">
@@ -733,7 +761,7 @@
       </section>
     </main>
 
-    <script src="/admin.js?v=20260522-partners-panel" type="module"></script>
+    <script src="/admin.js?v=20260523-partner-settlements" type="module"></script>
   </body>
 </html>
 
