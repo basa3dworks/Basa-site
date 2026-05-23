@@ -1066,6 +1066,47 @@ function renderProductPartnerOptions(selectedId = "") {
   `).join("")}`;
 }
 
+function selectedProductPartner() {
+  const id = $("#productPartnerSelect")?.value || "";
+  return currentSellers.find((partner) => partner.id === id) || null;
+}
+
+function productPartnerFinancials(product = {}) {
+  const partner = product.partnerId
+    ? currentSellers.find((item) => item.id === product.partnerId)
+    : selectedProductPartner();
+  const price = Number(product.price ?? decimalValue($("#productForm")?.elements.price?.value || 0));
+  const percent = Number(product.partnerStoreCommissionPercent ?? decimalValue($("#productForm")?.elements.partnerStoreCommissionPercent?.value || partner?.commissionPercent || 0));
+  const storeCommission = price * percent / 100;
+  const partnerPreview = Math.max(0, price - storeCommission);
+  return { partner, price, percent, storeCommission, partnerPreview };
+}
+
+function updateProductPartnerPreview() {
+  const preview = $("#productPartnerPreview");
+  if (!preview) return;
+  const { partner, price, percent, storeCommission, partnerPreview } = productPartnerFinancials();
+  if (!partner) {
+    preview.innerHTML = "Produto próprio Basa. Nenhum repasse de parceiro será calculado.";
+    return;
+  }
+  preview.innerHTML = `
+    <strong>Produto parceiro:</strong> ${escapeHtml(partner.brandName || partner.name)}
+    | Comissão Basa ${Number(percent || 0)}% (${money(storeCommission || 0)})
+    | Prévia do parceiro sem frete: ${money(partnerPreview || 0)}
+    | Base: ${money(price || 0)}
+  `;
+}
+
+function productPartnerTableLabel(product) {
+  if (!product.partnerId) return "Produto Basa";
+  const { partner, percent, storeCommission, partnerPreview } = productPartnerFinancials(product);
+  return `
+    <strong>${escapeHtml(partner?.brandName || partner?.name || "Parceiro")}</strong>
+    <small>Basa ${Number(percent || 0)}% (${money(storeCommission || 0)}) | parceiro ${money(partnerPreview || 0)} sem frete</small>
+  `;
+}
+
 function renderPartnerSettlementSelect(partners) {
   const select = $("#partnerSettlementSelect");
   if (!select) return;
@@ -1747,6 +1788,7 @@ function resetProductForm() {
   form.elements.affiliateCommissionPercent.value = "0";
   renderProductPartnerOptions();
   form.elements.partnerStoreCommissionPercent.value = "0";
+  updateProductPartnerPreview();
   form.elements.weightKg.value = "0.30";
   form.elements.widthCm.value = "12";
   form.elements.heightCm.value = "8";
@@ -1924,6 +1966,7 @@ function editProduct(productId) {
   form.elements.affiliateCommissionPercent.value = product.affiliateCommissionPercent || 0;
   renderProductPartnerOptions(product.partnerId || "");
   form.elements.partnerStoreCommissionPercent.value = product.partnerStoreCommissionPercent || 0;
+  updateProductPartnerPreview();
   $("#colorsList").innerHTML = "";
   const colors = product.variants?.colors || [];
   (colors.length ? colors : [{ name: "Branco", hex: "#ffffff" }]).forEach((color) => addColor(color));
@@ -2198,7 +2241,7 @@ function renderProductsTable() {
       <td>${product.compareAtPrice ? money(product.compareAtPrice) : "-"}</td>
       <td>${discountPercent(product) ? `${discountPercent(product)}% OFF` : "-"}</td>
       <td>${Number(product.affiliateCommissionPercent || 0)}%</td>
-      <td>${escapeHtml(currentSellers.find((item) => item.id === product.partnerId)?.brandName || currentSellers.find((item) => item.id === product.partnerId)?.name || "-")}</td>
+      <td>${productPartnerTableLabel(product)}</td>
       <td>${product.stock}</td>
       <td>${product.status}${product.shipping?.sellerPaysShipping ? " / frete grátis" : " / frete cobrado"}</td>
       <td>
@@ -2649,6 +2692,7 @@ async function loadDashboard() {
   renderSocialProductOptions({ keepSelected: true });
   renderCampaignProductOptions({ keepSelected: true });
   renderProductPartnerOptions($("#productForm")?.elements.partnerId?.value || "");
+  updateProductPartnerPreview();
   renderCampaignList();
   renderStoryAdminList();
   updateEmbeddedShippingPreview();
@@ -2926,6 +2970,9 @@ $("#productForm").addEventListener("submit", async (event) => {
 
 $("#refreshButton").addEventListener("click", loadDashboard);
 $("#productSearchInput").addEventListener("input", renderProductsTable);
+$("#productPartnerSelect")?.addEventListener("change", updateProductPartnerPreview);
+$("#productForm")?.elements.price?.addEventListener("input", updateProductPartnerPreview);
+$("#productForm")?.elements.partnerStoreCommissionPercent?.addEventListener("input", updateProductPartnerPreview);
 $("#storySearchInput").addEventListener("input", renderStoryAdminList);
 $("#storyProductSearchInput").addEventListener("input", () => renderStoryProductOptions());
 $("#socialProductSearchInput")?.addEventListener("input", () => renderSocialProductOptions());

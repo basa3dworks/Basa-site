@@ -2429,6 +2429,35 @@ body.react-lightbox-open {
   background: #fff4dc;
 }
 
+.react-partner-filters {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 0 4px;
+  scrollbar-width: none;
+}
+
+.react-partner-filters::-webkit-scrollbar {
+  display: none;
+}
+
+.react-partner-filters button {
+  flex: 0 0 auto;
+  min-height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0 12px;
+  color: var(--muted);
+  background: #fff;
+  font-weight: 900;
+}
+
+.react-partner-filters button.active {
+  color: #fff;
+  border-color: var(--brand);
+  background: var(--brand);
+}
+
 .react-affiliate-empty {
   padding: 14px;
   border-radius: 8px;

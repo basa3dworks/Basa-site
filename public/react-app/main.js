@@ -2313,6 +2313,7 @@
     const [dashboard, setDashboard] = useState(null);
     const [loading, setLoading] = useState(Boolean(customer));
     const [status, setStatus] = useState("");
+    const [orderFilter, setOrderFilter] = useState("all");
 
     useEffect(() => {
       if (!customer?.email) return undefined;
@@ -2359,6 +2360,24 @@
     const partner = dashboard?.partner || {};
     const products = dashboard?.products || [];
     const orders = dashboard?.orders || [];
+    const partnerOrderMatches = (order, filter) => {
+      const settlements = order.settlements || [];
+      if (filter === "all") return true;
+      if (filter === "payout_paid") return settlements.length && settlements.every((item) => item.payoutStatus === "paid");
+      if (filter === "payout_available") return settlements.some((item) => ["confirmed", "available"].includes(item.payoutStatus));
+      return order.status === filter;
+    };
+    const orderFilters = [
+      ["all", "Todos"],
+      ["awaiting_payment", "Aguardando"],
+      ["paid", "Pago"],
+      ["in_production", "Produção"],
+      ["shipped", "Enviado"],
+      ["completed", "Concluído"],
+      ["payout_available", "A receber"],
+      ["payout_paid", "Repasse pago"]
+    ];
+    const filteredOrders = orders.filter((order) => partnerOrderMatches(order, orderFilter));
     return h("main", { className: "react-affiliate-page" },
       h("section", { className: "react-page-title" },
         h("p", null, "Parceiros"),
@@ -2381,15 +2400,22 @@
                 h("p", null, "Transparencia"),
                 h("h2", null, "Pedidos vinculados")
               ),
-              orders.length
-                ? orders.map((order) => h("article", { className: "react-affiliate-flow-card", key: order.id },
+              h("div", { className: "react-partner-filters", role: "tablist", "aria-label": "Filtrar pedidos do parceiro" },
+                orderFilters.map(([value, label]) => h("button", {
+                  type: "button",
+                  className: value === orderFilter ? "active" : "",
+                  onClick: () => setOrderFilter(value)
+                }, `${label} (${orders.filter((order) => partnerOrderMatches(order, value)).length})`))
+              ),
+              filteredOrders.length
+                ? filteredOrders.map((order) => h("article", { className: "react-affiliate-flow-card", key: order.id },
                   h("span", { className: "react-affiliate-flow-status order" }, orderStatusLabel(order.status)),
                   h("strong", null, `${order.id} | ${money(order.total || 0)}`),
                   h("small", null, `${order.customer?.city || "Cidade"}${order.customer?.state ? `/${order.customer.state}` : ""}`),
                   h("p", null, (order.settlements || []).map((item) => `${item.quantity || 1}x ${item.productName} - repasse ${money(item.partnerReceivable || 0)} (${commissionStatusLabel(item.payoutStatus)})`).join(", ")),
                   h("time", null, new Date(order.createdAt || Date.now()).toLocaleString("pt-BR"))
                 ))
-                : h("div", { className: "react-affiliate-empty" }, "Quando um produto parceiro vender, aparece aqui.")
+                : h("div", { className: "react-affiliate-empty" }, "Nenhum pedido nesta etapa.")
             ),
             h("section", { className: "react-affiliate-products" },
               h("div", { className: "react-section-heading" },
