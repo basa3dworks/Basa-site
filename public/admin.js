@@ -2171,6 +2171,9 @@ function renderOrdersList() {
   document.querySelectorAll("[data-payment-action]").forEach((button) => {
     button.addEventListener("click", () => runPaymentAction(button));
   });
+  document.querySelectorAll("[data-partner-payout]").forEach((button) => {
+    button.addEventListener("click", () => runPartnerPayoutAction(button));
+  });
 }
 
 function renderSelectedOrderDetail(order) {
@@ -2255,6 +2258,12 @@ function renderSelectedOrderDetail(order) {
           <span>Frete alocado: ${money(settlement.shippingShare || 0)} | Desconto: ${money(settlement.discountShare || 0)}</span>
           <span>Comissão Basa: ${Number(settlement.storeCommissionPercent || 0)}% (${money(settlement.storeCommission || 0)})</span>
           <span>Repasse parceiro: <strong>${money(settlement.partnerReceivable || 0)}</strong></span>
+          ${settlement.payoutStatus === "paid" ? `
+            <span>Pago em: ${settlement.paidAt ? new Date(settlement.paidAt).toLocaleString("pt-BR") : "registrado"}</span>
+            <small>Recibo: ${settlement.receiptId || "sem código"}${settlement.paymentNote ? ` | ${escapeHtml(settlement.paymentNote)}` : ""}</small>
+          ` : `
+            <button class="ghost-button table-action" type="button" data-partner-payout="${settlement.partnerId}" data-partner-name="${escapeHtml(settlement.partnerName || "Parceiro")}" data-order-id="${order.id}">Marcar repasse pago</button>
+          `}
         `).join("<hr>") : "<span>Nenhum parceiro neste pedido.</span>"}
       </section>
       <section>
@@ -2589,6 +2598,30 @@ async function runPaymentAction(button) {
     }
     selectedOrderId = button.dataset.orderId;
     await loadDashboard();
+  } catch (error) {
+    alert(error.message);
+    button.disabled = false;
+    button.textContent = originalText;
+  }
+}
+
+async function runPartnerPayoutAction(button) {
+  const partnerId = button.dataset.partnerPayout;
+  const orderId = button.dataset.orderId;
+  const partnerName = button.dataset.partnerName || "parceiro";
+  const note = prompt(`Observação do repasse para ${partnerName}:`, "Repasse pago ao parceiro.");
+  if (note === null) return;
+  button.disabled = true;
+  const originalText = button.textContent;
+  button.textContent = "Salvando...";
+  try {
+    const result = await api(`/api/admin/orders/${encodeURIComponent(orderId)}`, {
+      method: "PATCH",
+      body: JSON.stringify({ action: "mark_partner_paid", partnerId, note })
+    });
+    selectedOrderId = orderId;
+    await loadDashboard();
+    alert(`Repasse marcado como pago. Recibo: ${result.receiptId || "gerado"}`);
   } catch (error) {
     alert(error.message);
     button.disabled = false;

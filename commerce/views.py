@@ -831,6 +831,14 @@ def _partner_payout_status(order_status):
 def _partner_settlements_snapshot(db, order):
     products = {product.get("id"): product for product in db.get("products", [])}
     lines = order.get("items", [])
+    previous_lines = {}
+    for previous_summary in order.get("partnerSettlements", []):
+        for previous_line in previous_summary.get("lines", []):
+            previous_lines[(previous_line.get("partnerId"), previous_line.get("productId"))] = previous_line
+    for line in lines:
+        previous = line.get("partnerSettlement") or {}
+        if previous:
+            previous_lines[(previous.get("partnerId"), previous.get("productId"))] = previous
     subtotal = max(0.0, float(order.get("subtotal") or sum(float(line.get("total") or 0) for line in lines) or 0))
     discount_total = max(0.0, float(order.get("discount") or 0))
     shipping_total = max(0.0, float(order.get("shipping") or 0))
@@ -874,6 +882,12 @@ def _partner_settlements_snapshot(db, order):
             "payoutStatus": status,
             "updatedAt": _now(),
         }
+        previous = previous_lines.get((snapshot["partnerId"], snapshot["productId"]), {})
+        if previous.get("payoutStatus") == "paid":
+            snapshot["payoutStatus"] = "paid"
+            snapshot["paidAt"] = previous.get("paidAt", "")
+            snapshot["paymentNote"] = previous.get("paymentNote", "")
+            snapshot["receiptId"] = previous.get("receiptId", "")
         line["partnerSettlement"] = snapshot
         settlement_lines.append(snapshot)
         summary = summaries.setdefault(partner.get("id"), {
@@ -893,12 +907,46 @@ def _partner_settlements_snapshot(db, order):
         for key in ["grossItemTotal", "discountShare", "shippingShare", "settlementBase", "storeCommission", "partnerReceivable"]:
             summary[key] = round(summary[key] + snapshot[key], 2)
         summary["lines"].append(snapshot)
+        if summary["lines"] and all(item.get("payoutStatus") == "paid" for item in summary["lines"]):
+            summary["payoutStatus"] = "paid"
+            summary["paidAt"] = snapshot.get("paidAt", summary.get("paidAt", ""))
+            summary["paymentNote"] = snapshot.get("paymentNote", summary.get("paymentNote", ""))
+            summary["receiptId"] = snapshot.get("receiptId", summary.get("receiptId", ""))
     order["partnerSettlements"] = list(summaries.values())
     return settlement_lines
 
 
 def _refresh_order_partners(db, order):
     _partner_settlements_snapshot(db, order)
+
+
+def _mark_order_partner_paid(db, order, partner_id, note=""):
+    _refresh_order_partners(db, order)
+    receipt_id = f"REC-{int(datetime.now().timestamp() * 1000)}"
+    paid_at = _now()
+    changed = False
+    for line in order.get("items", []):
+        settlement = line.get("partnerSettlement") or {}
+        if settlement.get("partnerId") != partner_id:
+            continue
+        settlement["payoutStatus"] = "paid"
+        settlement["paidAt"] = paid_at
+        settlement["paymentNote"] = note
+        settlement["receiptId"] = receipt_id
+        line["partnerSettlement"] = settlement
+        changed = True
+    if not changed:
+        return None
+    _refresh_order_partners(db, order)
+    for summary in order.get("partnerSettlements", []):
+        if summary.get("partnerId") == partner_id:
+            summary["payoutStatus"] = "paid"
+            summary["paidAt"] = paid_at
+            summary["paymentNote"] = note
+            summary["receiptId"] = receipt_id
+    order["updatedAt"] = _now()
+    _append_order_history(order, "partner_payout", "admin", order.get("status"), note or "Repasse do parceiro marcado como pago.")
+    return receipt_id
 
 
 def _cart_customer_payload(raw_customer):
@@ -3415,6 +3463,15 @@ def api_admin_order_detail(request, order_id):
         _send_order_email(order, f"Link de pagamento - {order['id']}", "Seu pedido ainda esta aguardando pagamento. Use o link abaixo para concluir.", include_payment=True)
         write_db(db)
         return JsonResponse({"order": order, "checkoutUrl": _order_payment_url(order)})
+    if action == "mark_partner_paid":
+        partner_id = str(body.get("partnerId", "")).strip()
+        if order.get("status") not in {"completed", "shipped", "in_production", "paid"}:
+            return JsonResponse({"error": "Confirme o pagamento do pedido antes de marcar repasse de parceiro."}, status=400)
+        receipt_id = _mark_order_partner_paid(db, order, partner_id, body.get("note", ""))
+        if not receipt_id:
+            return JsonResponse({"error": "Parceiro nao encontrado neste pedido."}, status=404)
+        write_db(db)
+        return JsonResponse({"order": order, "receiptId": receipt_id})
     next_status = body.get("status") or order.get("status")
     if next_status != order.get("status"):
         order.setdefault("history", []).append({
