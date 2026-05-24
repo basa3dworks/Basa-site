@@ -2408,6 +2408,21 @@ body.react-lightbox-open {
   font-weight: 800;
 }
 
+.react-receipt-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.react-receipt-link {
+  border-radius: 999px;
+  padding: 7px 10px;
+  color: var(--brand);
+  background: #eaf6f0;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
 .react-affiliate-flow-card time {
   color: var(--muted);
   font-size: 0.78rem;

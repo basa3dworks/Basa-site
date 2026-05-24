@@ -2408,13 +2408,25 @@
                 }, `${label} (${orders.filter((order) => partnerOrderMatches(order, value)).length})`))
               ),
               filteredOrders.length
-                ? filteredOrders.map((order) => h("article", { className: "react-affiliate-flow-card", key: order.id },
-                  h("span", { className: "react-affiliate-flow-status order" }, orderStatusLabel(order.status)),
-                  h("strong", null, `${order.id} | ${money(order.total || 0)}`),
-                  h("small", null, `${order.customer?.city || "Cidade"}${order.customer?.state ? `/${order.customer.state}` : ""}`),
-                  h("p", null, (order.settlements || []).map((item) => `${item.quantity || 1}x ${item.productName} - repasse ${money(item.partnerReceivable || 0)} (${commissionStatusLabel(item.payoutStatus)})`).join(", ")),
-                  h("time", null, new Date(order.createdAt || Date.now()).toLocaleString("pt-BR"))
-                ))
+                ? filteredOrders.map((order) => {
+                  const receipts = (order.settlements || []).filter((item) => item.payoutStatus === "paid" && item.receiptId);
+                  return h("article", { className: "react-affiliate-flow-card", key: order.id },
+                    h("span", { className: "react-affiliate-flow-status order" }, orderStatusLabel(order.status)),
+                    h("strong", null, `${order.id} | ${money(order.total || 0)}`),
+                    h("small", null, `${order.customer?.city || "Cidade"}${order.customer?.state ? `/${order.customer.state}` : ""}`),
+                    h("p", null, (order.settlements || []).map((item) => `${item.quantity || 1}x ${item.productName} - repasse ${money(item.partnerReceivable || 0)} (${commissionStatusLabel(item.payoutStatus)})`).join(", ")),
+                    receipts.length ? h("div", { className: "react-receipt-links" },
+                      receipts.map((item) => h("a", {
+                        href: `/api/partner/receipts/${encodeURIComponent(item.receiptId)}`,
+                        target: "_blank",
+                        rel: "noreferrer",
+                        className: "react-receipt-link",
+                        key: item.receiptId
+                      }, `Recibo ${item.receiptId}`))
+                    ) : null,
+                    h("time", null, new Date(order.createdAt || Date.now()).toLocaleString("pt-BR"))
+                  );
+                })
                 : h("div", { className: "react-affiliate-empty" }, "Nenhum pedido nesta etapa.")
             ),
             h("section", { className: "react-affiliate-products" },

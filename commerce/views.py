@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+import html
 import json
 import mimetypes
 import os
@@ -947,6 +948,115 @@ def _mark_order_partner_paid(db, order, partner_id, note=""):
     order["updatedAt"] = _now()
     _append_order_history(order, "partner_payout", "admin", order.get("status"), note or "Repasse do parceiro marcado como pago.")
     return receipt_id
+
+
+def _partner_receipt_payload(db, receipt_id, partner_id=""):
+    receipt_id = str(receipt_id or "").strip()
+    partner_id = str(partner_id or "").strip()
+    if not receipt_id:
+        return None
+    for order in db.get("orders", []):
+        _refresh_order_partners(db, order)
+        for settlement in order.get("partnerSettlements", []):
+            if settlement.get("receiptId") != receipt_id:
+                continue
+            if partner_id and settlement.get("partnerId") != partner_id:
+                continue
+            return {
+                "receiptId": receipt_id,
+                "orderId": order.get("id"),
+                "orderStatus": order.get("status"),
+                "createdAt": order.get("createdAt"),
+                "paidAt": settlement.get("paidAt"),
+                "paymentNote": settlement.get("paymentNote", ""),
+                "partnerName": settlement.get("partnerName"),
+                "partnerEmail": settlement.get("partnerEmail"),
+                "grossItemTotal": settlement.get("grossItemTotal", 0),
+                "discountShare": settlement.get("discountShare", 0),
+                "shippingShare": settlement.get("shippingShare", 0),
+                "settlementBase": settlement.get("settlementBase", 0),
+                "storeCommission": settlement.get("storeCommission", 0),
+                "partnerReceivable": settlement.get("partnerReceivable", 0),
+                "lines": settlement.get("lines", []),
+            }
+    return None
+
+
+def _partner_receipt_html(payload):
+    def esc(value):
+        return html.escape(str(value or ""))
+
+    def receipt_money(value):
+        return f"R$ {float(value or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+    lines = payload.get("lines") or []
+    line_rows = "".join(
+        f"""
+        <tr>
+          <td>{esc(line.get("productName"))}</td>
+          <td>{esc(line.get("quantity"))}</td>
+          <td>{receipt_money(line.get("grossItemTotal"))}</td>
+          <td>{receipt_money(line.get("discountShare"))}</td>
+          <td>{receipt_money(line.get("shippingShare"))}</td>
+          <td>{receipt_money(line.get("partnerReceivable"))}</td>
+        </tr>
+        """
+        for line in lines
+    )
+    return f"""<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Recibo {esc(payload.get("receiptId"))}</title>
+    <style>
+      body {{ margin: 0; font-family: Arial, sans-serif; color: #12211b; background: #f4f8f5; }}
+      main {{ max-width: 760px; margin: 28px auto; padding: 24px; background: #fff; border: 1px solid #dbe5de; border-radius: 12px; }}
+      h1, h2, p {{ margin-top: 0; }}
+      .eyebrow {{ color: #c98a22; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }}
+      .grid {{ display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 20px 0; }}
+      .box {{ padding: 14px; border: 1px solid #dbe5de; border-radius: 10px; background: #f8fbf8; }}
+      .box span {{ display: block; color: #5d6b66; font-size: 13px; font-weight: 700; }}
+      .box strong {{ display: block; margin-top: 4px; font-size: 20px; }}
+      table {{ width: 100%; border-collapse: collapse; margin-top: 12px; }}
+      th, td {{ padding: 10px; border-bottom: 1px solid #e4ece7; text-align: left; }}
+      th {{ color: #5d6b66; font-size: 12px; text-transform: uppercase; }}
+      .total {{ color: #207b58; font-size: 28px; }}
+      .actions {{ display: flex; justify-content: flex-end; margin-top: 20px; }}
+      button {{ border: 0; border-radius: 8px; padding: 12px 16px; color: #fff; background: #207b58; font-weight: 800; }}
+      @media print {{ body {{ background: #fff; }} main {{ margin: 0; border: 0; }} .actions {{ display: none; }} }}
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">Basa 3D Works</p>
+      <h1>Recibo de repasse</h1>
+      <p><strong>{esc(payload.get("receiptId"))}</strong> | Pedido {esc(payload.get("orderId"))}</p>
+      <p>Parceiro: <strong>{esc(payload.get("partnerName"))}</strong> {esc(payload.get("partnerEmail"))}</p>
+      <p>Pago em: {esc(payload.get("paidAt"))}</p>
+      <div class="grid">
+        <div class="box"><span>Base com frete</span><strong>{receipt_money(payload.get("settlementBase"))}</strong></div>
+        <div class="box"><span>Desconto abatido</span><strong>{receipt_money(payload.get("discountShare"))}</strong></div>
+        <div class="box"><span>Frete considerado</span><strong>{receipt_money(payload.get("shippingShare"))}</strong></div>
+        <div class="box"><span>Comissão Basa</span><strong>{receipt_money(payload.get("storeCommission"))}</strong></div>
+        <div class="box"><span>Repasse ao parceiro</span><strong class="total">{receipt_money(payload.get("partnerReceivable"))}</strong></div>
+      </div>
+      <h2>Itens</h2>
+      <table>
+        <thead><tr><th>Produto</th><th>Qtd.</th><th>Bruto</th><th>Desconto</th><th>Frete</th><th>Repasse</th></tr></thead>
+        <tbody>{line_rows}</tbody>
+      </table>
+      <p>{esc(payload.get("paymentNote"))}</p>
+      <div class="actions"><button onclick="window.print()">Imprimir / salvar PDF</button></div>
+    </main>
+  </body>
+</html>"""
+
+
+def _partner_receipt_response(payload):
+    if not payload:
+        return JsonResponse({"error": "Recibo nao encontrado."}, status=404)
+    return HttpResponse(_partner_receipt_html(payload), content_type="text/html; charset=utf-8")
 
 
 def _cart_customer_payload(raw_customer):
@@ -2693,6 +2803,18 @@ def api_partner_dashboard(request):
     return JsonResponse(payload)
 
 
+def api_partner_receipt(request, receipt_id):
+    db = read_db()
+    account, auth_error = _require_customer_account(request, db)
+    if auth_error:
+        return auth_error
+    partner = _active_partner(db, "", _customer_email(account))
+    if not partner:
+        return JsonResponse({"error": "Parceiro nao encontrado ou ainda nao ativo."}, status=404)
+    payload = _partner_receipt_payload(db, receipt_id, partner.get("id"))
+    return _partner_receipt_response(payload)
+
+
 def api_customer_orders(request):
     db = read_db()
     account, auth_error = _require_customer_account(request, db)
@@ -3424,6 +3546,15 @@ def api_admin_product_social_post_detail(request, product_id, review_id):
     reviews[index] = _social_post_payload(request.POST, reviews[index], next_photos, next_media)
     write_db(db)
     return JsonResponse({"product": product, "review": reviews[index], "reviews": reviews, "products": db.get("products", [])})
+
+
+def api_admin_partner_receipt(request, receipt_id):
+    error = _require_admin(request)
+    if error:
+        return error
+    db = read_db()
+    payload = _partner_receipt_payload(db, receipt_id)
+    return _partner_receipt_response(payload)
 
 
 @csrf_exempt

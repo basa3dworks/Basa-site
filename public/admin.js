@@ -2406,6 +2406,7 @@ function renderSelectedOrderDetail(order) {
           ${settlement.payoutStatus === "paid" ? `
             <span>Pago em: ${settlement.paidAt ? new Date(settlement.paidAt).toLocaleString("pt-BR") : "registrado"}</span>
             <small>Recibo: ${settlement.receiptId || "sem código"}${settlement.paymentNote ? ` | ${escapeHtml(settlement.paymentNote)}` : ""}</small>
+            ${settlement.receiptId ? `<a class="ghost-button table-action" href="/api/admin/partner-receipts/${encodeURIComponent(settlement.receiptId)}" target="_blank" rel="noopener">Ver recibo</a>` : ""}
           ` : `
             <button class="ghost-button table-action" type="button" data-partner-payout="${settlement.partnerId}" data-partner-name="${escapeHtml(settlement.partnerName || "Parceiro")}" data-order-id="${order.id}">Marcar repasse pago</button>
           `}
