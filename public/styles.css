@@ -5297,6 +5297,26 @@ body.store-body:not(.admin-body) .customer-drawer {
   margin-top: 18px;
 }
 
+.social-moderation-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.social-moderation-head h3 {
+  margin: 2px 0 4px;
+}
+
+.social-moderation-head span {
+  color: var(--muted);
+}
+
+.social-moderation-head label {
+  min-width: min(360px, 100%);
+}
+
 .social-proof-list-head,
 .social-proof-card {
   display: flex;
@@ -5318,6 +5338,10 @@ body.store-body:not(.admin-body) .customer-drawer {
 
 .social-proof-card {
   align-items: flex-start;
+}
+
+.social-moderation-card {
+  border-left: 4px solid var(--danger);
 }
 
 .social-proof-card p {

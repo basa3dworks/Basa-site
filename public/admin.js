@@ -922,6 +922,64 @@ function renderSocialProofList() {
   });
 }
 
+function socialModerationRows() {
+  return currentProducts.flatMap((product) => (product.reviews || []).map((review) => ({ product, review })))
+    .sort((a, b) => Date.parse(b.review.createdAt || 0) - Date.parse(a.review.createdAt || 0));
+}
+
+function socialModerationSearchText({ product, review }) {
+  return [
+    product.sku,
+    product.name,
+    product.category,
+    review.customerName,
+    review.customerEmail,
+    review.orderId,
+    review.comment,
+    review.source === "customer" ? "cliente" : "admin",
+    review.approved === false ? "oculto" : "visivel"
+  ].join(" ");
+}
+
+function renderSocialModerationList() {
+  const target = $("#socialModerationList");
+  if (!target) return;
+  const query = $("#socialModerationSearchInput")?.value || "";
+  const rows = socialModerationRows().filter((row) => matchesSearch(socialModerationSearchText(row), query));
+  target.innerHTML = rows.length ? rows.map(({ product, review }) => `
+    <article class="social-proof-card social-moderation-card">
+      <div>
+        <strong>${escapeHtml(review.customerName || "Cliente Basa")}</strong>
+        <span>
+          ${escapeHtml(product.name || "Produto sem nome")}
+          ${product.sku ? ` | ${escapeHtml(product.sku)}` : ""}
+          ${review.orderId ? ` | ${escapeHtml(review.orderId)}` : ""}
+          | ${review.source === "customer" ? "Comentário de cliente" : "Prova social manual"}
+          ${review.approved === false ? " | Oculto" : ""}
+        </span>
+        <p>${escapeHtml(review.comment || "Sem comentário")}</p>
+        ${renderReviewMedia(reviewMediaList(review), "social-proof-photos")}
+      </div>
+      <div class="story-admin-actions">
+        <button class="ghost-button table-action" type="button" data-locate-social-product="${product.id}" data-locate-social-review="${review.id}">Abrir</button>
+        <button class="ghost-button danger-button table-action" type="button" data-delete-social-product="${product.id}" data-delete-social-review="${review.id}">Excluir da loja</button>
+      </div>
+    </article>
+  `).join("") : `<p>Nenhum comentário encontrado.</p>`;
+
+  document.querySelectorAll("[data-locate-social-product]").forEach((button) => {
+    button.addEventListener("click", () => {
+      currentSocialProductId = button.dataset.locateSocialProduct;
+      $("#socialProductSelect").value = currentSocialProductId;
+      renderSocialProductOptions({ keepSelected: true });
+      editSocialProof(button.dataset.locateSocialReview);
+    });
+  });
+  document.querySelectorAll("[data-delete-social-product]").forEach((button) => {
+    button.addEventListener("click", () => deleteSocialProof(button.dataset.deleteSocialReview, button.dataset.deleteSocialProduct));
+  });
+}
+
 function formatAddress(customer) {
   const address = customer.address;
   if (!address) return customer.address || "Endereço não informado";
@@ -2035,8 +2093,8 @@ function editSocialProof(reviewId) {
   form.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-async function deleteSocialProof(reviewId) {
-  const product = socialProduct();
+async function deleteSocialProof(reviewId, productId = "") {
+  const product = productId ? currentProducts.find((item) => item.id === productId) : socialProduct();
   if (!product || !reviewId || !confirm("Excluir esta prova social?")) return;
   $("#socialProofStatus").textContent = "Excluindo prova social...";
   try {
@@ -2048,6 +2106,7 @@ async function deleteSocialProof(reviewId) {
     renderSocialProductOptions({ keepSelected: true });
     renderProductsTable();
     renderAdminDashboard();
+    renderSocialModerationList();
     resetSocialProofForm();
     $("#socialProofStatus").textContent = "Prova social excluída.";
   } catch (error) {
@@ -2802,6 +2861,7 @@ async function loadDashboard() {
   renderCouponList(data.coupons || []);
   renderStoryProductOptions({ keepSelected: true });
   renderSocialProductOptions({ keepSelected: true });
+  renderSocialModerationList();
   renderCampaignProductOptions({ keepSelected: true });
   renderProductPartnerOptions($("#productForm")?.elements.partnerId?.value || "");
   updateProductPartnerPreview();
@@ -3139,10 +3199,12 @@ $("#productForm")?.elements.partnerStoreCommissionPercent?.addEventListener("inp
 $("#storySearchInput").addEventListener("input", renderStoryAdminList);
 $("#storyProductSearchInput").addEventListener("input", () => renderStoryProductOptions());
 $("#socialProductSearchInput")?.addEventListener("input", () => renderSocialProductOptions());
+$("#socialModerationSearchInput")?.addEventListener("input", renderSocialModerationList);
 $("#socialProductSelect")?.addEventListener("change", () => {
   currentSocialProductId = $("#socialProductSelect").value;
   resetSocialProofForm();
   renderSocialProofList();
+  renderSocialModerationList();
 });
 $("#campaignProductSearchInput").addEventListener("input", () => renderCampaignProductOptions());
 $("#campaignProductSelect").addEventListener("change", () => {
@@ -3255,6 +3317,7 @@ $("#socialProofForm")?.addEventListener("submit", async (event) => {
     renderSocialProductOptions({ keepSelected: true });
     renderProductsTable();
     renderAdminDashboard();
+    renderSocialModerationList();
     resetSocialProofForm();
     $("#socialProofStatus").textContent = reviewId ? "Prova social atualizada." : "Prova social salva.";
   } catch (error) {
