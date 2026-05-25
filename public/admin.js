@@ -1127,9 +1127,20 @@ function partnerCloseRows() {
   });
 }
 
+function partnerPaidRows() {
+  return partnerSettlementRows()
+    .filter((row) => {
+      const settlement = row.settlement || {};
+      if (selectedPartnerSettlementId && settlement.partnerId !== selectedPartnerSettlementId) return false;
+      return (settlement.payoutStatus || row.status) === "paid";
+    })
+    .sort((a, b) => new Date(b.settlement.paidAt || b.order.updatedAt || 0) - new Date(a.settlement.paidAt || a.order.updatedAt || 0));
+}
+
 function renderPartnerSettlementClose(partners) {
   renderPartnerSettlementSelect(partners);
   const rows = partnerCloseRows();
+  const paidRows = partnerPaidRows();
   const totals = rows.reduce((acc, row) => {
     const settlement = row.settlement || {};
     acc.base += Number(settlement.settlementBase || 0);
@@ -1151,7 +1162,7 @@ function renderPartnerSettlementClose(partners) {
   }
   const list = $("#partnerSettlementCloseList");
   if (list) {
-    list.innerHTML = rows.length ? rows.map((row) => {
+    const availableMarkup = rows.length ? rows.map((row) => {
       const settlement = row.settlement || {};
       return `
         <article class="affiliate-commission-row">
@@ -1164,6 +1175,26 @@ function renderPartnerSettlementClose(partners) {
         </article>
       `;
     }).join("") : `<p>Nenhum repasse disponível para fechamento.</p>`;
+    const paidMarkup = paidRows.slice(0, 8).length ? `
+      <h4>Pagos recentemente</h4>
+      ${paidRows.slice(0, 8).map((row) => {
+        const settlement = row.settlement || {};
+        return `
+          <article class="affiliate-commission-row">
+            <div>
+              <span>${escapeHtml(settlement.partnerName || "Parceiro")}</span>
+              <small>${row.order.id} | ${escapeHtml(settlement.productName || "Produto")} | pago em ${settlement.paidAt ? new Date(settlement.paidAt).toLocaleString("pt-BR") : "data não informada"}</small>
+              <small>Recibo ${escapeHtml(settlement.receiptId || "sem código")}</small>
+            </div>
+            <div class="table-actions">
+              <b>${money(settlement.partnerReceivable || 0)}</b>
+              ${settlement.receiptId ? `<a class="ghost-button table-action" href="/api/admin/partner-receipts/${encodeURIComponent(settlement.receiptId)}" target="_blank" rel="noopener">Ver recibo</a>` : ""}
+            </div>
+          </article>
+        `;
+      }).join("")}
+    ` : "";
+    list.innerHTML = `${availableMarkup}${paidMarkup}`;
   }
   const button = $("#markPartnerSettlementsPaidButton");
   if (button) button.disabled = rows.length === 0;

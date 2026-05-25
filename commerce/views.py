@@ -962,6 +962,7 @@ def _partner_receipt_payload(db, receipt_id, partner_id=""):
                 continue
             if partner_id and settlement.get("partnerId") != partner_id:
                 continue
+            partner = next((item for item in db.get("sellers", []) if item.get("id") == settlement.get("partnerId")), {})
             return {
                 "receiptId": receipt_id,
                 "orderId": order.get("id"),
@@ -971,6 +972,8 @@ def _partner_receipt_payload(db, receipt_id, partner_id=""):
                 "paymentNote": settlement.get("paymentNote", ""),
                 "partnerName": settlement.get("partnerName"),
                 "partnerEmail": settlement.get("partnerEmail"),
+                "partnerDocument": partner.get("document") or "",
+                "partnerPaymentAccount": partner.get("paymentAccountId") or "",
                 "grossItemTotal": settlement.get("grossItemTotal", 0),
                 "discountShare": settlement.get("discountShare", 0),
                 "shippingShare": settlement.get("shippingShare", 0),
@@ -1033,6 +1036,8 @@ def _partner_receipt_html(payload):
       <h1>Recibo de repasse</h1>
       <p><strong>{esc(payload.get("receiptId"))}</strong> | Pedido {esc(payload.get("orderId"))}</p>
       <p>Parceiro: <strong>{esc(payload.get("partnerName"))}</strong> {esc(payload.get("partnerEmail"))}</p>
+      <p>Documento: {esc(payload.get("partnerDocument") or "não informado")}</p>
+      <p>Conta/PIX de pagamento: <strong>{esc(payload.get("partnerPaymentAccount") or "não informado")}</strong></p>
       <p>Pago em: {esc(payload.get("paidAt"))}</p>
       <div class="grid">
         <div class="box"><span>Base com frete</span><strong>{receipt_money(payload.get("settlementBase"))}</strong></div>

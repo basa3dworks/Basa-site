@@ -2378,6 +2378,7 @@
       ["payout_paid", "Repasse pago"]
     ];
     const filteredOrders = orders.filter((order) => partnerOrderMatches(order, orderFilter));
+    const paymentAccount = partner.paymentAccountId || "";
     return h("main", { className: "react-affiliate-page" },
       h("section", { className: "react-page-title" },
         h("p", null, "Parceiros"),
@@ -2394,6 +2395,13 @@
               h("div", null, h("span", null, "Frete no calculo"), h("strong", null, money(summary.shippingShare))),
               h("div", null, h("span", null, "Comissao Basa"), h("strong", null, money(summary.storeCommission))),
               h("div", null, h("span", null, "Produtos"), h("strong", null, Number(summary.products || 0)))
+            ),
+            h("section", { className: "react-affiliate-code" },
+              h("div", null,
+                h("small", null, "Dados para repasse"),
+                h("strong", null, paymentAccount || "Conta de pagamento não informada"),
+                h("span", null, paymentAccount ? "A Basa usa este dado no fechamento financeiro." : "Peça para a Basa cadastrar sua chave PIX ou conta de pagamento.")
+              )
             ),
             h("section", { className: "react-affiliate-products react-affiliate-flow" },
               h("div", { className: "react-section-heading" },
