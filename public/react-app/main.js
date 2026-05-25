@@ -458,6 +458,7 @@
     return {
       pending: "Pendente",
       confirmed: "Confirmado",
+      closing: "Em fechamento",
       available: "Disponivel",
       paid: "Pago",
       canceled: "Cancelado"
@@ -2360,6 +2361,8 @@
     const partner = dashboard?.partner || {};
     const products = dashboard?.products || [];
     const orders = dashboard?.orders || [];
+    const closings = dashboard?.closings || [];
+    const notifications = dashboard?.notifications || [];
     const partnerOrderMatches = (order, filter) => {
       const settlements = order.settlements || [];
       if (filter === "all") return true;
@@ -2402,6 +2405,43 @@
                 h("strong", null, paymentAccount || "Conta de pagamento não informada"),
                 h("span", null, paymentAccount ? "A Basa usa este dado no fechamento financeiro." : "Peça para a Basa cadastrar sua chave PIX ou conta de pagamento.")
               )
+            ),
+            notifications.length ? h("section", { className: "react-affiliate-products react-affiliate-flow" },
+              h("div", { className: "react-section-heading" },
+                h("p", null, "Avisos"),
+                h("h2", null, "Atualizações da Basa")
+              ),
+              notifications.slice(0, 4).map((item) => h("article", { className: "react-affiliate-flow-card", key: item.id },
+                h("span", { className: "react-affiliate-flow-status order" }, item.kind || "aviso"),
+                h("strong", null, item.title || "Atualização"),
+                h("p", null, item.message || ""),
+                h("time", null, new Date(item.createdAt || Date.now()).toLocaleString("pt-BR"))
+              ))
+            ) : null,
+            h("section", { className: "react-affiliate-products react-affiliate-flow" },
+              h("div", { className: "react-section-heading" },
+                h("p", null, "Financeiro"),
+                h("h2", null, "Fechamentos")
+              ),
+              closings.length
+                ? closings.map((closing) => {
+                  const totals = closing.totals || {};
+                  return h("article", { className: "react-affiliate-flow-card", key: closing.id },
+                    h("span", { className: "react-affiliate-flow-status order" }, commissionStatusLabel(closing.status)),
+                    h("strong", null, `${closing.id} | ${money(totals.partnerReceivable || 0)}`),
+                    h("small", null, `${(closing.items || []).length} pedido(s) | frete ${money(totals.shippingShare || 0)} | desconto ${money(totals.discountShare || 0)}`),
+                    closing.receiptId ? h("div", { className: "react-receipt-links" },
+                      h("a", {
+                        href: `/api/partner/receipts/${encodeURIComponent(closing.receiptId)}`,
+                        target: "_blank",
+                        rel: "noreferrer",
+                        className: "react-receipt-link"
+                      }, `Recibo ${closing.receiptId}`)
+                    ) : h("p", null, "Em conferência pela Basa."),
+                    h("time", null, new Date(closing.updatedAt || closing.createdAt || Date.now()).toLocaleString("pt-BR"))
+                  );
+                })
+                : h("div", { className: "react-affiliate-empty" }, "Fechamentos futuros aparecem aqui.")
             ),
             h("section", { className: "react-affiliate-products react-affiliate-flow" },
               h("div", { className: "react-section-heading" },

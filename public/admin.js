@@ -38,6 +38,7 @@ let currentCustomers = [];
 let currentCarts = [];
 let currentAffiliates = [];
 let currentSellers = [];
+let currentPartnerClosings = [];
 let selectedOrderId = "";
 let currentMetricsView = "overview";
 let currentSocialProductId = "";
@@ -973,6 +974,7 @@ function commissionStatusLabel(status) {
   return {
     pending: "Pendente",
     confirmed: "Confirmada",
+    closing: "Em fechamento",
     available: "Disponível",
     paid: "Paga",
     canceled: "Cancelada"
@@ -1041,6 +1043,7 @@ function partnerMatchesStatus(partner, status) {
   const metrics = partnerMetrics(partner);
   if (status === "pending") return Number(metrics.pending || 0) > 0;
   if (status === "available") return Number(metrics.confirmed || 0) + Number(metrics.available || 0) > 0;
+  if (status === "closing") return currentPartnerClosings.some((closing) => closing.partnerId === partner.id && closing.status === "closing");
   if (status === "paid") return Number(metrics.paid || 0) > 0;
   return true;
 }
@@ -1053,6 +1056,7 @@ function partnerSettlementStatusLabel(status) {
     paused: "Pausados",
     pending: "Repasse pendente",
     available: "Disponível",
+    closing: "Em fechamento",
     paid: "Pagos"
   }[status] || personStatusLabel(status);
 }
@@ -1141,6 +1145,7 @@ function renderPartnerSettlementClose(partners) {
   renderPartnerSettlementSelect(partners);
   const rows = partnerCloseRows();
   const paidRows = partnerPaidRows();
+  const closingRows = currentPartnerClosings.filter((closing) => !selectedPartnerSettlementId || closing.partnerId === selectedPartnerSettlementId);
   const totals = rows.reduce((acc, row) => {
     const settlement = row.settlement || {};
     acc.base += Number(settlement.settlementBase || 0);
@@ -1196,8 +1201,34 @@ function renderPartnerSettlementClose(partners) {
     ` : "";
     list.innerHTML = `${availableMarkup}${paidMarkup}`;
   }
-  const button = $("#markPartnerSettlementsPaidButton");
+  const closingList = $("#partnerClosingList");
+  if (closingList) {
+    closingList.innerHTML = closingRows.length ? `
+      <h4>Fechamentos</h4>
+      ${closingRows.slice(0, 12).map((closing) => {
+        const totals = closing.totals || {};
+        return `
+          <article class="affiliate-commission-row">
+            <div>
+              <strong>${escapeHtml(closing.id)}</strong>
+              <span>${escapeHtml(closing.partnerName || "Parceiro")} | ${commissionStatusLabel(closing.status)}</span>
+              <small>${(closing.items || []).length} pedido(s) | frete ${money(totals.shippingShare || 0)} | desconto ${money(totals.discountShare || 0)} | Basa ${money(totals.storeCommission || 0)}</small>
+            </div>
+            <div class="table-actions">
+              <b>${money(totals.partnerReceivable || 0)}</b>
+              ${closing.status === "closing" ? `<button class="ghost-button table-action" type="button" data-close-partner-closing="${closing.id}">Marcar pago</button>` : ""}
+              ${closing.receiptId ? `<a class="ghost-button table-action" href="/api/admin/partner-receipts/${encodeURIComponent(closing.receiptId)}" target="_blank" rel="noopener">Recibo</a>` : ""}
+            </div>
+          </article>
+        `;
+      }).join("")}
+    ` : "";
+  }
+  const button = $("#createPartnerClosingButton");
   if (button) button.disabled = rows.length === 0;
+  document.querySelectorAll("[data-close-partner-closing]").forEach((button) => {
+    button.addEventListener("click", () => markPartnerClosingPaid(button));
+  });
 }
 
 function affiliateProductOpportunities() {
@@ -1368,7 +1399,7 @@ function renderPeopleLists() {
     && matchesSearch(partnerSearchText(item), partnerQuery)
   );
   const partnerCounts = currentSellers.reduce((acc, item) => {
-    ["all", "active", "lead", "paused", "pending", "available", "paid"].forEach((status) => {
+    ["all", "active", "lead", "paused", "pending", "available", "closing", "paid"].forEach((status) => {
       if (partnerMatchesStatus(item, status)) acc[status] = (acc[status] || 0) + 1;
     });
     return acc;
@@ -2350,6 +2381,9 @@ function renderOrdersList() {
   document.querySelectorAll("[data-partner-payout]").forEach((button) => {
     button.addEventListener("click", () => runPartnerPayoutAction(button));
   });
+  document.querySelectorAll("[data-partner-adjust]").forEach((button) => {
+    button.addEventListener("click", () => runPartnerAdjustmentAction(button));
+  });
 }
 
 function renderSelectedOrderDetail(order) {
@@ -2434,11 +2468,13 @@ function renderSelectedOrderDetail(order) {
           <span>Frete alocado: ${money(settlement.shippingShare || 0)} | Desconto: ${money(settlement.discountShare || 0)}</span>
           <span>Comissão Basa: ${Number(settlement.storeCommissionPercent || 0)}% (${money(settlement.storeCommission || 0)})</span>
           <span>Repasse parceiro: <strong>${money(settlement.partnerReceivable || 0)}</strong></span>
+          ${settlement.manualAdjustment ? `<small>Ajuste manual: ${money(settlement.manualAdjustment)}${settlement.adjustmentNote ? ` | ${escapeHtml(settlement.adjustmentNote)}` : ""}</small>` : ""}
           ${settlement.payoutStatus === "paid" ? `
             <span>Pago em: ${settlement.paidAt ? new Date(settlement.paidAt).toLocaleString("pt-BR") : "registrado"}</span>
             <small>Recibo: ${settlement.receiptId || "sem código"}${settlement.paymentNote ? ` | ${escapeHtml(settlement.paymentNote)}` : ""}</small>
             ${settlement.receiptId ? `<a class="ghost-button table-action" href="/api/admin/partner-receipts/${encodeURIComponent(settlement.receiptId)}" target="_blank" rel="noopener">Ver recibo</a>` : ""}
           ` : `
+            <button class="ghost-button table-action" type="button" data-partner-adjust="${settlement.partnerId}" data-partner-amount="${settlement.partnerReceivable || 0}" data-partner-name="${escapeHtml(settlement.partnerName || "Parceiro")}" data-order-id="${order.id}">Ajustar repasse</button>
             <button class="ghost-button table-action" type="button" data-partner-payout="${settlement.partnerId}" data-partner-name="${escapeHtml(settlement.partnerName || "Parceiro")}" data-order-id="${order.id}">Marcar repasse pago</button>
           `}
         `).join("<hr>") : "<span>Nenhum parceiro neste pedido.</span>"}
@@ -2703,6 +2739,7 @@ async function loadDashboard() {
   currentCarts = data.carts || [];
   currentAffiliates = data.affiliates || [];
   currentSellers = data.partners || data.sellers || [];
+  currentPartnerClosings = data.partnerClosings || [];
   currentSettings = data.settings;
   $("#loginCard").hidden = true;
   $("#dashboard").hidden = false;
@@ -2807,31 +2844,82 @@ async function runPartnerPayoutAction(button) {
   }
 }
 
-async function markVisiblePartnerSettlementsPaid() {
+async function runPartnerAdjustmentAction(button) {
+  const partnerId = button.dataset.partnerAdjust;
+  const orderId = button.dataset.orderId;
+  const partnerName = button.dataset.partnerName || "parceiro";
+  const currentAmount = Number(button.dataset.partnerAmount || 0);
+  const raw = prompt(`Novo valor de repasse para ${partnerName}:`, String(currentAmount).replace(".", ","));
+  if (raw === null) return;
+  const amount = decimalValue(raw, NaN);
+  if (!Number.isFinite(amount)) {
+    alert("Informe um valor válido.");
+    return;
+  }
+  const note = prompt("Motivo do ajuste:", "Ajuste manual antes do fechamento.") || "";
+  button.disabled = true;
+  const originalText = button.textContent;
+  button.textContent = "Ajustando...";
+  try {
+    await api(`/api/admin/orders/${encodeURIComponent(orderId)}`, {
+      method: "PATCH",
+      body: JSON.stringify({ action: "adjust_partner_settlement", partnerId, amount, note })
+    });
+    selectedOrderId = orderId;
+    await loadDashboard();
+  } catch (error) {
+    alert(error.message);
+    button.disabled = false;
+    button.textContent = originalText;
+  }
+}
+
+async function createPartnerClosing() {
   const rows = partnerCloseRows();
   if (!rows.length) return;
   const partnerLabel = selectedPartnerSettlementId
     ? currentSellers.find((partner) => partner.id === selectedPartnerSettlementId)?.brandName || currentSellers.find((partner) => partner.id === selectedPartnerSettlementId)?.name || "parceiro"
     : "parceiros visíveis";
-  const note = prompt(`Observação para fechar ${rows.length} repasse(s) de ${partnerLabel}:`, "Fechamento financeiro pago ao parceiro.");
+  const note = prompt(`Observação para criar fechamento de ${rows.length} repasse(s) de ${partnerLabel}:`, "Fechamento financeiro criado para conferência.");
   if (note === null) return;
-  const uniquePairs = [...new Map(rows.map((row) => [`${row.order.id}:${row.settlement.partnerId}`, row])).values()];
-  const button = $("#markPartnerSettlementsPaidButton");
+  const button = $("#createPartnerClosingButton");
   const status = $("#partnerSettlementStatus");
   if (button) button.disabled = true;
-  if (status) status.textContent = "Marcando repasses como pagos...";
+  if (status) status.textContent = "Criando fechamento...";
   try {
-    for (const row of uniquePairs) {
-      await api(`/api/admin/orders/${encodeURIComponent(row.order.id)}`, {
-        method: "PATCH",
-        body: JSON.stringify({ action: "mark_partner_paid", partnerId: row.settlement.partnerId, note })
-      });
-    }
-    if (status) status.textContent = "Fechamento registrado.";
+    const result = await api("/api/admin/partner-closings", {
+      method: "POST",
+      body: JSON.stringify({ action: "create", partnerId: selectedPartnerSettlementId, note })
+    });
+    currentPartnerClosings = result.closings || currentPartnerClosings;
+    currentOrders = result.orders || currentOrders;
+    if (status) status.textContent = `Fechamento ${result.closing?.id || ""} criado.`;
     await loadDashboard();
   } catch (error) {
     if (status) status.textContent = error.message;
     if (button) button.disabled = false;
+  }
+}
+
+async function markPartnerClosingPaid(button) {
+  const closingId = button.dataset.closePartnerClosing;
+  const note = prompt(`Observação de pagamento do fechamento ${closingId}:`, "Fechamento financeiro pago ao parceiro.");
+  if (note === null) return;
+  button.disabled = true;
+  const status = $("#partnerSettlementStatus");
+  if (status) status.textContent = "Marcando fechamento como pago...";
+  try {
+    const result = await api("/api/admin/partner-closings", {
+      method: "POST",
+      body: JSON.stringify({ action: "mark_paid", closingId, note })
+    });
+    currentPartnerClosings = result.closings || currentPartnerClosings;
+    currentOrders = result.orders || currentOrders;
+    if (status) status.textContent = `Fechamento pago. Recibo ${result.closing?.receiptId || ""}`;
+    await loadDashboard();
+  } catch (error) {
+    if (status) status.textContent = error.message;
+    button.disabled = false;
   }
 }
 
@@ -3039,7 +3127,7 @@ $("#partnerSettlementSelect")?.addEventListener("change", (event) => {
   selectedPartnerSettlementId = event.currentTarget.value;
   renderPeopleLists();
 });
-$("#markPartnerSettlementsPaidButton")?.addEventListener("click", markVisiblePartnerSettlementsPaid);
+$("#createPartnerClosingButton")?.addEventListener("click", createPartnerClosing);
 document.querySelectorAll("[data-customer-status]").forEach((button) => {
   button.addEventListener("click", () => {
     customerStatusFilter = button.dataset.customerStatus || "all";

@@ -884,11 +884,21 @@ def _partner_settlements_snapshot(db, order):
             "updatedAt": _now(),
         }
         previous = previous_lines.get((snapshot["partnerId"], snapshot["productId"]), {})
-        if previous.get("payoutStatus") == "paid":
-            snapshot["payoutStatus"] = "paid"
+        if previous.get("manualPartnerReceivable") not in {None, ""}:
+            manual_value = round(max(0, float(previous.get("manualPartnerReceivable") or 0)), 2)
+            snapshot["manualPartnerReceivable"] = manual_value
+            snapshot["manualAdjustment"] = round(manual_value - snapshot["partnerReceivable"], 2)
+            snapshot["partnerReceivable"] = manual_value
+            snapshot["adjustmentNote"] = previous.get("adjustmentNote", "")
+        if previous.get("payoutStatus") in {"closing", "paid"}:
+            snapshot["payoutStatus"] = previous.get("payoutStatus")
             snapshot["paidAt"] = previous.get("paidAt", "")
             snapshot["paymentNote"] = previous.get("paymentNote", "")
             snapshot["receiptId"] = previous.get("receiptId", "")
+            snapshot["closingId"] = previous.get("closingId", "")
+            snapshot["adjustmentNote"] = previous.get("adjustmentNote", "")
+            snapshot["manualAdjustment"] = previous.get("manualAdjustment", 0)
+            snapshot["manualPartnerReceivable"] = previous.get("manualPartnerReceivable", snapshot.get("manualPartnerReceivable", ""))
         line["partnerSettlement"] = snapshot
         settlement_lines.append(snapshot)
         summary = summaries.setdefault(partner.get("id"), {
@@ -901,12 +911,16 @@ def _partner_settlements_snapshot(db, order):
             "settlementBase": 0.0,
             "storeCommission": 0.0,
             "partnerReceivable": 0.0,
+            "manualAdjustment": 0.0,
             "payoutStatus": status,
             "lines": [],
             "updatedAt": _now(),
         })
         for key in ["grossItemTotal", "discountShare", "shippingShare", "settlementBase", "storeCommission", "partnerReceivable"]:
             summary[key] = round(summary[key] + snapshot[key], 2)
+        if snapshot.get("manualAdjustment"):
+            summary["manualAdjustment"] = round(summary.get("manualAdjustment", 0) + float(snapshot.get("manualAdjustment") or 0), 2)
+            summary["adjustmentNote"] = snapshot.get("adjustmentNote", summary.get("adjustmentNote", ""))
         summary["lines"].append(snapshot)
         if summary["lines"] and all(item.get("payoutStatus") == "paid" for item in summary["lines"]):
             summary["payoutStatus"] = "paid"
@@ -950,6 +964,187 @@ def _mark_order_partner_paid(db, order, partner_id, note=""):
     return receipt_id
 
 
+def _partner_settlement_rows(db, partner_id="", statuses=None):
+    statuses = set(statuses or [])
+    partner_id = str(partner_id or "").strip()
+    rows = []
+    for order in db.get("orders", []):
+        _refresh_order_partners(db, order)
+        for settlement in order.get("partnerSettlements", []):
+            status = settlement.get("payoutStatus") or "pending"
+            if partner_id and settlement.get("partnerId") != partner_id:
+                continue
+            if statuses and status not in statuses:
+                continue
+            rows.append({"order": order, "settlement": settlement, "status": status})
+    return rows
+
+
+def _settlement_totals(rows):
+    totals = {"grossItemTotal": 0.0, "discountShare": 0.0, "shippingShare": 0.0, "settlementBase": 0.0, "storeCommission": 0.0, "partnerReceivable": 0.0}
+    for row in rows:
+        settlement = row.get("settlement") or {}
+        for key in totals:
+            totals[key] = round(totals[key] + float(settlement.get(key) or 0), 2)
+    return totals
+
+
+def _add_partner_notification(db, partner_id, title, message, kind="info"):
+    if not partner_id:
+        return
+    db.setdefault("partnerNotifications", []).insert(0, {
+        "id": f"pnot-{secrets.token_hex(6)}",
+        "partnerId": partner_id,
+        "kind": kind,
+        "title": title,
+        "message": message,
+        "createdAt": _now(),
+        "read": False,
+    })
+    db["partnerNotifications"] = db["partnerNotifications"][:300]
+
+
+def _apply_partner_settlement_update(db, order_id, partner_id, updates):
+    order = next((item for item in db.get("orders", []) if item.get("id") == order_id), None)
+    if not order:
+        return False
+    _refresh_order_partners(db, order)
+    changed = False
+    for line in order.get("items", []):
+        settlement = line.get("partnerSettlement") or {}
+        if settlement.get("partnerId") != partner_id:
+            continue
+        settlement.update(updates)
+        line["partnerSettlement"] = settlement
+        changed = True
+    if not changed:
+        return False
+    _refresh_order_partners(db, order)
+    for summary in order.get("partnerSettlements", []):
+        if summary.get("partnerId") == partner_id:
+            summary.update(updates)
+    order["updatedAt"] = _now()
+    return True
+
+
+def _adjust_order_partner_settlement(db, order, partner_id, amount, note=""):
+    _refresh_order_partners(db, order)
+    lines = [line for line in order.get("items", []) if (line.get("partnerSettlement") or {}).get("partnerId") == partner_id]
+    if not lines:
+        return False
+    current_total = sum(float((line.get("partnerSettlement") or {}).get("partnerReceivable") or 0) for line in lines)
+    amount = round(max(0, float(amount or 0)), 2)
+    remaining = amount
+    for index, line in enumerate(lines):
+        settlement = line.get("partnerSettlement") or {}
+        if index == len(lines) - 1:
+            manual_value = round(max(0, remaining), 2)
+        else:
+            ratio = (float(settlement.get("partnerReceivable") or 0) / current_total) if current_total else (1 / len(lines))
+            manual_value = round(amount * ratio, 2)
+            remaining = round(remaining - manual_value, 2)
+        settlement["manualPartnerReceivable"] = manual_value
+        settlement["adjustmentNote"] = note
+        line["partnerSettlement"] = settlement
+    _refresh_order_partners(db, order)
+    order["updatedAt"] = _now()
+    _append_order_history(order, "partner_adjustment", "admin", order.get("status"), note or f"Repasse parceiro ajustado para {_money(amount)}.")
+    return True
+
+
+def _partner_closing_payload(db, closing):
+    partner = next((item for item in db.get("sellers", []) if item.get("id") == closing.get("partnerId")), {})
+    return {
+        **closing,
+        "partnerName": partner.get("brandName") or partner.get("name") or closing.get("partnerName"),
+        "partnerEmail": partner.get("email") or closing.get("partnerEmail"),
+        "partnerDocument": partner.get("document", ""),
+        "partnerPaymentAccount": partner.get("paymentAccountId", ""),
+    }
+
+
+def _create_partner_closing(db, partner_id="", note=""):
+    partner_id = str(partner_id or "").strip()
+    rows = _partner_settlement_rows(db, partner_id, {"confirmed", "available"})
+    if not rows:
+        return None
+    if not partner_id:
+        partner_ids = {row["settlement"].get("partnerId") for row in rows}
+        if len(partner_ids) != 1:
+            raise ValueError("Selecione um parceiro para criar fechamento.")
+        partner_id = next(iter(partner_ids))
+    partner = next((item for item in db.get("sellers", []) if item.get("id") == partner_id), {})
+    closing_id = f"FEC-{int(datetime.now().timestamp() * 1000)}"
+    totals = _settlement_totals(rows)
+    items = []
+    for row in rows:
+        order = row["order"]
+        settlement = row["settlement"]
+        items.append({
+            "orderId": order.get("id"),
+            "orderStatus": order.get("status"),
+            "createdAt": order.get("createdAt"),
+            "partnerId": settlement.get("partnerId"),
+            "partnerName": settlement.get("partnerName"),
+            "grossItemTotal": settlement.get("grossItemTotal", 0),
+            "discountShare": settlement.get("discountShare", 0),
+            "shippingShare": settlement.get("shippingShare", 0),
+            "settlementBase": settlement.get("settlementBase", 0),
+            "storeCommission": settlement.get("storeCommission", 0),
+            "partnerReceivable": settlement.get("partnerReceivable", 0),
+            "lines": settlement.get("lines", []),
+        })
+        _apply_partner_settlement_update(db, order.get("id"), settlement.get("partnerId"), {
+            "payoutStatus": "closing",
+            "closingId": closing_id,
+            "paymentNote": note,
+            "updatedAt": _now(),
+        })
+        _append_order_history(order, "partner_closing", "admin", order.get("status"), f"Repasse incluído no fechamento {closing_id}.")
+    closing = {
+        "id": closing_id,
+        "partnerId": partner_id,
+        "partnerName": partner.get("brandName") or partner.get("name") or rows[0]["settlement"].get("partnerName"),
+        "partnerEmail": partner.get("email") or rows[0]["settlement"].get("partnerEmail"),
+        "status": "closing",
+        "note": note,
+        "items": items,
+        "totals": totals,
+        "createdAt": _now(),
+        "updatedAt": _now(),
+    }
+    db.setdefault("partnerClosings", []).insert(0, closing)
+    _add_partner_notification(db, partner_id, "Fechamento criado", f"A Basa criou o fechamento {closing_id} para conferência.", "closing")
+    return closing
+
+
+def _mark_partner_closing_paid(db, closing_id, note=""):
+    closing = next((item for item in db.setdefault("partnerClosings", []) if item.get("id") == closing_id), None)
+    if not closing:
+        return None
+    receipt_id = closing.get("receiptId") or f"REC-{closing_id}"
+    paid_at = _now()
+    for item in closing.get("items", []):
+        _apply_partner_settlement_update(db, item.get("orderId"), item.get("partnerId") or closing.get("partnerId"), {
+            "payoutStatus": "paid",
+            "paidAt": paid_at,
+            "paymentNote": note or closing.get("note", ""),
+            "receiptId": receipt_id,
+            "closingId": closing_id,
+            "updatedAt": _now(),
+        })
+        order = next((order for order in db.get("orders", []) if order.get("id") == item.get("orderId")), None)
+        if order:
+            _append_order_history(order, "partner_payout", "admin", order.get("status"), f"Fechamento {closing_id} marcado como pago.")
+    closing["status"] = "paid"
+    closing["paidAt"] = paid_at
+    closing["receiptId"] = receipt_id
+    closing["paymentNote"] = note or closing.get("note", "")
+    closing["updatedAt"] = _now()
+    _add_partner_notification(db, closing.get("partnerId"), "Repasse pago", f"O fechamento {closing_id} foi marcado como pago.", "paid")
+    return closing
+
+
 def _partner_receipt_payload(db, receipt_id, partner_id=""):
     receipt_id = str(receipt_id or "").strip()
     partner_id = str(partner_id or "").strip()
@@ -985,6 +1180,36 @@ def _partner_receipt_payload(db, receipt_id, partner_id=""):
     return None
 
 
+def _partner_closing_receipt_payload(db, receipt_id, partner_id=""):
+    receipt_id = str(receipt_id or "").strip()
+    partner_id = str(partner_id or "").strip()
+    for closing in db.get("partnerClosings", []):
+        if closing.get("receiptId") != receipt_id and closing.get("id") != receipt_id:
+            continue
+        if partner_id and closing.get("partnerId") != partner_id:
+            continue
+        payload = _partner_closing_payload(db, closing)
+        totals = payload.get("totals") or {}
+        return {
+            "receiptId": payload.get("receiptId") or payload.get("id"),
+            "closingId": payload.get("id"),
+            "paidAt": payload.get("paidAt"),
+            "paymentNote": payload.get("paymentNote") or payload.get("note", ""),
+            "partnerName": payload.get("partnerName"),
+            "partnerEmail": payload.get("partnerEmail"),
+            "partnerDocument": payload.get("partnerDocument"),
+            "partnerPaymentAccount": payload.get("partnerPaymentAccount"),
+            "grossItemTotal": totals.get("grossItemTotal", 0),
+            "discountShare": totals.get("discountShare", 0),
+            "shippingShare": totals.get("shippingShare", 0),
+            "settlementBase": totals.get("settlementBase", 0),
+            "storeCommission": totals.get("storeCommission", 0),
+            "partnerReceivable": totals.get("partnerReceivable", 0),
+            "items": payload.get("items", []),
+        }
+    return None
+
+
 def _partner_receipt_html(payload):
     def esc(value):
         return html.escape(str(value or ""))
@@ -992,11 +1217,17 @@ def _partner_receipt_html(payload):
     def receipt_money(value):
         return f"R$ {float(value or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
-    lines = payload.get("lines") or []
+    source_lines = payload.get("lines") or []
+    if payload.get("items"):
+        source_lines = []
+        for item in payload.get("items", []):
+            for line in item.get("lines", []):
+                source_lines.append({**line, "orderId": item.get("orderId")})
+    lines = source_lines
     line_rows = "".join(
         f"""
         <tr>
-          <td>{esc(line.get("productName"))}</td>
+          <td>{esc(line.get("productName"))}{f"<br><small>{esc(line.get('orderId'))}</small>" if line.get("orderId") else ""}</td>
           <td>{esc(line.get("quantity"))}</td>
           <td>{receipt_money(line.get("grossItemTotal"))}</td>
           <td>{receipt_money(line.get("discountShare"))}</td>
@@ -1034,7 +1265,7 @@ def _partner_receipt_html(payload):
     <main>
       <p class="eyebrow">Basa 3D Works</p>
       <h1>Recibo de repasse</h1>
-      <p><strong>{esc(payload.get("receiptId"))}</strong> | Pedido {esc(payload.get("orderId"))}</p>
+      <p><strong>{esc(payload.get("receiptId"))}</strong>{f" | Fechamento {esc(payload.get('closingId'))}" if payload.get("closingId") else f" | Pedido {esc(payload.get('orderId'))}"}</p>
       <p>Parceiro: <strong>{esc(payload.get("partnerName"))}</strong> {esc(payload.get("partnerEmail"))}</p>
       <p>Documento: {esc(payload.get("partnerDocument") or "não informado")}</p>
       <p>Conta/PIX de pagamento: <strong>{esc(payload.get("partnerPaymentAccount") or "não informado")}</strong></p>
@@ -2355,6 +2586,8 @@ def api_checkout(request):
     order["status"] = "paid" if payment.get("status") in {"approved", "paid", "authorized"} else "awaiting_payment"
     _refresh_order_affiliate(db, order)
     _refresh_order_partners(db, order)
+    for settlement in order.get("partnerSettlements", []):
+        _add_partner_notification(db, settlement.get("partnerId"), "Pedido vinculado", f"O pedido {order['id']} entrou com produto parceiro.", "order")
     _append_order_history(order, "order", "django", order["status"], f"Pedido criado. {shipping_benefit.get('message', '')}".strip())
     _append_order_history(
         order,
@@ -2730,6 +2963,8 @@ def api_affiliate_dashboard(request):
 def _partner_dashboard_payload(db, partner):
     partner_id = partner.get("id")
     products = [product for product in db.get("products", []) if product.get("partnerId") == partner_id]
+    closings = [_partner_closing_payload(db, closing) for closing in db.get("partnerClosings", []) if closing.get("partnerId") == partner_id]
+    notifications = [item for item in db.get("partnerNotifications", []) if item.get("partnerId") == partner_id]
     orders = []
     totals = {
         "pending": 0.0,
@@ -2786,6 +3021,8 @@ def _partner_dashboard_payload(db, partner):
             "storeCommissionPercent": float(product.get("partnerStoreCommissionPercent") or partner.get("commissionPercent") or 0),
         } for product in products],
         "orders": orders[:50],
+        "closings": closings[:30],
+        "notifications": notifications[:20],
     }
 
 
@@ -2816,7 +3053,7 @@ def api_partner_receipt(request, receipt_id):
     partner = _active_partner(db, "", _customer_email(account))
     if not partner:
         return JsonResponse({"error": "Parceiro nao encontrado ou ainda nao ativo."}, status=404)
-    payload = _partner_receipt_payload(db, receipt_id, partner.get("id"))
+    payload = _partner_closing_receipt_payload(db, receipt_id, partner.get("id")) or _partner_receipt_payload(db, receipt_id, partner.get("id"))
     return _partner_receipt_response(payload)
 
 
@@ -3031,6 +3268,7 @@ def api_admin_dashboard(request):
         "affiliates": db.get("affiliates", []),
         "sellers": db.get("sellers", []),
         "partners": db.get("sellers", []),
+        "partnerClosings": [_partner_closing_payload(db, closing) for closing in db.get("partnerClosings", [])],
     })
 
 
@@ -3558,8 +3796,64 @@ def api_admin_partner_receipt(request, receipt_id):
     if error:
         return error
     db = read_db()
-    payload = _partner_receipt_payload(db, receipt_id)
+    payload = _partner_closing_receipt_payload(db, receipt_id) or _partner_receipt_payload(db, receipt_id)
     return _partner_receipt_response(payload)
+
+
+@csrf_exempt
+def api_admin_partner_closings(request):
+    error = _require_admin(request)
+    if error:
+        return error
+    db = read_db()
+    if request.method == "GET":
+        if request.GET.get("format") == "csv":
+            rows = ["fechamento,parceiro,status,pedidos,base,desconto,frete,comissao_basa,repasse,recibo"]
+            for closing in db.get("partnerClosings", []):
+                payload = _partner_closing_payload(db, closing)
+                totals = payload.get("totals") or {}
+                rows.append(",".join([
+                    str(payload.get("id", "")),
+                    str(payload.get("partnerName", "")).replace(",", " "),
+                    str(payload.get("status", "")),
+                    str(len(payload.get("items", []))),
+                    str(totals.get("settlementBase", 0)),
+                    str(totals.get("discountShare", 0)),
+                    str(totals.get("shippingShare", 0)),
+                    str(totals.get("storeCommission", 0)),
+                    str(totals.get("partnerReceivable", 0)),
+                    str(payload.get("receiptId", "")),
+                ]))
+            return HttpResponse("\n".join(rows), content_type="text/csv; charset=utf-8")
+        return JsonResponse({"closings": [_partner_closing_payload(db, closing) for closing in db.get("partnerClosings", [])]})
+    body = _json_body(request)
+    action = body.get("action") or "create"
+    try:
+        if action == "create":
+            partner_id = str(body.get("partnerId", "")).strip()
+            if partner_id:
+                created = [_create_partner_closing(db, partner_id, body.get("note", ""))]
+            else:
+                partner_ids = sorted({row["settlement"].get("partnerId") for row in _partner_settlement_rows(db, "", {"confirmed", "available"}) if row["settlement"].get("partnerId")})
+                created = [_create_partner_closing(db, item, body.get("note", "")) for item in partner_ids]
+            created = [item for item in created if item]
+            if not created:
+                return JsonResponse({"error": "Nenhum repasse disponivel para fechamento."}, status=400)
+            closing = created[0]
+        elif action == "mark_paid":
+            closing = _mark_partner_closing_paid(db, body.get("closingId", ""), body.get("note", ""))
+            if not closing:
+                return JsonResponse({"error": "Fechamento nao encontrado."}, status=404)
+        else:
+            return JsonResponse({"error": "Acao invalida."}, status=400)
+    except ValueError as error:
+        return JsonResponse({"error": str(error)}, status=400)
+    write_db(db)
+    return JsonResponse({
+        "closing": _partner_closing_payload(db, closing),
+        "closings": [_partner_closing_payload(db, item) for item in db.get("partnerClosings", [])],
+        "orders": db.get("orders", []),
+    })
 
 
 @csrf_exempt
@@ -3608,6 +3902,18 @@ def api_admin_order_detail(request, order_id):
             return JsonResponse({"error": "Parceiro nao encontrado neste pedido."}, status=404)
         write_db(db)
         return JsonResponse({"order": order, "receiptId": receipt_id})
+    if action == "adjust_partner_settlement":
+        partner_id = str(body.get("partnerId", "")).strip()
+        if not partner_id:
+            return JsonResponse({"error": "Parceiro nao informado."}, status=400)
+        try:
+            amount = float(body.get("amount") or 0)
+        except (TypeError, ValueError):
+            return JsonResponse({"error": "Informe um valor valido para o repasse."}, status=400)
+        if not _adjust_order_partner_settlement(db, order, partner_id, amount, body.get("note", "")):
+            return JsonResponse({"error": "Parceiro nao encontrado neste pedido."}, status=404)
+        write_db(db)
+        return JsonResponse({"order": order})
     next_status = body.get("status") or order.get("status")
     if next_status != order.get("status"):
         order.setdefault("history", []).append({
@@ -3633,6 +3939,9 @@ def api_admin_order_detail(request, order_id):
         _apply_paid_order_stock(db, order, "admin")
         _refresh_order_affiliate(db, order)
         _refresh_order_partners(db, order)
+        for settlement in order.get("partnerSettlements", []):
+            if next_status in {"paid", "in_production", "shipped", "completed", "canceled"}:
+                _add_partner_notification(db, settlement.get("partnerId"), "Status do pedido atualizado", f"Pedido {order['id']}: {next_status}.", "order")
     order["updatedAt"] = _now()
     write_db(db)
     return JsonResponse({"order": order})

@@ -681,6 +681,7 @@
             <button type="button" data-partner-status="paused">Pausados</button>
             <button type="button" data-partner-status="pending">Repasse pendente</button>
             <button type="button" data-partner-status="available">Disponível</button>
+            <button type="button" data-partner-status="closing">Em fechamento</button>
             <button type="button" data-partner-status="paid">Pagos</button>
           </div>
           <section class="affiliate-command-panel" aria-label="Painel de parceiros">
@@ -717,9 +718,11 @@
             <div class="affiliate-kpi-grid" id="partnerSettlementKpiGrid"></div>
             <div class="affiliate-commission-list" id="partnerSettlementCloseList"></div>
             <div class="form-actions">
-              <button class="primary-button" type="button" id="markPartnerSettlementsPaidButton">Marcar disponíveis como pagos</button>
+              <button class="primary-button" type="button" id="createPartnerClosingButton">Criar fechamento</button>
+              <a class="ghost-button" href="/api/admin/partner-closings?format=csv" target="_blank" rel="noopener">Exportar CSV</a>
             </div>
             <p class="form-status" id="partnerSettlementStatus"></p>
+            <div class="affiliate-commission-list" id="partnerClosingList"></div>
           </section>
           <div class="people-grid affiliate-only-grid">
             <form id="sellerForm" class="stack-form people-form">
@@ -762,7 +765,7 @@
       </section>
     </main>
 
-    <script src="/admin.js?v=20260525-partner-receipt-details" type="module"></script>
+    <script src="/admin.js?v=20260525-partner-closings" type="module"></script>
   </body>
 </html>
 

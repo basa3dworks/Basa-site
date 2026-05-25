@@ -60,6 +60,7 @@ urlpatterns = [
     path("api/admin/partners", views.api_admin_sellers),
     path("api/admin/partners/<str:seller_id>", views.api_admin_seller_detail),
     path("api/admin/partner-receipts/<str:receipt_id>", views.api_admin_partner_receipt),
+    path("api/admin/partner-closings", views.api_admin_partner_closings),
     path("api/admin/orders/<str:order_id>", views.api_admin_order_detail),
     path("api/admin/chats", views.api_admin_chats),
     path("api/admin/custom-requests/<str:request_id>", views.api_admin_custom_request_detail),
