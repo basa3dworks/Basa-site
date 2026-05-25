@@ -47,6 +47,8 @@ let customerStatusFilter = "all";
 let affiliateStatusFilter = "all";
 let partnerStatusFilter = "all";
 let selectedPartnerSettlementId = "";
+let partnerClosingStatusFilter = "all";
+let partnerClosingMonthFilter = "";
 let productSaveInProgress = false;
 let settingsSaveInProgress = false;
 
@@ -1121,6 +1123,10 @@ function renderPartnerSettlementSelect(partners) {
   select.innerHTML = `<option value="">Todos os parceiros</option>${partners.map((partner) => `
     <option value="${partner.id}" ${partner.id === activeId ? "selected" : ""}>${escapeHtml(partner.brandName || partner.name)}</option>
   `).join("")}`;
+  const statusSelect = $("#partnerClosingStatusSelect");
+  if (statusSelect) statusSelect.value = partnerClosingStatusFilter;
+  const monthInput = $("#partnerClosingMonthInput");
+  if (monthInput) monthInput.value = partnerClosingMonthFilter;
 }
 
 function partnerCloseRows() {
@@ -1141,11 +1147,35 @@ function partnerPaidRows() {
     .sort((a, b) => new Date(b.settlement.paidAt || b.order.updatedAt || 0) - new Date(a.settlement.paidAt || a.order.updatedAt || 0));
 }
 
+function partnerClosingDate(closing) {
+  return closing.paidAt || closing.updatedAt || closing.createdAt || "";
+}
+
+function partnerClosingMatchesFilters(closing) {
+  if (selectedPartnerSettlementId && closing.partnerId !== selectedPartnerSettlementId) return false;
+  if (partnerClosingStatusFilter !== "all" && closing.status !== partnerClosingStatusFilter) return false;
+  if (partnerClosingMonthFilter) {
+    const date = new Date(partnerClosingDate(closing));
+    if (!Number.isFinite(date.getTime())) return false;
+    const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    if (month !== partnerClosingMonthFilter) return false;
+  }
+  return true;
+}
+
 function renderPartnerSettlementClose(partners) {
   renderPartnerSettlementSelect(partners);
   const rows = partnerCloseRows();
   const paidRows = partnerPaidRows();
-  const closingRows = currentPartnerClosings.filter((closing) => !selectedPartnerSettlementId || closing.partnerId === selectedPartnerSettlementId);
+  const closingRows = currentPartnerClosings.filter(partnerClosingMatchesFilters);
+  const closingTotals = closingRows.reduce((acc, closing) => {
+    const totals = closing.totals || {};
+    acc.count += 1;
+    acc.closing += closing.status === "closing" ? Number(totals.partnerReceivable || 0) : 0;
+    acc.paid += closing.status === "paid" ? Number(totals.partnerReceivable || 0) : 0;
+    acc.total += Number(totals.partnerReceivable || 0);
+    return acc;
+  }, { count: 0, closing: 0, paid: 0, total: 0 });
   const totals = rows.reduce((acc, row) => {
     const settlement = row.settlement || {};
     acc.base += Number(settlement.settlementBase || 0);
@@ -1163,6 +1193,9 @@ function renderPartnerSettlementClose(partners) {
       <article><span>Frete incluído</span><strong>${money(totals.shipping)}</strong><small>Proporcional por item</small></article>
       <article><span>Comissão Basa</span><strong>${money(totals.store)}</strong><small>Retida no fechamento</small></article>
       <article><span>Repasse</span><strong>${money(totals.partner)}</strong><small>Valor para pagar</small></article>
+      <article><span>Fechamentos</span><strong>${closingTotals.count}</strong><small>${money(closingTotals.total)} no filtro</small></article>
+      <article><span>Em fechamento</span><strong>${money(closingTotals.closing)}</strong><small>Aguardando pagamento</small></article>
+      <article><span>Pagos</span><strong>${money(closingTotals.paid)}</strong><small>No período filtrado</small></article>
     `;
   }
   const list = $("#partnerSettlementCloseList");
@@ -1212,7 +1245,8 @@ function renderPartnerSettlementClose(partners) {
             <div>
               <strong>${escapeHtml(closing.id)}</strong>
               <span>${escapeHtml(closing.partnerName || "Parceiro")} | ${commissionStatusLabel(closing.status)}</span>
-              <small>${(closing.items || []).length} pedido(s) | frete ${money(totals.shippingShare || 0)} | desconto ${money(totals.discountShare || 0)} | Basa ${money(totals.storeCommission || 0)}</small>
+              <small>${new Date(partnerClosingDate(closing) || Date.now()).toLocaleDateString("pt-BR")} | ${(closing.items || []).length} pedido(s) | frete ${money(totals.shippingShare || 0)} | desconto ${money(totals.discountShare || 0)} | Basa ${money(totals.storeCommission || 0)}</small>
+              ${closing.paymentNote || closing.note ? `<small>${escapeHtml(closing.paymentNote || closing.note)}</small>` : ""}
             </div>
             <div class="table-actions">
               <b>${money(totals.partnerReceivable || 0)}</b>
@@ -3125,6 +3159,14 @@ $("#affiliateSearchInput")?.addEventListener("input", renderPeopleLists);
 $("#partnerSearchInput")?.addEventListener("input", renderPeopleLists);
 $("#partnerSettlementSelect")?.addEventListener("change", (event) => {
   selectedPartnerSettlementId = event.currentTarget.value;
+  renderPeopleLists();
+});
+$("#partnerClosingStatusSelect")?.addEventListener("change", (event) => {
+  partnerClosingStatusFilter = event.currentTarget.value || "all";
+  renderPeopleLists();
+});
+$("#partnerClosingMonthInput")?.addEventListener("change", (event) => {
+  partnerClosingMonthFilter = event.currentTarget.value || "";
   renderPeopleLists();
 });
 $("#createPartnerClosingButton")?.addEventListener("click", createPartnerClosing);

@@ -714,6 +714,16 @@
                   <option value="">Todos os parceiros</option>
                 </select>
               </label>
+              <label class="admin-search">Status
+                <select id="partnerClosingStatusSelect">
+                  <option value="all">Todos</option>
+                  <option value="closing">Em fechamento</option>
+                  <option value="paid">Pagos</option>
+                </select>
+              </label>
+              <label class="admin-search">Mês
+                <input id="partnerClosingMonthInput" type="month">
+              </label>
             </div>
             <div class="affiliate-kpi-grid" id="partnerSettlementKpiGrid"></div>
             <div class="affiliate-commission-list" id="partnerSettlementCloseList"></div>
@@ -765,7 +775,7 @@
       </section>
     </main>
 
-    <script src="/admin.js?v=20260525-partner-closings" type="module"></script>
+    <script src="/admin.js?v=20260525-partner-closing-filters" type="module"></script>
   </body>
 </html>
 
