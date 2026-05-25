@@ -1030,11 +1030,13 @@ function partnerMetrics(partner) {
     acc.gross += Number(row.settlement.grossItemTotal || 0);
     acc.discount += Number(row.settlement.discountShare || 0);
     acc.shipping += Number(row.settlement.shippingShare || 0);
+    acc.partnerShipping += Number(row.settlement.partnerShippingShare ?? (Number(row.settlement.shippingShare || 0) / 2));
+    acc.basaShipping += Number(row.settlement.basaShippingShare ?? (Number(row.settlement.shippingShare || 0) / 2));
     acc.store += Number(row.settlement.storeCommission || 0);
     acc[row.status] = (acc[row.status] || 0) + row.amount;
     if (["confirmed", "available", "paid"].includes(row.status)) acc.receivable += row.amount;
     return acc;
-  }, { orders: 0, gross: 0, discount: 0, shipping: 0, store: 0, receivable: 0, pending: 0, confirmed: 0, available: 0, paid: 0, canceled: 0 });
+  }, { orders: 0, gross: 0, discount: 0, shipping: 0, partnerShipping: 0, basaShipping: 0, store: 0, receivable: 0, pending: 0, confirmed: 0, available: 0, paid: 0, canceled: 0 });
   totals.products = currentProducts.filter((product) => product.partnerId === partner.id).length;
   return totals;
 }
@@ -1181,16 +1183,19 @@ function renderPartnerSettlementClose(partners) {
     acc.base += Number(settlement.settlementBase || 0);
     acc.discount += Number(settlement.discountShare || 0);
     acc.shipping += Number(settlement.shippingShare || 0);
+    acc.partnerShipping += Number(settlement.partnerShippingShare ?? (Number(settlement.shippingShare || 0) / 2));
+    acc.basaShipping += Number(settlement.basaShippingShare ?? (Number(settlement.shippingShare || 0) / 2));
     acc.store += Number(settlement.storeCommission || 0);
     acc.partner += Number(settlement.partnerReceivable || 0);
     return acc;
-  }, { base: 0, discount: 0, shipping: 0, store: 0, partner: 0 });
+  }, { base: 0, discount: 0, shipping: 0, partnerShipping: 0, basaShipping: 0, store: 0, partner: 0 });
   const kpi = $("#partnerSettlementKpiGrid");
   if (kpi) {
     kpi.innerHTML = `
       <article><span>Pedidos</span><strong>${new Set(rows.map((row) => row.order.id)).size}</strong><small>Com repasse disponível</small></article>
-      <article><span>Base com frete</span><strong>${money(totals.base)}</strong><small>Desconto já abatido</small></article>
-      <article><span>Frete incluído</span><strong>${money(totals.shipping)}</strong><small>Proporcional por item</small></article>
+      <article><span>Base com 50% frete</span><strong>${money(totals.base)}</strong><small>Desconto já abatido</small></article>
+      <article><span>Frete parceiro</span><strong>${money(totals.partnerShipping)}</strong><small>50% do frete alocado</small></article>
+      <article><span>Frete Basa</span><strong>${money(totals.basaShipping)}</strong><small>50% do frete alocado</small></article>
       <article><span>Comissão Basa</span><strong>${money(totals.store)}</strong><small>Retida no fechamento</small></article>
       <article><span>Repasse</span><strong>${money(totals.partner)}</strong><small>Valor para pagar</small></article>
       <article><span>Fechamentos</span><strong>${closingTotals.count}</strong><small>${money(closingTotals.total)} no filtro</small></article>
@@ -1207,7 +1212,7 @@ function renderPartnerSettlementClose(partners) {
           <div>
             <span>${escapeHtml(settlement.partnerName || "Parceiro")}</span>
             <small>${row.order.id} | ${escapeHtml(settlement.productName || "Produto")} | ${orderStatusLabel(row.order.status)} | ${commissionStatusLabel(settlement.payoutStatus)}</small>
-            <small>Base ${money(settlement.settlementBase || 0)} | frete ${money(settlement.shippingShare || 0)} | desconto ${money(settlement.discountShare || 0)} | Basa ${money(settlement.storeCommission || 0)}</small>
+            <small>Base ${money(settlement.settlementBase || 0)} | frete parceiro ${money(settlement.partnerShippingShare ?? (Number(settlement.shippingShare || 0) / 2))} | frete Basa ${money(settlement.basaShippingShare ?? (Number(settlement.shippingShare || 0) / 2))} | desconto ${money(settlement.discountShare || 0)} | Basa ${money(settlement.storeCommission || 0)}</small>
           </div>
           <b>${money(settlement.partnerReceivable || 0)}</b>
         </article>
@@ -1245,7 +1250,7 @@ function renderPartnerSettlementClose(partners) {
             <div>
               <strong>${escapeHtml(closing.id)}</strong>
               <span>${escapeHtml(closing.partnerName || "Parceiro")} | ${commissionStatusLabel(closing.status)}</span>
-              <small>${new Date(partnerClosingDate(closing) || Date.now()).toLocaleDateString("pt-BR")} | ${(closing.items || []).length} pedido(s) | frete ${money(totals.shippingShare || 0)} | desconto ${money(totals.discountShare || 0)} | Basa ${money(totals.storeCommission || 0)}</small>
+              <small>${new Date(partnerClosingDate(closing) || Date.now()).toLocaleDateString("pt-BR")} | ${(closing.items || []).length} pedido(s) | frete parceiro ${money(totals.partnerShippingShare ?? (Number(totals.shippingShare || 0) / 2))} | frete Basa ${money(totals.basaShippingShare ?? (Number(totals.shippingShare || 0) / 2))} | desconto ${money(totals.discountShare || 0)} | Basa ${money(totals.storeCommission || 0)}</small>
               ${closing.paymentNote || closing.note ? `<small>${escapeHtml(closing.paymentNote || closing.note)}</small>` : ""}
             </div>
             <div class="table-actions">
@@ -1373,16 +1378,19 @@ function renderPartnerDashboard(partners) {
     acc.receivable += ["confirmed", "available"].includes(row.status) ? row.amount : 0;
     acc.pending += row.status === "pending" ? row.amount : 0;
     acc.shipping += Number(row.settlement.shippingShare || 0);
+    acc.partnerShipping += Number(row.settlement.partnerShippingShare ?? (Number(row.settlement.shippingShare || 0) / 2));
+    acc.basaShipping += Number(row.settlement.basaShippingShare ?? (Number(row.settlement.shippingShare || 0) / 2));
     acc.store += Number(row.settlement.storeCommission || 0);
     return acc;
-  }, { receivable: 0, pending: 0, shipping: 0, store: 0 });
+  }, { receivable: 0, pending: 0, shipping: 0, partnerShipping: 0, basaShipping: 0, store: 0 });
   const kpi = $("#partnerKpiGrid");
   if (kpi) {
     kpi.innerHTML = `
       <article><span>Parceiros</span><strong>${partners.length}</strong><small>${partners.filter((item) => item.status === "active").length} ativos</small></article>
       <article><span>A repassar</span><strong>${money(totals.receivable)}</strong><small>Confirmado/disponível</small></article>
       <article><span>Pendente</span><strong>${money(totals.pending)}</strong><small>Aguardando pagamento</small></article>
-      <article><span>Frete alocado</span><strong>${money(totals.shipping)}</strong><small>Incluído no cálculo</small></article>
+      <article><span>Frete parceiro</span><strong>${money(totals.partnerShipping)}</strong><small>50% do frete alocado</small></article>
+      <article><span>Frete Basa</span><strong>${money(totals.basaShipping)}</strong><small>50% do frete alocado</small></article>
       <article><span>Comissão Basa</span><strong>${money(totals.store)}</strong><small>Sobre produtos parceiros</small></article>
     `;
   }
@@ -1518,7 +1526,7 @@ function renderPeopleLists() {
             <strong>${escapeHtml(partner.brandName || partner.name)}</strong>
             <span>${escapeHtml(partner.email || "")}${partner.phone ? ` | ${escapeHtml(partner.phone)}` : ""}</span>
             <small>${partner.code ? `Código: ${escapeHtml(partner.code)} | ` : ""}${personStatusLabel(partner.status)} | Comissão Basa ${Number(partner.commissionPercent || 0)}%</small>
-            <small>${metrics.products} produto(s) | ${metrics.orders} repasse(s) | ${money(metrics.receivable)} a repassar | frete ${money(metrics.shipping)}</small>
+            <small>${metrics.products} produto(s) | ${metrics.orders} repasse(s) | ${money(metrics.receivable)} a repassar | frete parceiro ${money(metrics.partnerShipping)}</small>
           </div>
           <div class="story-admin-actions">
             <button class="ghost-button table-action" type="button" data-edit-seller="${partner.id}">Editar</button>
@@ -2498,8 +2506,9 @@ function renderSelectedOrderDetail(order) {
         ${order.partnerSettlements?.length ? order.partnerSettlements.map((settlement) => `
           <span><strong>${escapeHtml(settlement.partnerName || "Parceiro")}</strong></span>
           <span>Status: ${commissionStatusLabel(settlement.payoutStatus)}</span>
-          <span>Base com frete: <strong>${money(settlement.settlementBase || 0)}</strong></span>
-          <span>Frete alocado: ${money(settlement.shippingShare || 0)} | Desconto: ${money(settlement.discountShare || 0)}</span>
+          <span>Base com metade do frete: <strong>${money(settlement.settlementBase || 0)}</strong></span>
+          <span>Frete total: ${money(settlement.shippingShare || 0)} | Parceiro 50%: ${money(settlement.partnerShippingShare ?? (Number(settlement.shippingShare || 0) / 2))} | Basa 50%: ${money(settlement.basaShippingShare ?? (Number(settlement.shippingShare || 0) / 2))}</span>
+          <span>Desconto: ${money(settlement.discountShare || 0)}</span>
           <span>Comissão Basa: ${Number(settlement.storeCommissionPercent || 0)}% (${money(settlement.storeCommission || 0)})</span>
           <span>Repasse parceiro: <strong>${money(settlement.partnerReceivable || 0)}</strong></span>
           ${settlement.manualAdjustment ? `<small>Ajuste manual: ${money(settlement.manualAdjustment)}${settlement.adjustmentNote ? ` | ${escapeHtml(settlement.adjustmentNote)}` : ""}</small>` : ""}

@@ -2395,7 +2395,7 @@
             h("section", { className: "react-affiliate-hero" },
               h("div", null, h("span", null, "A receber"), h("strong", null, money(summary.receivable))),
               h("div", null, h("span", null, "Pendente"), h("strong", null, money(summary.pending))),
-              h("div", null, h("span", null, "Frete no calculo"), h("strong", null, money(summary.shippingShare))),
+              h("div", null, h("span", null, "Frete parceiro"), h("strong", null, money(summary.partnerShippingShare ?? (Number(summary.shippingShare || 0) / 2)))),
               h("div", null, h("span", null, "Comissao Basa"), h("strong", null, money(summary.storeCommission))),
               h("div", null, h("span", null, "Produtos"), h("strong", null, Number(summary.products || 0)))
             ),
@@ -2429,7 +2429,7 @@
                   return h("article", { className: "react-affiliate-flow-card", key: closing.id },
                     h("span", { className: "react-affiliate-flow-status order" }, commissionStatusLabel(closing.status)),
                     h("strong", null, `${closing.id} | ${money(totals.partnerReceivable || 0)}`),
-                    h("small", null, `${(closing.items || []).length} pedido(s) | frete ${money(totals.shippingShare || 0)} | desconto ${money(totals.discountShare || 0)}`),
+                    h("small", null, `${(closing.items || []).length} pedido(s) | frete parceiro ${money(totals.partnerShippingShare ?? (Number(totals.shippingShare || 0) / 2))} | frete Basa ${money(totals.basaShippingShare ?? (Number(totals.shippingShare || 0) / 2))} | desconto ${money(totals.discountShare || 0)}`),
                     closing.receiptId ? h("div", { className: "react-receipt-links" },
                       h("a", {
                         href: `/api/partner/receipts/${encodeURIComponent(closing.receiptId)}`,

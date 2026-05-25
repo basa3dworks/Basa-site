@@ -856,8 +856,10 @@ def _partner_settlements_snapshot(db, order):
         ratio = (line_total / subtotal) if subtotal > 0 else 0
         discount_share = round(discount_total * ratio, 2)
         shipping_share = round(shipping_total * ratio, 2)
+        partner_shipping_share = round(shipping_share / 2, 2)
+        basa_shipping_share = round(shipping_share - partner_shipping_share, 2)
         net_item_total = round(max(0, line_total - discount_share), 2)
-        settlement_base = round(max(0, net_item_total + shipping_share), 2)
+        settlement_base = round(max(0, net_item_total + partner_shipping_share), 2)
         commission_percent = max(0, min(100, float(
             product.get("partnerStoreCommissionPercent")
             or partner.get("commissionPercent")
@@ -875,6 +877,8 @@ def _partner_settlements_snapshot(db, order):
             "grossItemTotal": line_total,
             "discountShare": discount_share,
             "shippingShare": shipping_share,
+            "partnerShippingShare": partner_shipping_share,
+            "basaShippingShare": basa_shipping_share,
             "netItemTotal": net_item_total,
             "settlementBase": settlement_base,
             "storeCommissionPercent": commission_percent,
@@ -908,6 +912,8 @@ def _partner_settlements_snapshot(db, order):
             "grossItemTotal": 0.0,
             "discountShare": 0.0,
             "shippingShare": 0.0,
+            "partnerShippingShare": 0.0,
+            "basaShippingShare": 0.0,
             "settlementBase": 0.0,
             "storeCommission": 0.0,
             "partnerReceivable": 0.0,
@@ -916,7 +922,7 @@ def _partner_settlements_snapshot(db, order):
             "lines": [],
             "updatedAt": _now(),
         })
-        for key in ["grossItemTotal", "discountShare", "shippingShare", "settlementBase", "storeCommission", "partnerReceivable"]:
+        for key in ["grossItemTotal", "discountShare", "shippingShare", "partnerShippingShare", "basaShippingShare", "settlementBase", "storeCommission", "partnerReceivable"]:
             summary[key] = round(summary[key] + snapshot[key], 2)
         if snapshot.get("manualAdjustment"):
             summary["manualAdjustment"] = round(summary.get("manualAdjustment", 0) + float(snapshot.get("manualAdjustment") or 0), 2)
@@ -981,7 +987,7 @@ def _partner_settlement_rows(db, partner_id="", statuses=None):
 
 
 def _settlement_totals(rows):
-    totals = {"grossItemTotal": 0.0, "discountShare": 0.0, "shippingShare": 0.0, "settlementBase": 0.0, "storeCommission": 0.0, "partnerReceivable": 0.0}
+    totals = {"grossItemTotal": 0.0, "discountShare": 0.0, "shippingShare": 0.0, "partnerShippingShare": 0.0, "basaShippingShare": 0.0, "settlementBase": 0.0, "storeCommission": 0.0, "partnerReceivable": 0.0}
     for row in rows:
         settlement = row.get("settlement") or {}
         for key in totals:
@@ -1089,6 +1095,8 @@ def _create_partner_closing(db, partner_id="", note=""):
             "grossItemTotal": settlement.get("grossItemTotal", 0),
             "discountShare": settlement.get("discountShare", 0),
             "shippingShare": settlement.get("shippingShare", 0),
+            "partnerShippingShare": settlement.get("partnerShippingShare", 0),
+            "basaShippingShare": settlement.get("basaShippingShare", 0),
             "settlementBase": settlement.get("settlementBase", 0),
             "storeCommission": settlement.get("storeCommission", 0),
             "partnerReceivable": settlement.get("partnerReceivable", 0),
@@ -1172,6 +1180,8 @@ def _partner_receipt_payload(db, receipt_id, partner_id=""):
                 "grossItemTotal": settlement.get("grossItemTotal", 0),
                 "discountShare": settlement.get("discountShare", 0),
                 "shippingShare": settlement.get("shippingShare", 0),
+                "partnerShippingShare": settlement.get("partnerShippingShare", 0),
+                "basaShippingShare": settlement.get("basaShippingShare", 0),
                 "settlementBase": settlement.get("settlementBase", 0),
                 "storeCommission": settlement.get("storeCommission", 0),
                 "partnerReceivable": settlement.get("partnerReceivable", 0),
@@ -1202,6 +1212,8 @@ def _partner_closing_receipt_payload(db, receipt_id, partner_id=""):
             "grossItemTotal": totals.get("grossItemTotal", 0),
             "discountShare": totals.get("discountShare", 0),
             "shippingShare": totals.get("shippingShare", 0),
+            "partnerShippingShare": totals.get("partnerShippingShare", 0),
+            "basaShippingShare": totals.get("basaShippingShare", 0),
             "settlementBase": totals.get("settlementBase", 0),
             "storeCommission": totals.get("storeCommission", 0),
             "partnerReceivable": totals.get("partnerReceivable", 0),
@@ -1231,7 +1243,7 @@ def _partner_receipt_html(payload):
           <td>{esc(line.get("quantity"))}</td>
           <td>{receipt_money(line.get("grossItemTotal"))}</td>
           <td>{receipt_money(line.get("discountShare"))}</td>
-          <td>{receipt_money(line.get("shippingShare"))}</td>
+          <td>{receipt_money(line.get("partnerShippingShare") if line.get("partnerShippingShare") is not None else float(line.get("shippingShare") or 0) / 2)}</td>
           <td>{receipt_money(line.get("partnerReceivable"))}</td>
         </tr>
         """
@@ -1271,15 +1283,17 @@ def _partner_receipt_html(payload):
       <p>Conta/PIX de pagamento: <strong>{esc(payload.get("partnerPaymentAccount") or "não informado")}</strong></p>
       <p>Pago em: {esc(payload.get("paidAt"))}</p>
       <div class="grid">
-        <div class="box"><span>Base com frete</span><strong>{receipt_money(payload.get("settlementBase"))}</strong></div>
+        <div class="box"><span>Base com metade do frete</span><strong>{receipt_money(payload.get("settlementBase"))}</strong></div>
         <div class="box"><span>Desconto abatido</span><strong>{receipt_money(payload.get("discountShare"))}</strong></div>
-        <div class="box"><span>Frete considerado</span><strong>{receipt_money(payload.get("shippingShare"))}</strong></div>
+        <div class="box"><span>Frete total alocado</span><strong>{receipt_money(payload.get("shippingShare"))}</strong></div>
+        <div class="box"><span>Frete parceiro 50%</span><strong>{receipt_money(payload.get("partnerShippingShare"))}</strong></div>
+        <div class="box"><span>Frete Basa 50%</span><strong>{receipt_money(payload.get("basaShippingShare"))}</strong></div>
         <div class="box"><span>Comissão Basa</span><strong>{receipt_money(payload.get("storeCommission"))}</strong></div>
         <div class="box"><span>Repasse ao parceiro</span><strong class="total">{receipt_money(payload.get("partnerReceivable"))}</strong></div>
       </div>
       <h2>Itens</h2>
       <table>
-        <thead><tr><th>Produto</th><th>Qtd.</th><th>Bruto</th><th>Desconto</th><th>Frete</th><th>Repasse</th></tr></thead>
+        <thead><tr><th>Produto</th><th>Qtd.</th><th>Bruto</th><th>Desconto</th><th>Frete parceiro</th><th>Repasse</th></tr></thead>
         <tbody>{line_rows}</tbody>
       </table>
       <p>{esc(payload.get("paymentNote"))}</p>
@@ -2986,7 +3000,7 @@ def _partner_dashboard_payload(db, partner):
         status = matches[0].get("payoutStatus") or _partner_payout_status(order.get("status"))
         amount = round(sum(float(item.get("partnerReceivable") or 0) for item in matches), 2)
         totals[status] = round(totals.get(status, 0.0) + amount, 2)
-        for key in ["grossItemTotal", "discountShare", "shippingShare", "storeCommission", "partnerReceivable"]:
+        for key in ["grossItemTotal", "discountShare", "shippingShare", "partnerShippingShare", "basaShippingShare", "storeCommission", "partnerReceivable"]:
             totals[key] = round(totals.get(key, 0.0) + sum(float(item.get(key) or 0) for item in matches), 2)
         orders.append({
             "id": order.get("id"),
@@ -3808,7 +3822,7 @@ def api_admin_partner_closings(request):
     db = read_db()
     if request.method == "GET":
         if request.GET.get("format") == "csv":
-            rows = ["fechamento,parceiro,status,pedidos,base,desconto,frete,comissao_basa,repasse,recibo"]
+            rows = ["fechamento,parceiro,status,pedidos,base,desconto,frete_total,frete_parceiro,frete_basa,comissao_basa,repasse,recibo"]
             for closing in db.get("partnerClosings", []):
                 payload = _partner_closing_payload(db, closing)
                 totals = payload.get("totals") or {}
@@ -3820,6 +3834,8 @@ def api_admin_partner_closings(request):
                     str(totals.get("settlementBase", 0)),
                     str(totals.get("discountShare", 0)),
                     str(totals.get("shippingShare", 0)),
+                    str(totals.get("partnerShippingShare", 0)),
+                    str(totals.get("basaShippingShare", 0)),
                     str(totals.get("storeCommission", 0)),
                     str(totals.get("partnerReceivable", 0)),
                     str(payload.get("receiptId", "")),
