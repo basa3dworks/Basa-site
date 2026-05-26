@@ -537,6 +537,14 @@ function fillDisplaySettings(settings) {
   form.elements.displayRating.checked = Boolean(settings.displayRating);
 }
 
+function fillPromotionRules(settings) {
+  const form = $("#promotionRulesForm");
+  if (!form) return;
+  const promotions = settings?.promotions || {};
+  form.elements.freeShippingBySubtotalEnabled.checked = promotions.freeShippingBySubtotalEnabled !== false;
+  form.elements.freeShippingMinSubtotal.value = String(Number(promotions.freeShippingMinSubtotal ?? 100));
+}
+
 function renderStoryProductOptions({ keepSelected = false } = {}) {
   const select = $("#storyProductSelect");
   const selectedProductId = select.value;
@@ -2857,6 +2865,7 @@ async function loadDashboard() {
 
   renderThemeGrid(data.settings.theme || "atelier");
   fillDisplaySettings(data.settings);
+  fillPromotionRules(data.settings);
   renderHeroSlideList();
   renderCouponList(data.coupons || []);
   renderStoryProductOptions({ keepSelected: true });
@@ -3215,6 +3224,21 @@ $("#campaignProductSelect").addEventListener("change", () => {
 $("#campaignForm").addEventListener("input", (event) => {
   if (event.target !== $("#campaignProductSelect")) fillCampaignFormFromSelected.formDirty = true;
   fillCampaignFormFromSelected();
+});
+$("#promotionRulesForm")?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  try {
+    const result = await patchAdminSettings({
+      freeShippingBySubtotalEnabled: form.elements.freeShippingBySubtotalEnabled.checked,
+      freeShippingMinSubtotal: decimalValue(form.elements.freeShippingMinSubtotal.value, 100)
+    }, "#promotionRulesStatus", "Salvando regra de frete...", "Regra de frete grátis salva.");
+    if (!result) return;
+    currentSettings = result.settings;
+    fillPromotionRules(result.settings);
+  } catch (error) {
+    $("#promotionRulesStatus").textContent = error.message;
+  }
 });
 $("#orderSearchInput").addEventListener("input", renderOrdersList);
 $("#chatSearchInput")?.addEventListener("input", renderAdminRequests);

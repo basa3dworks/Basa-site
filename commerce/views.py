@@ -30,7 +30,7 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 OPENAI_INSIGHTS_MODEL = os.environ.get("OPENAI_INSIGHTS_MODEL", "gpt-4.1-mini")
 SESSION_SECRET = os.environ.get("SESSION_SECRET") or os.environ.get("DJANGO_SECRET_KEY") or "dev-secret"
 SHIPPING_PROVIDER = "melhor-envio"
-FREE_SHIPPING_MIN_SUBTOTAL = 100.0
+DEFAULT_FREE_SHIPPING_MIN_SUBTOTAL = 100.0
 PAYMENT_PROVIDER = os.environ.get("PAYMENT_PROVIDER", "mock").strip().lower()
 MERCADO_PAGO_ACCESS_TOKEN = os.environ.get("MERCADO_PAGO_ACCESS_TOKEN", "").strip()
 MERCADO_PAGO_WEBHOOK_SECRET = os.environ.get("MERCADO_PAGO_WEBHOOK_SECRET", "").strip()
@@ -106,6 +106,10 @@ def _digits(value):
 
 def _money(value):
     return round(float(value or 0), 2)
+
+
+def _money_label(value):
+    return f"R$ {_money(value):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
 def _admin_ok(request):
@@ -1687,6 +1691,14 @@ def _coupon_eligibility(coupon, item_count, subtotal):
     return True, ""
 
 
+def _free_shipping_subtotal_rule(db):
+    promotions = (db.get("settings") or {}).get("promotions") or {}
+    enabled = promotions.get("freeShippingBySubtotalEnabled", True) is not False
+    raw_minimum = promotions.get("freeShippingMinSubtotal", DEFAULT_FREE_SHIPPING_MIN_SUBTOTAL)
+    minimum = max(0.0, _number_or_zero(raw_minimum))
+    return enabled, minimum
+
+
 def _production_days_from_product(product):
     candidates = [
         product.get("productionDays"),
@@ -1755,7 +1767,8 @@ def _cart_totals(db, items, shipping_option=None, coupon=None, zip_code=""):
             else:
                 discount = min(subtotal, round(float(coupon.get("value") or 0), 2))
     base_shipping = round(float((shipping_option or {}).get("price") or 0), 2)
-    free_shipping_by_subtotal = subtotal >= FREE_SHIPPING_MIN_SUBTOTAL
+    free_shipping_by_subtotal_enabled, free_shipping_min_subtotal = _free_shipping_subtotal_rule(db)
+    free_shipping_by_subtotal = free_shipping_by_subtotal_enabled and subtotal >= free_shipping_min_subtotal
     free_shipping = free_shipping_by_coupon or free_shipping_by_subtotal or all_items_seller_paid
     shipping = 0.0 if free_shipping else base_shipping
     total = round(max(0, subtotal - discount) + shipping, 2)
@@ -1769,7 +1782,7 @@ def _cart_totals(db, items, shipping_option=None, coupon=None, zip_code=""):
     if reason == "coupon":
         message = "Frete Gratis liberado por cupom."
     elif reason == "subtotal":
-        message = "Frete gratis acima de R$ 100 liberado."
+        message = f"Frete gratis acima de {_money_label(free_shipping_min_subtotal)} liberado."
     elif reason == "seller_pays_shipping":
         message = "Frete Gratis liberado."
     shipping_benefit = {
@@ -1777,7 +1790,8 @@ def _cart_totals(db, items, shipping_option=None, coupon=None, zip_code=""):
         "baseShipping": base_shipping,
         "shippingCharged": shipping,
         "freeShipping": free_shipping,
-        "freeShippingMinSubtotal": FREE_SHIPPING_MIN_SUBTOTAL,
+        "freeShippingBySubtotalEnabled": free_shipping_by_subtotal_enabled,
+        "freeShippingMinSubtotal": free_shipping_min_subtotal,
         "reason": reason,
         "itemCount": item_count,
         "subtotal": subtotal,
@@ -3434,6 +3448,10 @@ def api_admin_settings(request):
     promotions = {**settings.get("promotions", {})}
     if "freeShippingMinItems" in body:
         promotions["freeShippingMinItems"] = max(1, int(float(body.get("freeShippingMinItems") or promotions.get("freeShippingMinItems") or 3)))
+    if "freeShippingBySubtotalEnabled" in body:
+        promotions["freeShippingBySubtotalEnabled"] = bool(body.get("freeShippingBySubtotalEnabled"))
+    if "freeShippingMinSubtotal" in body:
+        promotions["freeShippingMinSubtotal"] = max(0.0, _number_or_zero(body.get("freeShippingMinSubtotal")))
     if "theme" in body:
         settings["theme"] = body.get("theme") or settings.get("theme") or "atelier"
     if "originZipCode" in body:

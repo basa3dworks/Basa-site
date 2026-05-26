@@ -390,6 +390,18 @@
               <h2>Central de campanhas</h2>
             </div>
           </div>
+          <form id="promotionRulesForm" class="campaign-form promotion-rules-form">
+            <label class="checkbox-row">
+              <input name="freeShippingBySubtotalEnabled" type="checkbox" value="true" checked>
+              <span>Ativar frete grátis automático por valor do carrinho</span>
+            </label>
+            <label>Compra mínima para frete grátis
+              <input name="freeShippingMinSubtotal" type="number" step="0.01" min="0" value="100" placeholder="Ex: 100,00">
+            </label>
+            <button class="primary-button" type="submit">Salvar regra de frete</button>
+          </form>
+          <p class="form-status" id="promotionRulesStatus"></p>
+          <div class="panel-divider"></div>
           <form id="campaignForm" class="campaign-form">
             <label>Buscar produto
               <input id="campaignProductSearchInput" type="search" placeholder="Nome, categoria ou status">
@@ -787,7 +799,7 @@
       </section>
     </main>
 
-    <script src="/admin.js?v=20260526-hero-upload-reset" type="module"></script>
+    <script src="/admin.js?v=20260526-free-shipping-rule" type="module"></script>
   </body>
 </html>
 
