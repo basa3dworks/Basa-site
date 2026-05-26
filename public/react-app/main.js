@@ -815,11 +815,43 @@
     );
   }
 
-  function Hero() {
+  function Hero({ settings }) {
+    const slides = (settings?.heroSlides || []).filter((slide) => slide?.imageUrl);
+    const [activeSlide, setActiveSlide] = useState(0);
+
+    useEffect(() => {
+      setActiveSlide(0);
+      if (slides.length <= 1) return undefined;
+      const timer = setInterval(() => {
+        setActiveSlide((index) => (index + 1) % slides.length);
+      }, 5200);
+      return () => clearInterval(timer);
+    }, [slides.length]);
+
+    if (slides.length) {
+      const slide = slides[Math.min(activeSlide, slides.length - 1)] || slides[0];
+      return h("section", { className: "react-hero has-slides" },
+        h("img", {
+          className: "react-hero-slide-image",
+          src: slide.imageUrl,
+          alt: slide.title || "Banner Basa 3D Works"
+        }),
+        slides.length > 1 ? h("div", { className: "react-hero-dots", "aria-label": "Imagens da seção principal" },
+          slides.map((item, index) => h("button", {
+            key: item.id || item.imageUrl || index,
+            className: index === activeSlide ? "active" : "",
+            type: "button",
+            "aria-label": `Mostrar banner ${index + 1}`,
+            onClick: () => setActiveSlide(index)
+          }))
+        ) : null
+      );
+    }
+
     return h("section", { className: "react-hero" },
-      h("p", null, "Impressao 3D, produtos prontos e sob demanda"),
+      h("p", null, "Impressão 3D, produtos prontos e sob demanda"),
       h("h1", null, "Basa 3D Works"),
-      h("span", null, "Preview React da loja publica. A loja atual continua ativa.")
+      h("span", null, "Preview React da loja pública. A loja atual continua ativa.")
     );
   }
 
@@ -2884,6 +2916,7 @@
   function App() {
     const [products, setProducts] = useState([]);
     const [stories, setStories] = useState([]);
+    const [settings, setSettings] = useState({});
     const [loading, setLoading] = useState(true);
     const [feed, setFeed] = useState("for-you");
     const [count, setCount] = useState(cartCount());
@@ -2901,12 +2934,14 @@
           if (active) {
             setProducts(data.products || []);
             setStories(data.stories || []);
+            setSettings(data.settings || {});
           }
         })
         .catch(() => {
           if (active) {
             setProducts([]);
             setStories([]);
+            setSettings({});
           }
         })
         .finally(() => {
@@ -3012,7 +3047,7 @@
       h(Topbar, { count, detail: false }),
       h(FeedTabs, { feed, setFeed, products }),
       h("main", null,
-        h(Hero),
+        h(Hero, { settings }),
         loading
           ? h("section", { className: "react-section" }, h("p", null, "Carregando produtos..."))
           : h(ProductGrid, { products, feed, favoriteVersion })

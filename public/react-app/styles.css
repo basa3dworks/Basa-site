@@ -441,6 +441,46 @@ main {
     #20352e;
 }
 
+.react-hero.has-slides {
+  padding: 0;
+  color: inherit;
+  background: #fff;
+}
+
+.react-hero-slide-image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1560 / 705;
+  object-fit: cover;
+  background: #10251f;
+}
+
+.react-hero-dots {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  display: flex;
+  gap: 6px;
+  transform: translateX(-50%);
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: rgba(15, 30, 26, 0.28);
+}
+
+.react-hero-dots button {
+  width: 7px;
+  height: 7px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.react-hero-dots button.active {
+  width: 18px;
+  background: #fff;
+}
+
 .react-hero p {
   margin: 0 0 14px;
   color: var(--accent);
