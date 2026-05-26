@@ -3028,17 +3028,18 @@ async function markPartnerClosingPaid(button) {
 
 async function uploadHeroSlide(event) {
   event.preventDefault();
+  const form = event.currentTarget;
   $("#heroSlideStatus").textContent = "Enviando imagem...";
   try {
     const response = await fetch("/api/admin/hero-slides", {
       method: "POST",
-      body: new FormData(event.currentTarget)
+      body: new FormData(form)
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || "Nao foi possivel enviar a imagem.");
     currentSettings = result.settings;
     renderHeroSlideList();
-    event.currentTarget.reset();
+    form.reset();
     $("#heroSlideStatus").textContent = "Imagem adicionada.";
   } catch (error) {
     $("#heroSlideStatus").textContent = error.message;
@@ -3361,16 +3362,17 @@ $("#generateCouponButton").addEventListener("click", () => {
 });
 $("#couponForm").addEventListener("submit", async (event) => {
   event.preventDefault();
+  const form = event.currentTarget;
   $("#couponStatus").textContent = "Salvando cupom...";
-  const body = Object.fromEntries(new FormData(event.currentTarget).entries());
+  const body = Object.fromEntries(new FormData(form).entries());
   try {
     const result = await api("/api/admin/coupons", { method: "POST", body: JSON.stringify(body) });
     renderCouponList(result.coupons);
-    event.currentTarget.reset();
-    event.currentTarget.elements.value.value = "0";
-    event.currentTarget.elements.minItems.value = "1";
-    event.currentTarget.elements.minSubtotal.value = "0";
-    event.currentTarget.elements.expiresAt.value = "";
+    form.reset();
+    form.elements.value.value = "0";
+    form.elements.minItems.value = "1";
+    form.elements.minSubtotal.value = "0";
+    form.elements.expiresAt.value = "";
     $("#couponStatus").textContent = "Cupom salvo.";
   } catch (error) {
     $("#couponStatus").textContent = error.message;
