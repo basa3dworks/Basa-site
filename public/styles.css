@@ -4314,6 +4314,115 @@ body.store-body:not(.admin-body) .customer-drawer {
   background: var(--brand);
 }
 
+.cart-admin-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.cart-admin-summary article,
+.cart-admin-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.cart-admin-summary article {
+  padding: 14px;
+}
+
+.cart-admin-summary span,
+.cart-admin-summary small {
+  display: block;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.cart-admin-summary strong {
+  display: block;
+  margin: 4px 0;
+  font-size: 1.6rem;
+}
+
+.cart-admin-list {
+  display: grid;
+  gap: 12px;
+}
+
+.cart-admin-card {
+  padding: 14px;
+}
+
+.cart-admin-card header,
+.cart-admin-card-meta,
+.cart-admin-tags,
+.cart-admin-card li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cart-admin-card header {
+  justify-content: space-between;
+}
+
+.cart-admin-card header strong,
+.cart-admin-card header small,
+.cart-admin-card li strong,
+.cart-admin-card li small {
+  display: block;
+}
+
+.cart-admin-card header small,
+.cart-admin-card li small,
+.cart-admin-tags {
+  color: var(--muted);
+}
+
+.cart-admin-tags {
+  flex-wrap: wrap;
+  margin: 10px 0;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.cart-admin-tags span {
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #eef5ef;
+}
+
+.cart-admin-card ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cart-admin-card li {
+  justify-content: space-between;
+  padding: 10px;
+  border-radius: 8px;
+  background: #f6f8f5;
+}
+
+.cart-admin-card li img,
+.cart-item-placeholder {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  border-radius: 8px;
+  background: #fff;
+  object-fit: cover;
+}
+
+.cart-admin-card li div {
+  min-width: 0;
+  flex: 1;
+}
+
 .split-box {
   display: grid;
   gap: 10px;
@@ -7820,6 +7929,19 @@ pre {
 
   .orders-list {
     max-height: none;
+  }
+
+  .cart-admin-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cart-admin-card header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .cart-admin-card li {
+    align-items: flex-start;
   }
 
   .order-detail-head {

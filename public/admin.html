@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Admin | Basa 3D Works</title>
-    <link rel="stylesheet" href="/styles.css?v=20260521-admin-no-pricing">
+    <link rel="stylesheet" href="/styles.css?v=20260527-admin-carts">
   </head>
   <body class="admin-body">
     <header class="topbar">
@@ -61,6 +61,7 @@
           <button class="admin-tab" type="button" data-admin-tab="settings"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 6h14v12H5zM8 10h8m-8 4h5"/></svg></span>Hero / Banner</button>
           <span class="admin-nav-label">Pedidos</span>
           <button class="admin-tab" type="button" data-admin-tab="orders"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-2-1-2 1-2-1-2 1-2-1-2 1V3Zm3 5h6m-6 4h6m-6 4h4"/></svg></span>Pedidos</button>
+          <button class="admin-tab" type="button" data-admin-tab="carts"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 5h14l-2 9H8L6 2H3m6 17a1.5 1.5 0 1 0 0 .1m8-.1a1.5 1.5 0 1 0 0 .1M9 9h8"/></svg></span>Carrinhos</button>
           <button class="admin-tab" type="button" data-admin-tab="chat"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 5h11v8H8l-3 3V5Zm7 5h7v8l-3-3h-4v-5Z"/></svg></span>Chat</button>
           <button class="admin-tab" type="button" data-admin-tab="requests"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 5h14v10H8l-3 3V5Zm4 4h6m-6 3h4"/></svg></span>Encomendas</button>
           <span class="admin-nav-label">Sistema</span>
@@ -88,7 +89,7 @@
             <section class="panel">
               <div class="panel-head">
                 <h2>Carrinhos ativos</h2>
-                <span>Produtos em carrinhos de clientes</span>
+                <button class="ghost-button table-action" type="button" data-admin-jump="carts">Ver todos</button>
               </div>
               <div class="dashboard-list" id="dashboardCartsList"></div>
             </section>
@@ -494,6 +495,28 @@
           </div>
         </section>
 
+        <section class="panel" data-admin-panel="carts" hidden>
+          <div class="section-head compact">
+            <div>
+              <p class="eyebrow">Intenção de compra</p>
+              <h2>Carrinhos de clientes</h2>
+            </div>
+            <label class="admin-search">Pesquisar carrinhos
+              <input id="cartSearchInput" type="search" placeholder="Cliente, produto, afiliado ou status">
+            </label>
+          </div>
+          <div class="admin-filter-tabs" id="cartStatusTabs" aria-label="Filtrar carrinhos por status">
+            <button type="button" class="active" data-cart-status="all">Todos</button>
+            <button type="button" data-cart-status="active">Ativos</button>
+            <button type="button" data-cart-status="recent">Recentes</button>
+            <button type="button" data-cart-status="abandoned">Abandonados</button>
+            <button type="button" data-cart-status="converted">Convertidos</button>
+            <button type="button" data-cart-status="empty">Vazios</button>
+          </div>
+          <div class="cart-admin-summary" id="cartAdminSummary"></div>
+          <div class="cart-admin-list" id="cartAdminList"></div>
+        </section>
+
         <section class="panel" data-admin-panel="chat" hidden>
           <div class="section-head compact">
             <div>
@@ -799,7 +822,7 @@
       </section>
     </main>
 
-    <script src="/admin.js?v=20260527-free-shipping-rule-save" type="module"></script>
+    <script src="/admin.js?v=20260527-admin-carts" type="module"></script>
   </body>
 </html>
 

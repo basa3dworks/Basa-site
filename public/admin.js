@@ -43,6 +43,7 @@ let selectedOrderId = "";
 let currentMetricsView = "overview";
 let currentSocialProductId = "";
 let chatStatusFilter = "all";
+let cartStatusFilter = "all";
 let customerStatusFilter = "all";
 let affiliateStatusFilter = "all";
 let partnerStatusFilter = "all";
@@ -1721,6 +1722,137 @@ function renderAdminDashboard() {
   });
 }
 
+function cartDerivedStatus(cart) {
+  const status = cart.status || "active";
+  if (status === "active") {
+    const updatedAt = Date.parse(cart.updatedAt || cart.lastSeenAt || "");
+    const hoursIdle = Number.isFinite(updatedAt) ? (Date.now() - updatedAt) / 36e5 : 0;
+    return hoursIdle >= 24 ? "abandoned" : "active";
+  }
+  return status;
+}
+
+function cartStatusLabel(status) {
+  return {
+    active: "Ativo",
+    recent: "Recente",
+    abandoned: "Abandonado",
+    converted: "Convertido",
+    empty: "Vazio",
+    all: "Todos"
+  }[status] || status || "Ativo";
+}
+
+function cartStatusClass(status) {
+  if (status === "converted") return "ok";
+  if (status === "abandoned" || status === "empty") return "danger";
+  return "pending";
+}
+
+function cartCustomerLabel(cart) {
+  const customer = cart.customer || {};
+  return customer.name || customer.email || customer.phone || "Cliente";
+}
+
+function cartMatchesFilter(cart) {
+  const derivedStatus = cartDerivedStatus(cart);
+  if (cartStatusFilter === "recent") {
+    const updatedAt = Date.parse(cart.updatedAt || cart.lastSeenAt || "");
+    return derivedStatus === "active" && (!Number.isFinite(updatedAt) || (Date.now() - updatedAt) / 36e5 < 6);
+  }
+  if (cartStatusFilter === "all") return true;
+  return derivedStatus === cartStatusFilter || cart.status === cartStatusFilter;
+}
+
+function renderCartsList() {
+  const query = $("#cartSearchInput")?.value || "";
+  const carts = currentCarts
+    .filter((cart) => cartMatchesFilter(cart))
+    .filter((cart) => matchesSearch([
+      cart.id,
+      cart.status,
+      cartDerivedStatus(cart),
+      cartCustomerLabel(cart),
+      cart.customer?.email,
+      cart.affiliate?.code,
+      cart.affiliate?.name,
+      cart.convertedOrderId,
+      ...(cart.items || []).flatMap((item) => [item.name, item.category, item.slug])
+    ].join(" "), query));
+
+  const active = currentCarts.filter((cart) => cartDerivedStatus(cart) === "active" && (cart.items || []).length);
+  const abandoned = currentCarts.filter((cart) => cartDerivedStatus(cart) === "abandoned" && (cart.items || []).length);
+  const converted = currentCarts.filter((cart) => cart.status === "converted");
+  const empty = currentCarts.filter((cart) => cart.status === "empty" || !(cart.items || []).length);
+  const recent = active.filter((cart) => {
+    const updatedAt = Date.parse(cart.updatedAt || cart.lastSeenAt || "");
+    return !Number.isFinite(updatedAt) || (Date.now() - updatedAt) / 36e5 < 6;
+  });
+  const tabCounts = {
+    all: currentCarts.length,
+    active: active.length,
+    recent: recent.length,
+    abandoned: abandoned.length,
+    converted: converted.length,
+    empty: empty.length
+  };
+  document.querySelectorAll("[data-cart-status]").forEach((button) => {
+    const status = button.dataset.cartStatus || "all";
+    button.textContent = `${cartStatusLabel(status)} (${tabCounts[status] || 0})`;
+  });
+  const totalIntent = active.reduce((sum, cart) => sum + Number(cart.total || cart.subtotal || 0), 0);
+  const summary = $("#cartAdminSummary");
+  if (summary) {
+    summary.innerHTML = `
+      <article><span>Ativos</span><strong>${active.length}</strong><small>${money(totalIntent)} em intenção</small></article>
+      <article><span>Abandonados</span><strong>${abandoned.length}</strong><small>Sem atividade há 24h+</small></article>
+      <article><span>Convertidos</span><strong>${converted.length}</strong><small>Viraram pedidos</small></article>
+      <article><span>Itens em carrinhos</span><strong>${currentCarts.reduce((sum, cart) => sum + Number(cart.itemCount || 0), 0)}</strong><small>Total rastreado</small></article>
+    `;
+  }
+
+  const list = $("#cartAdminList");
+  if (!list) return;
+  list.innerHTML = carts.length ? carts.map((cart) => {
+    const status = cartDerivedStatus(cart);
+    const affiliate = cart.affiliate?.code ? `<span>Afiliado ${escapeHtml(cart.affiliate.code)}</span>` : "";
+    const items = (cart.items || []).map((item) => {
+      const age = item.cartAddedAt ? relativeTimeLabel(item.cartAddedAt) : "";
+      return `
+        <li>
+          ${item.image ? `<img src="${escapeHtml(item.image)}" alt="">` : `<span class="cart-item-placeholder"></span>`}
+          <div>
+            <strong>${escapeHtml(item.name || "Produto")}</strong>
+            <small>${item.quantity || 1}x ${money(item.unitPrice || 0)}${age ? ` | no carrinho ${escapeHtml(age)}` : ""}</small>
+          </div>
+          <b>${money(item.total || 0)}</b>
+        </li>
+      `;
+    }).join("");
+    return `
+      <article class="cart-admin-card">
+        <header>
+          <div>
+            <strong>${escapeHtml(cartCustomerLabel(cart))}</strong>
+            <small>${escapeHtml(cart.customer?.email || cart.customer?.phone || "Cliente sem login identificado")}</small>
+          </div>
+          <div class="cart-admin-card-meta">
+            <span class="status-chip ${cartStatusClass(status)}">${cartStatusLabel(status)}</span>
+            <b>${money(cart.total || cart.subtotal || 0)}</b>
+          </div>
+        </header>
+        <div class="cart-admin-tags">
+          <span>${cart.itemCount || 0} item(ns)</span>
+          <span>Atualizado ${escapeHtml(relativeTimeLabel(cart.updatedAt || cart.lastSeenAt) || "sem data")}</span>
+          ${affiliate}
+          ${cart.convertedOrderId ? `<span>Pedido ${escapeHtml(cart.convertedOrderId)}</span>` : ""}
+        </div>
+        <ul>${items || "<li><div><strong>Carrinho vazio</strong><small>Sem produtos rastreados.</small></div></li>"}</ul>
+      </article>
+    `;
+  }).join("") : `<div class="dashboard-empty"><strong>Nenhum carrinho encontrado.</strong><span>Ajuste os filtros ou aguarde novos clientes adicionarem produtos.</span></div>`;
+}
+
 function formatShipping(order) {
   if (!order.shippingOption) {
     if (order.promotion?.reason === "seller_pays_shipping") return "Frete grátis assumido pela loja. Envio definido internamente.";
@@ -2881,6 +3013,7 @@ async function loadDashboard() {
   renderAiInsightBrief();
   renderLocalAiInsight();
   renderAdminDashboard();
+  renderCartsList();
   renderProductsTable();
   renderOrdersList();
   renderPeopleLists();
@@ -3257,6 +3390,14 @@ $("#promotionRulesForm")?.addEventListener("submit", async (event) => {
   }
 });
 $("#orderSearchInput").addEventListener("input", renderOrdersList);
+$("#cartSearchInput")?.addEventListener("input", renderCartsList);
+document.querySelectorAll("[data-cart-status]").forEach((button) => {
+  button.addEventListener("click", () => {
+    cartStatusFilter = button.dataset.cartStatus || "all";
+    document.querySelectorAll("[data-cart-status]").forEach((item) => item.classList.toggle("active", item === button));
+    renderCartsList();
+  });
+});
 $("#chatSearchInput")?.addEventListener("input", renderAdminRequests);
 document.querySelectorAll("[data-chat-status]").forEach((button) => {
   button.addEventListener("click", () => {
