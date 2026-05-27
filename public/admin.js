@@ -51,6 +51,7 @@ let partnerClosingStatusFilter = "all";
 let partnerClosingMonthFilter = "";
 let productSaveInProgress = false;
 let settingsSaveInProgress = false;
+let promotionRulesSaveInProgress = false;
 
 const uploadLimits = {
   image: 6 * 1024 * 1024,
@@ -3228,16 +3229,31 @@ $("#campaignForm").addEventListener("input", (event) => {
 $("#promotionRulesForm")?.addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = event.currentTarget;
+  const status = $("#promotionRulesStatus");
+  const button = form.querySelector("button[type='submit']");
+  if (promotionRulesSaveInProgress) {
+    if (status) status.textContent = "Salvamento em andamento.";
+    return;
+  }
+  promotionRulesSaveInProgress = true;
+  if (button) button.disabled = true;
+  if (status) status.textContent = "Salvando regra de frete...";
   try {
-    const result = await patchAdminSettings({
-      freeShippingBySubtotalEnabled: form.elements.freeShippingBySubtotalEnabled.checked,
-      freeShippingMinSubtotal: decimalValue(form.elements.freeShippingMinSubtotal.value, 100)
-    }, "#promotionRulesStatus", "Salvando regra de frete...", "Regra de frete grátis salva.");
-    if (!result) return;
+    const result = await api("/api/admin/settings", {
+      method: "PATCH",
+      body: JSON.stringify({
+        freeShippingBySubtotalEnabled: form.elements.freeShippingBySubtotalEnabled.checked,
+        freeShippingMinSubtotal: decimalValue(form.elements.freeShippingMinSubtotal.value, 100)
+      })
+    });
     currentSettings = result.settings;
     fillPromotionRules(result.settings);
+    if (status) status.textContent = "Regra de frete grátis salva.";
   } catch (error) {
-    $("#promotionRulesStatus").textContent = error.message;
+    if (status) status.textContent = uploadFailureMessage(error);
+  } finally {
+    promotionRulesSaveInProgress = false;
+    if (button) button.disabled = false;
   }
 });
 $("#orderSearchInput").addEventListener("input", renderOrdersList);
