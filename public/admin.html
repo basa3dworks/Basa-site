@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Admin | Basa 3D Works</title>
-    <link rel="stylesheet" href="/styles.css?v=20260527-admin-carts">
+    <link rel="stylesheet" href="/styles.css?v=20260527-hero-video">
   </head>
   <body class="admin-body">
     <header class="topbar">
@@ -377,8 +377,8 @@
           </div>
           <form id="heroSlideForm" class="hero-slide-form" enctype="multipart/form-data">
             <label>Título interno<input name="title" placeholder="Ex: Impressora em produção"></label>
-            <label>Imagem<input name="image" type="file" accept="image/*" required></label>
-            <button class="primary-button" type="submit">Adicionar imagem</button>
+            <label>Imagem ou vídeo MP4<input name="media" type="file" accept="image/*,video/mp4,video/webm,video/quicktime" required></label>
+            <button class="primary-button" type="submit">Adicionar mídia</button>
           </form>
           <p class="form-status" id="heroSlideStatus"></p>
           <div class="hero-slide-list" id="heroSlideList"></div>
@@ -822,7 +822,7 @@
       </section>
     </main>
 
-    <script src="/admin.js?v=20260527-admin-carts" type="module"></script>
+    <script src="/admin.js?v=20260527-hero-video" type="module"></script>
   </body>
 </html>
 

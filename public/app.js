@@ -266,20 +266,48 @@ function applyTheme(theme) {
 
 function renderHeroSlides() {
   const hero = document.querySelector(".hero");
-  const slides = state.settings?.heroSlides || [];
+  const slides = (state.settings?.heroSlides || []).filter((slide) => slide?.mediaUrl || slide?.imageUrl);
   if (!hero) return;
   if (heroSlideTimer) clearInterval(heroSlideTimer);
   heroSlideTimer = null;
+  let video = hero.querySelector(".hero-slide-video");
+  if (!video) {
+    video = document.createElement("video");
+    video.className = "hero-slide-video";
+    video.muted = true;
+    video.loop = true;
+    video.playsInline = true;
+    video.setAttribute("playsinline", "");
+    video.setAttribute("muted", "");
+    hero.prepend(video);
+  }
   if (!slides.length) {
     hero.classList.remove("has-slides");
+    hero.classList.remove("has-video-slide");
     hero.hidden = true;
+    video.removeAttribute("src");
     return;
   }
   hero.hidden = false;
   hero.classList.add("has-slides");
   let index = 0;
   const showSlide = () => {
-    hero.style.setProperty("--hero-image", `url("${slides[index].imageUrl}")`);
+    const slide = slides[index];
+    const mediaUrl = slide.mediaUrl || slide.imageUrl || "";
+    const isVideo = slide.mediaType === "video" || /\.(mp4|webm|mov|m4v)(\?|$)/i.test(mediaUrl);
+    hero.classList.toggle("has-video-slide", isVideo);
+    if (isVideo) {
+      hero.style.removeProperty("--hero-image");
+      if (video.getAttribute("src") !== mediaUrl) {
+        video.src = mediaUrl;
+        video.load();
+      }
+      video.play().catch(() => {});
+    } else {
+      video.pause();
+      video.removeAttribute("src");
+      hero.style.setProperty("--hero-image", `url("${mediaUrl}")`);
+    }
     index = (index + 1) % slides.length;
   };
   showSlide();

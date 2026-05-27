@@ -816,7 +816,7 @@
   }
 
   function Hero({ settings }) {
-    const slides = (settings?.heroSlides || []).filter((slide) => slide?.imageUrl);
+    const slides = (settings?.heroSlides || []).filter((slide) => slide?.mediaUrl || slide?.imageUrl);
     const [activeSlide, setActiveSlide] = useState(0);
 
     useEffect(() => {
@@ -830,15 +830,26 @@
 
     if (slides.length) {
       const slide = slides[Math.min(activeSlide, slides.length - 1)] || slides[0];
+      const mediaUrl = slide.mediaUrl || slide.imageUrl || "";
+      const isVideo = slide.mediaType === "video" || /\.(mp4|webm|mov|m4v)(\?|$)/i.test(mediaUrl);
       return h("section", { className: "react-hero has-slides" },
-        h("img", {
-          className: "react-hero-slide-image",
-          src: slide.imageUrl,
-          alt: slide.title || "Banner Basa 3D Works"
-        }),
+        isVideo
+          ? h("video", {
+            className: "react-hero-slide-image",
+            src: mediaUrl,
+            autoPlay: true,
+            muted: true,
+            loop: true,
+            playsInline: true
+          })
+          : h("img", {
+            className: "react-hero-slide-image",
+            src: mediaUrl,
+            alt: slide.title || "Banner Basa 3D Works"
+          }),
         slides.length > 1 ? h("div", { className: "react-hero-dots", "aria-label": "Imagens da seção principal" },
           slides.map((item, index) => h("button", {
-            key: item.id || item.imageUrl || index,
+            key: item.id || item.mediaUrl || item.imageUrl || index,
             className: index === activeSlide ? "active" : "",
             type: "button",
             "aria-label": `Mostrar banner ${index + 1}`,

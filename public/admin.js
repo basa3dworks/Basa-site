@@ -3172,26 +3172,26 @@ async function markPartnerClosingPaid(button) {
 async function uploadHeroSlide(event) {
   event.preventDefault();
   const form = event.currentTarget;
-  $("#heroSlideStatus").textContent = "Enviando imagem...";
+  $("#heroSlideStatus").textContent = "Enviando mídia...";
   try {
     const response = await fetch("/api/admin/hero-slides", {
       method: "POST",
       body: new FormData(form)
     });
     const result = await response.json();
-    if (!response.ok) throw new Error(result.error || "Nao foi possivel enviar a imagem.");
+    if (!response.ok) throw new Error(result.error || "Nao foi possivel enviar a midia.");
     currentSettings = result.settings;
     renderHeroSlideList();
     form.reset();
-    $("#heroSlideStatus").textContent = "Imagem adicionada.";
+    $("#heroSlideStatus").textContent = "Mídia adicionada.";
   } catch (error) {
     $("#heroSlideStatus").textContent = error.message;
   }
 }
 
 async function deleteHeroSlide(slideId) {
-  if (!confirm("Remover esta imagem da seção inicial?")) return;
-  $("#heroSlideStatus").textContent = "Removendo imagem...";
+  if (!confirm("Remover esta mídia da seção inicial?")) return;
+  $("#heroSlideStatus").textContent = "Removendo mídia...";
   try {
     const result = await api(`/api/admin/hero-slides/${encodeURIComponent(slideId)}`, {
       method: "DELETE",
@@ -3199,7 +3199,7 @@ async function deleteHeroSlide(slideId) {
     });
     currentSettings = result.settings;
     renderHeroSlideList();
-    $("#heroSlideStatus").textContent = "Imagem removida.";
+    $("#heroSlideStatus").textContent = "Mídia removida.";
   } catch (error) {
     $("#heroSlideStatus").textContent = error.message;
   }
@@ -3219,16 +3219,22 @@ function renderCouponList(coupons) {
 
 function renderHeroSlideList() {
   const slides = currentSettings?.heroSlides || [];
-  $("#heroSlideList").innerHTML = slides.length ? slides.map((slide) => `
-    <article class="hero-slide-card">
-      <img src="${slide.imageUrl}" alt="${slide.title}">
+  $("#heroSlideList").innerHTML = slides.length ? slides.map((slide) => {
+    const mediaUrl = slide.mediaUrl || slide.imageUrl || "";
+    const isVideo = slide.mediaType === "video" || /\.(mp4|webm|mov|m4v)(\?|$)/i.test(mediaUrl);
+    return `
+      <article class="hero-slide-card">
+      ${isVideo
+        ? `<video src="${escapeHtml(mediaUrl)}" muted playsinline></video>`
+        : `<img src="${escapeHtml(mediaUrl)}" alt="${escapeHtml(slide.title || "Banner")}">`}
       <div>
-        <strong>${slide.title}</strong>
-        <span>${slide.imageUrl}</span>
+        <strong>${escapeHtml(slide.title || "Banner inicial")}</strong>
+        <span>${isVideo ? "Vídeo" : "Imagem"} | ${escapeHtml(mediaUrl)}</span>
       </div>
-      <button class="ghost-button" type="button" data-delete-hero-slide="${slide.id}">Remover</button>
+      <button class="ghost-button" type="button" data-delete-hero-slide="${escapeHtml(slide.id)}">Remover</button>
     </article>
-  `).join("") : "<p>Nenhuma imagem cadastrada. O banner inicial fica oculto ate voce enviar uma imagem.</p>";
+  `;
+  }).join("") : "<p>Nenhuma mídia cadastrada. O banner inicial fica oculto até você enviar uma imagem ou MP4.</p>";
 
   document.querySelectorAll("[data-delete-hero-slide]").forEach((button) => {
     button.addEventListener("click", () => deleteHeroSlide(button.dataset.deleteHeroSlide));

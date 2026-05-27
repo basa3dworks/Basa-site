@@ -1189,6 +1189,21 @@ nav {
   display: flex;
 }
 
+.hero-slide-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.hero.has-video-slide .hero-slide-video {
+  opacity: 1;
+}
+
 .hero[hidden] {
   display: none !important;
 }
@@ -5129,11 +5144,13 @@ body.store-body:not(.admin-body) .customer-drawer {
   background: #fff;
 }
 
-.hero-slide-card img {
+.hero-slide-card img,
+.hero-slide-card video {
   width: 96px;
   height: 58px;
   object-fit: cover;
   border-radius: 6px;
+  background: #eef5ef;
 }
 
 .hero-slide-card div {

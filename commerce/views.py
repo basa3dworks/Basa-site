@@ -3496,10 +3496,22 @@ def api_admin_hero_slides(request):
     if error:
         return error
     db = read_db()
-    image_url = _save_upload(request.FILES.get("image"), "hero")
-    if not image_url:
-        return JsonResponse({"error": "Selecione uma imagem."}, status=400)
-    slide = {"id": f"hero-{secrets.token_hex(6)}", "title": request.POST.get("title") or "Imagem inicial", "imageUrl": image_url, "createdAt": _now()}
+    media_file = request.FILES.get("media") or request.FILES.get("image")
+    try:
+        media_url = _save_upload(media_file, "hero")
+    except ValueError as exc:
+        return JsonResponse({"error": str(exc)}, status=400)
+    if not media_url:
+        return JsonResponse({"error": "Selecione uma imagem ou vídeo."}, status=400)
+    media_type = _upload_kind(media_file)
+    slide = {
+        "id": f"hero-{secrets.token_hex(6)}",
+        "title": request.POST.get("title") or "Banner inicial",
+        "imageUrl": media_url,
+        "mediaUrl": media_url,
+        "mediaType": media_type,
+        "createdAt": _now(),
+    }
     db.setdefault("settings", {}).setdefault("heroSlides", []).append(slide)
     write_db(db)
     return JsonResponse({"slide": slide, "settings": db["settings"]}, status=201)
