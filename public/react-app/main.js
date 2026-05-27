@@ -815,7 +815,7 @@
     );
   }
 
-  function Hero({ settings }) {
+  function Hero({ settings, loading }) {
     const slides = (settings?.heroSlides || []).filter((slide) => slide?.mediaUrl || slide?.imageUrl);
     const [activeSlide, setActiveSlide] = useState(0);
 
@@ -858,6 +858,8 @@
         ) : null
       );
     }
+
+    if (loading || !slides.length) return null;
 
     return h("section", { className: "react-hero" },
       h("p", null, "Impressão 3D, produtos prontos e sob demanda"),
@@ -3058,7 +3060,7 @@
       h(Topbar, { count, detail: false }),
       h(FeedTabs, { feed, setFeed, products }),
       h("main", null,
-        h(Hero, { settings }),
+        h(Hero, { settings, loading }),
         h(StorySection, { stories, products }),
         loading
           ? h("section", { className: "react-section" }, h("p", null, "Carregando produtos..."))
