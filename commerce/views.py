@@ -3201,9 +3201,6 @@ def api_custom_requests(request):
     account, auth_error = _require_customer_account(request, db)
     if auth_error:
         return auth_error
-    rate_error = _rate_limited(request, "chat", _customer_email(account))
-    if rate_error:
-        return rate_error
     safe_account = _safe_customer_account(account)
     session_customer = {
         **safe_account.get("customer", {}),
@@ -3216,6 +3213,9 @@ def api_custom_requests(request):
         requests = db.get("customRequests", [])
         requests = [item for item in requests if str(item.get("customer", {}).get("email", "")).lower() == email]
         return JsonResponse({"requests": requests})
+    rate_error = _rate_limited(request, "chat", _customer_email(account))
+    if rate_error:
+        return rate_error
     if request.content_type and "multipart/form-data" in request.content_type:
         body = request.POST
         attachment = _save_upload(request.FILES.get("referenceImage"), "custom-requests")

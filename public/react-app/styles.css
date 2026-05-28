@@ -121,7 +121,8 @@ main {
   font-weight: 900;
 }
 
-.cart-icon b {
+.cart-icon b,
+.chat-icon b {
   position: absolute;
   right: 0;
   bottom: 1px;
@@ -2807,6 +2808,10 @@ body.react-lightbox-open {
 .react-order-timeline strong {
   color: var(--ink);
   font-size: 0.72rem;
+}
+
+.chat-icon b {
+  background: #d34c3f;
 }
 
 .react-order-timeline small {

@@ -3701,6 +3701,60 @@ body.store-body:not(.admin-body) .customer-drawer {
   background: #f8fcf9;
 }
 
+.chat-request-card.needs-attention {
+  border-color: #1f7a55;
+  box-shadow: 0 10px 28px rgba(31, 122, 85, 0.12);
+}
+
+.request-live-badge,
+.admin-chat-badge {
+  display: inline-grid;
+  min-width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 999px;
+  color: #fff;
+  background: #d34c3f;
+  font-size: 0.75rem;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.request-live-badge {
+  min-width: 0;
+  height: auto;
+  margin-left: 6px;
+  padding: 3px 8px;
+  vertical-align: middle;
+}
+
+.admin-tab {
+  position: relative;
+}
+
+.admin-chat-badge {
+  margin-left: auto;
+}
+
+.admin-tab.has-alert {
+  color: #fff;
+  background: #1f7a55;
+}
+
+.request-latest-message {
+  margin: 8px 0 0;
+  padding: 10px;
+  border-radius: 8px;
+  color: var(--ink);
+  background: #eef8f2;
+  font-weight: 800;
+}
+
+.request-latest-message small {
+  margin-left: 6px;
+  color: var(--muted);
+}
+
 .admin-start-chat-form {
   margin: 14px 0;
   padding: 14px;

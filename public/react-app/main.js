@@ -398,6 +398,13 @@
     return saved || chats.find((request) => request.status !== "closed") || chats[0] || null;
   }
 
+  function chatUnreadCount(request, saved) {
+    if (!request) return 0;
+    const adminCount = (request.messages || []).filter((item) => item.author === "admin").length;
+    const seenAdminCount = request.id === saved?.id ? Number(saved.seenAdminCount || 0) : 0;
+    return Math.max(0, adminCount - seenAdminCount);
+  }
+
   function accountNextUrl() {
     return getQuery("next") || "/carrinho";
   }
@@ -767,7 +774,7 @@
     saveCart(items);
   }
 
-  function Topbar({ count, detail }) {
+  function Topbar({ count, detail, chatUnread = 0 }) {
     const [menuOpen, setMenuOpen] = useState(false);
     const session = customerSession();
     const customer = session?.customer || null;
@@ -810,8 +817,9 @@
           h("label", { className: "react-search" },
             h("input", { placeholder: "Buscar na Basa 3D Works", readOnly: true })
           ),
-          h("a", { className: "round-icon", href: "/chat", "aria-label": "Chat" },
-            h("span", { className: "material-symbols-rounded" }, "forum")
+          h("a", { className: "round-icon chat-icon", href: "/chat", "aria-label": "Chat" },
+            h("span", { className: "material-symbols-rounded" }, "forum"),
+            chatUnread > 0 ? h("b", null, Math.min(chatUnread, 9)) : null
           ),
           h("a", { className: "round-icon cart-icon", href: "/carrinho", "aria-label": "Carrinho" },
             h("span", { className: "material-symbols-rounded" }, "shopping_bag"),
@@ -2026,13 +2034,13 @@
     const [submitting, setSubmitting] = useState(false);
     const customer = session?.customer || null;
 
-    const loadChat = (markSeen = true) => {
+    const loadChat = (markSeen = true, quiet = false) => {
       if (!customer?.email) {
         setChat(null);
         setLoading(false);
         return;
       }
-      setLoading(true);
+      if (!quiet) setLoading(true);
       const saved = supportChatState() || { email: customer.email, seenAdminCount: 0 };
       fetch("/api/custom-requests", { credentials: "same-origin" })
         .then(async (response) => {
@@ -2047,17 +2055,22 @@
               email: nextChat.customer?.email || customer.email,
               seenAdminCount: markSeen ? adminCount : Number(saved.seenAdminCount || 0)
             });
+            if (markSeen) window.dispatchEvent(new Event("basa-chat-seen"));
           }
           setStatus("");
         })
         .catch((error) => {
-          setStatus(error.message || "Não foi possível carregar o chat.");
+          if (!quiet) setStatus(error.message || "Não foi possível carregar o chat.");
           setChat(null);
         })
         .finally(() => setLoading(false));
     };
 
-    useEffect(loadChat, [customer?.email]);
+    useEffect(() => {
+      loadChat(true);
+      const interval = setInterval(() => loadChat(true, true), 8000);
+      return () => clearInterval(interval);
+    }, [customer?.email]);
 
     const sendChatMessage = async (event) => {
       event.preventDefault();
@@ -2092,6 +2105,7 @@
           email: customer.email,
           seenAdminCount: (nextChat.messages || []).filter((item) => item.author === "admin").length
         });
+        window.dispatchEvent(new Event("basa-chat-sent"));
         setStatus("Mensagem enviada. A resposta aparece aqui no chat.");
       } catch (error) {
         setStatus(error.message || "Não foi possível enviar a mensagem.");
@@ -3002,6 +3016,7 @@
     const [feed, setFeed] = useState("for-you");
     const [count, setCount] = useState(cartCount());
     const [favoriteVersion, setFavoriteVersion] = useState(0);
+    const [chatUnread, setChatUnread] = useState(0);
 
     useEffect(() => {
       captureAffiliateRef();
@@ -3042,6 +3057,38 @@
       return () => window.removeEventListener("basa-favorites-change", updateFavorites);
     }, []);
 
+    useEffect(() => {
+      let active = true;
+      const updateUnread = async () => {
+        const session = customerSession();
+        const customer = session?.customer || null;
+        if (!customer?.email) {
+          if (active) setChatUnread(0);
+          return;
+        }
+        const saved = supportChatState() || { email: customer.email, seenAdminCount: 0 };
+        try {
+          const response = await fetch("/api/custom-requests", { credentials: "same-origin" });
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(data.error || "Não foi possível carregar o chat.");
+          const nextChat = supportRequestFromList(data.requests || [], saved);
+          if (active) setChatUnread(chatUnreadCount(nextChat, saved));
+        } catch {
+          if (active) setChatUnread(0);
+        }
+      };
+      updateUnread();
+      const interval = setInterval(updateUnread, 12000);
+      window.addEventListener("basa-chat-seen", updateUnread);
+      window.addEventListener("basa-chat-sent", updateUnread);
+      return () => {
+        active = false;
+        clearInterval(interval);
+        window.removeEventListener("basa-chat-seen", updateUnread);
+        window.removeEventListener("basa-chat-sent", updateUnread);
+      };
+    }, []);
+
     const routePath = window.location.pathname.replace(/^\/react(?=\/|$)/, "") || "/";
     const isProductPage = routePath.startsWith("/produto");
     const isCartPage = routePath.startsWith("/carrinho");
@@ -3056,76 +3103,76 @@
 
     if (isProductPage) {
       return h(React.Fragment, null,
-        h(Topbar, { count, detail: true }),
+        h(Topbar, { count, detail: true, chatUnread }),
         h(ProductDetail, { products, loading, setCount })
       );
     }
 
     if (isCartPage) {
       return h(React.Fragment, null,
-        h(Topbar, { count, detail: true }),
+        h(Topbar, { count, detail: true, chatUnread }),
         h(CartPage, { products, loading, setCount })
       );
     }
 
     if (isAccountPage) {
       return h(React.Fragment, null,
-        h(Topbar, { count, detail: true }),
+        h(Topbar, { count, detail: true, chatUnread }),
         h(AccountPage)
       );
     }
 
     if (isProfilePage) {
       return h(React.Fragment, null,
-        h(Topbar, { count, detail: true }),
+        h(Topbar, { count, detail: true, chatUnread }),
         h(ProfilePage)
       );
     }
 
     if (isOrdersPage) {
       return h(React.Fragment, null,
-        h(Topbar, { count, detail: true }),
+        h(Topbar, { count, detail: true, chatUnread }),
         h(OrdersPage, { products })
       );
     }
 
     if (isRequestsPage) {
       return h(React.Fragment, null,
-        h(Topbar, { count, detail: true }),
+        h(Topbar, { count, detail: true, chatUnread }),
         h(RequestsPage)
       );
     }
 
     if (isChatPage) {
       return h(React.Fragment, null,
-        h(Topbar, { count, detail: true }),
+        h(Topbar, { count, detail: true, chatUnread }),
         h(ChatPage)
       );
     }
 
     if (isAffiliatePage) {
       return h(React.Fragment, null,
-        h(Topbar, { count, detail: true }),
+        h(Topbar, { count, detail: true, chatUnread }),
         h(AffiliatePage)
       );
     }
 
     if (isPartnerPage) {
       return h(React.Fragment, null,
-        h(Topbar, { count, detail: true }),
+        h(Topbar, { count, detail: true, chatUnread }),
         h(PartnerPage)
       );
     }
 
     if (isThankYouPage) {
       return h(React.Fragment, null,
-        h(Topbar, { count, detail: true }),
+        h(Topbar, { count, detail: true, chatUnread }),
         h(ThankYouPage)
       );
     }
 
     return h(React.Fragment, null,
-      h(Topbar, { count, detail: false }),
+      h(Topbar, { count, detail: false, chatUnread }),
       h(FeedTabs, { feed, setFeed, products }),
       h("main", null,
         h(Hero, { settings, loading }),

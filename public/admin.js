@@ -53,6 +53,8 @@ let partnerClosingMonthFilter = "";
 let productSaveInProgress = false;
 let settingsSaveInProgress = false;
 let promotionRulesSaveInProgress = false;
+let adminLiveRefreshStarted = false;
+let lastWaitingChatCount = 0;
 
 const uploadLimits = {
   image: 6 * 1024 * 1024,
@@ -2793,16 +2795,19 @@ function requestStatusOptions(request) {
 
 function requestCard(request) {
   const isChat = requestKind(request) === "chat";
+  const needsAttention = isChat && (request.status || "waiting_admin") === "waiting_admin";
+  const latestMessage = (request.messages || []).slice(-1)[0];
   return `
-    <article class="request-card ${isChat ? "chat-request-card" : ""}">
+    <article class="request-card ${isChat ? "chat-request-card" : ""} ${needsAttention ? "needs-attention" : ""}">
       <div class="request-card-head">
         <div>
-          <strong>${request.title}</strong>
+          <strong>${request.title}${needsAttention ? ` <em class="request-live-badge">nova mensagem</em>` : ""}</strong>
           <span>${request.id} | ${request.customer?.name || "Cliente"} | ${request.customer?.email || ""}</span>
         </div>
         <small>${requestStatusLabel(request.status)}</small>
       </div>
       <p>${request.idea}</p>
+      ${isChat && latestMessage ? `<p class="request-latest-message"><b>${latestMessage.author === "admin" ? "Basa" : "Cliente"}:</b> ${escapeHtml(latestMessage.text)} <small>${relativeTimeLabel(latestMessage.createdAt || request.updatedAt)}</small></p>` : ""}
       ${request.attachment?.url ? `<a class="request-attachment" href="${request.attachment.url}" target="_blank" rel="noreferrer">Ver imagem de referência</a>` : ""}
       ${isChat ? "" : `
         <div class="request-meta">
@@ -2811,7 +2816,7 @@ function requestCard(request) {
         </div>
       `}
       <div class="request-messages">
-        ${(request.messages || []).map((message) => `<span class="${message.author === "admin" ? "admin-message" : ""}"><b>${message.author === "admin" ? "Basa" : "Cliente"}:</b> ${message.text}</span>`).join("")}
+        ${(request.messages || []).map((message) => `<span class="${message.author === "admin" ? "admin-message" : ""}"><b>${message.author === "admin" ? "Basa" : "Cliente"}:</b> ${escapeHtml(message.text)}</span>`).join("")}
       </div>
       <form class="admin-request-form" data-admin-request="${request.id}">
         <select name="status">
@@ -2838,6 +2843,38 @@ function requestMatchesQuery(request, query) {
     request.deadline,
     ...(request.messages || []).map((message) => message.text)
   ].join(" "), query);
+}
+
+function adminWaitingChatCount() {
+  return currentRequests.filter((request) => requestKind(request) === "chat" && (request.status || "waiting_admin") === "waiting_admin").length;
+}
+
+function updateAdminChatBadge() {
+  const count = adminWaitingChatCount();
+  const chatTab = document.querySelector('[data-admin-tab="chat"]');
+  if (chatTab) {
+    let badge = chatTab.querySelector(".admin-chat-badge");
+    if (!badge && count > 0) {
+      badge = document.createElement("b");
+      badge.className = "admin-chat-badge";
+      chatTab.appendChild(badge);
+    }
+    if (badge) {
+      badge.textContent = String(Math.min(count, 99));
+      badge.hidden = count <= 0;
+    }
+    chatTab.classList.toggle("has-alert", count > 0);
+  }
+  document.title = count > 0 ? `(${count}) Chat | Basa Admin` : "Admin | Basa 3D Works";
+}
+
+function adminChatIsBeingEdited() {
+  const active = document.activeElement;
+  return Boolean(active && (
+    active.closest("#adminChatList")
+    || active.closest("#adminRequestList")
+    || active.closest("#adminStartChatForm")
+  ));
 }
 
 function renderAdminRequests() {
@@ -2872,6 +2909,7 @@ function renderAdminRequests() {
   const requestList = $("#adminRequestList");
   if (chatList) chatList.innerHTML = chats.length ? chats.map(requestCard).join("") : "<p>Nenhuma conversa de chat encontrada.</p>";
   if (requestList) requestList.innerHTML = customRequests.length ? customRequests.map(requestCard).join("") : "<p>Nenhuma encomenda encontrada.</p>";
+  updateAdminChatBadge();
 
   document.querySelectorAll("[data-admin-request]").forEach((form) => {
     form.addEventListener("submit", updateCustomRequest);
@@ -3019,6 +3057,39 @@ async function loadDashboard() {
   renderPeopleLists();
   renderStartChatCustomerOptions();
   renderAdminRequests();
+  startAdminLiveRefresh();
+}
+
+async function refreshAdminLiveData() {
+  if ($("#dashboard")?.hidden) return;
+  try {
+    const data = await api("/api/admin/dashboard");
+    currentRequests = data.customRequests || currentRequests;
+    currentCarts = data.carts || currentCarts;
+    currentOrders = data.orders || currentOrders;
+    const nextWaitingCount = adminWaitingChatCount();
+    updateAdminChatBadge();
+    if (!adminChatIsBeingEdited()) {
+      renderAdminRequests();
+      renderCartsList();
+      renderOrdersList();
+      renderAdminDashboard();
+    }
+    if (nextWaitingCount > lastWaitingChatCount) {
+      const status = $("#adminStartChatStatus");
+      if (status) status.textContent = "Nova mensagem recebida no chat.";
+    }
+    lastWaitingChatCount = nextWaitingCount;
+  } catch {
+    // Mantem o painel atual se uma checagem em segundo plano falhar.
+  }
+}
+
+function startAdminLiveRefresh() {
+  if (adminLiveRefreshStarted) return;
+  adminLiveRefreshStarted = true;
+  lastWaitingChatCount = adminWaitingChatCount();
+  setInterval(refreshAdminLiveData, 10000);
 }
 
 async function runShippingAction(button) {
