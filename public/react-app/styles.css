@@ -1986,6 +1986,62 @@ body.react-lightbox-open {
   font-weight: 900;
 }
 
+.react-cart-summary button:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.react-add-confirmation {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #bfe5d4;
+  border-radius: 8px;
+  background: #effaf4;
+}
+
+.react-add-confirmation strong,
+.react-add-confirmation span {
+  display: block;
+}
+
+.react-add-confirmation span {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.react-add-confirmation div:last-child {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.react-add-confirmation a,
+.react-add-confirmation button,
+.react-chat-product-link {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.react-add-confirmation a {
+  color: #fff;
+  background: var(--brand);
+}
+
+.react-add-confirmation button,
+.react-chat-product-link {
+  border: 1px solid var(--line);
+  color: var(--brand);
+  background: #f7fbf8;
+}
+
 .react-account-cta,
 .react-primary-link,
 .react-secondary-link {
@@ -2684,6 +2740,86 @@ body.react-lightbox-open {
   font-weight: 900;
 }
 
+.react-order-timeline {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+  margin: 0;
+  padding: 10px;
+  border-radius: 8px;
+  background: #f7faf8;
+  list-style: none;
+}
+
+.react-order-timeline li {
+  position: relative;
+  display: grid;
+  gap: 5px;
+  justify-items: center;
+  color: var(--muted);
+  text-align: center;
+}
+
+.react-order-timeline li::before {
+  content: "";
+  position: absolute;
+  top: 7px;
+  left: -50%;
+  width: 100%;
+  height: 2px;
+  background: #d9e5df;
+}
+
+.react-order-timeline li:first-child::before {
+  display: none;
+}
+
+.react-order-timeline li > span {
+  z-index: 1;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #cfded6;
+  border-radius: 999px;
+  background: #fff;
+}
+
+.react-order-timeline li.done > span,
+.react-order-timeline li.current > span {
+  border-color: var(--brand);
+  background: var(--brand);
+}
+
+.react-order-timeline li.done::before,
+.react-order-timeline li.current::before {
+  background: var(--brand);
+}
+
+.react-order-timeline li.current > span {
+  box-shadow: 0 0 0 4px rgba(33, 126, 88, 0.16);
+}
+
+.react-order-timeline strong,
+.react-order-timeline small {
+  display: block;
+  line-height: 1.15;
+}
+
+.react-order-timeline strong {
+  color: var(--ink);
+  font-size: 0.72rem;
+}
+
+.react-order-timeline small {
+  font-size: 0.65rem;
+  font-weight: 800;
+}
+
+.react-order-timeline.canceled li > span,
+.react-order-timeline li.canceled > span {
+  border-color: #d34c3f;
+  background: #d34c3f;
+}
+
 .react-order-details {
   border-top: 1px solid var(--line);
   padding-top: 10px;
@@ -2824,6 +2960,24 @@ body.react-lightbox-open {
   font-weight: 800;
 }
 
+.react-chat-context {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 10px;
+  border-radius: 8px;
+  color: var(--brand);
+  background: #effaf4;
+  font-weight: 900;
+}
+
+.react-chat-context a {
+  margin-left: auto;
+  color: var(--brand);
+  font-size: 0.82rem;
+}
+
 .react-chat-thread {
   display: grid;
   gap: 8px;
@@ -2927,6 +3081,28 @@ body.react-lightbox-open {
 
   .react-order-facts {
     grid-template-columns: 1fr;
+  }
+
+  .react-order-timeline {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .react-order-timeline li {
+    grid-template-columns: 18px minmax(0, 1fr);
+    justify-items: start;
+    text-align: left;
+  }
+
+  .react-order-timeline li::before {
+    top: -10px;
+    left: 7px;
+    width: 2px;
+    height: 18px;
+  }
+
+  .react-order-timeline strong {
+    font-size: 0.78rem;
   }
 
   .react-request-meta,

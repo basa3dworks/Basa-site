@@ -7,6 +7,7 @@
   const SUPPORT_CHAT_KEY = "basa_support_chat";
   const AFFILIATE_REF_KEY = "basa_affiliate_ref";
   const STORY_DURATION_MS = 6500;
+  let checkoutInFlight = false;
 
   function money(value) {
     return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(value || 0));
@@ -499,6 +500,32 @@
     return totalDays ? `${totalDays} dias uteis` : "Prazo a confirmar";
   }
 
+  function orderTimelineSteps(order) {
+    const status = order?.status || "created";
+    const steps = [
+      ["awaiting_payment", "Pagamento", "Aguardando confirmação"],
+      ["paid", "Pago", "Pagamento confirmado"],
+      ["in_production", "Produção", "Pedido em preparo"],
+      ["shipped", "Enviado", "Saiu para entrega"],
+      ["completed", "Concluído", "Pedido entregue"]
+    ];
+    const rank = {
+      created: 0,
+      awaiting_payment: 0,
+      paid: 1,
+      in_production: 2,
+      shipped: 3,
+      completed: 4,
+      canceled: -1
+    }[status] ?? 0;
+    return steps.map((step, index) => ({
+      key: step[0],
+      label: step[1],
+      detail: status === "canceled" ? "Compra cancelada" : step[2],
+      state: status === "canceled" ? "canceled" : index < rank ? "done" : index === rank ? "current" : "todo"
+    }));
+  }
+
   function relativeTimeLabel(value) {
     const timestamp = Date.parse(value || "");
     if (!Number.isFinite(timestamp)) return "";
@@ -515,6 +542,19 @@
   function orderItemImage(item, products = []) {
     const product = products.find((candidate) => String(candidate.id) === String(item.productId || item.id));
     return item.image || productImage(product || {}) || "";
+  }
+
+  function OrderTimeline({ order }) {
+    const steps = orderTimelineSteps(order);
+    return h("ol", { className: `react-order-timeline ${order?.status === "canceled" ? "canceled" : ""}` },
+      steps.map((step) => h("li", { key: step.key, className: step.state },
+        h("span", null),
+        h("div", null,
+          h("strong", null, step.label),
+          h("small", null, step.detail)
+        )
+      ))
+    );
   }
 
   function requestStatusLabel(status) {
@@ -1125,7 +1165,7 @@
     const [selectedImage, setSelectedImage] = useState(0);
     const [selectedColor, setSelectedColor] = useState(0);
     const [quantity, setQuantity] = useState(1);
-    const [notice, setNotice] = useState("");
+    const [notice, setNotice] = useState(null);
     const [lightbox, setLightbox] = useState(null);
     const [productNavVisible, setProductNavVisible] = useState(false);
     const [activeProductTab, setActiveProductTab] = useState("intro");
@@ -1193,7 +1233,7 @@
         window.location.href = "/carrinho";
         return;
       }
-      setNotice("Produto adicionado ao carrinho.");
+      setNotice({ name: product.name, quantity });
     };
 
     const openMedia = (items, index) => setLightbox({ items, index });
@@ -1278,9 +1318,25 @@
           h("button", { className: "react-add", type: "button", onClick: () => handleAdd(false) },
             h("span", { className: "material-symbols-rounded" }, "add_shopping_cart"),
             "Adicionar ao carrinho"
+          ),
+          h("a", {
+            className: "react-chat-product-link",
+            href: `/chat?produto=${encodeURIComponent(product.slug || product.id || "")}&nome=${encodeURIComponent(product.name || "produto")}`
+          },
+            h("span", { className: "material-symbols-rounded" }, "forum"),
+            "Perguntar sobre este produto"
           )
         ),
-        notice && h("p", { className: "react-status" }, notice),
+        notice && h("div", { className: "react-add-confirmation" },
+          h("div", null,
+            h("strong", null, "Adicionado ao carrinho"),
+            h("span", null, `${notice.quantity}x ${notice.name}`)
+          ),
+          h("div", null,
+            h("a", { href: "/carrinho" }, "Ver carrinho"),
+            h("button", { type: "button", onClick: () => setNotice(null) }, "Continuar vendo")
+          )
+        ),
         h("article", { className: "react-payment" },
           h("strong", null, "Pagamento seguro via Mercado Pago"),
           h("span", null, "Pix e cartões de crédito aceitos no checkout.")
@@ -1961,7 +2017,10 @@
   function ChatPage() {
     const [session, setSession] = useState(customerSession());
     const [chat, setChat] = useState(null);
-    const [message, setMessage] = useState("");
+    const productName = getQuery("nome") || "";
+    const productSlug = getQuery("produto") || "";
+    const contextualMessage = productName ? `Olá, tenho uma dúvida sobre ${productName}.` : "";
+    const [message, setMessage] = useState(contextualMessage);
     const [status, setStatus] = useState("");
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
@@ -2049,11 +2108,17 @@
       ),
       !customer
         ? h("section", { className: "react-account-card" },
+          productName ? h("p", { className: "react-chat-context" }, `Dúvida sobre ${productName}`) : null,
           h("p", null, "Para falar com a Basa, conecte sua conta primeiro."),
-          h("a", { className: "react-primary-link", href: "/conta?next=/chat" }, "Entrar ou criar conta")
+          h("a", { className: "react-primary-link", href: `/conta?next=${encodeURIComponent(window.location.pathname + window.location.search)}` }, "Entrar ou criar conta")
         )
         : h(React.Fragment, null,
           h("section", { className: "react-chat-card" },
+            productName ? h("div", { className: "react-chat-context" },
+              h("span", { className: "material-symbols-rounded" }, "inventory_2"),
+              h("strong", null, `Dúvida sobre ${productName}`),
+              productSlug ? h("a", { href: `/produto?slug=${encodeURIComponent(productSlug)}` }, "Ver produto") : null
+            ) : null,
             loading
               ? h("p", null, "Carregando conversa...")
               : chat?.messages?.length
@@ -2072,7 +2137,7 @@
               h("textarea", {
                 value: message,
                 onChange: (event) => setMessage(event.target.value),
-                placeholder: "Escreva sua mensagem",
+                placeholder: productName ? `Pergunte sobre ${productName}` : "Escreva sua mensagem",
                 rows: 3
               }),
               h("button", { type: "submit", disabled: submitting }, submitting ? "Enviando..." : "Enviar mensagem")
@@ -2180,6 +2245,7 @@
                     h("span", null, h("b", null, "Frete"), orderShippingLabel(order)),
                     h("span", null, h("b", null, "Prazo"), orderDeliveryLabel(order))
                   ),
+                  h(OrderTimeline, { order }),
                   pending ? h("div", { className: "react-order-actions" },
                     h("small", null, paymentExpiryLabel(order) || "Aguardando pagamento"),
                     h("a", { className: "react-primary-link", href: order.payment.checkoutUrl }, "Concluir pagamento"),
@@ -2721,13 +2787,14 @@
         setCartStatus("Entre na sua conta antes de finalizar a compra.");
         return;
       }
-      if (!items.length || submitting) return;
+      if (!items.length || submitting || checkoutInFlight) return;
       if (!freeShipping && !selectedQuote) {
         setCartStatus("Calcule e selecione uma opção de entrega.");
         return;
       }
+      checkoutInFlight = true;
       setSubmitting(true);
-      setCartStatus("Criando pedido...");
+      setCartStatus("Criando pagamento seguro...");
       const customer = {
         ...session.customer,
         zipCode: String(address.zipCode || "").replace(/\D/g, ""),
@@ -2763,6 +2830,7 @@
         window.location.href = data.payment?.checkoutUrl || `/obrigado?pedido=${data.order?.id || ""}`;
       } catch (error) {
         setCartStatus(error.message || "Não foi possível criar o pedido.");
+        checkoutInFlight = false;
         setSubmitting(false);
       }
     };
@@ -2888,7 +2956,7 @@
               h("div", null, h("span", null, "Frete"), h("strong", null, freeShipping ? "Grátis" : shipping === null ? "A calcular" : money(shipping))),
               h("div", null, h("span", null, "Total"), h("strong", null, money(total))),
               !loggedIn ? h("a", { className: "react-account-cta", href: "/conta?next=/carrinho" }, "Entrar ou criar conta") : null,
-              h("button", { type: "button", onClick: checkout, disabled: submitting }, submitting ? "Processando..." : "Finalizar pedido"),
+              h("button", { type: "button", onClick: checkout, disabled: submitting }, submitting ? "Criando pagamento seguro..." : "Finalizar pedido"),
               cartStatus ? h("p", { className: "react-cart-status" }, cartStatus) : null
             )
           )
