@@ -69,6 +69,14 @@ main {
   background: var(--brand);
 }
 
+.react-topbar:has(+ .react-menu-backdrop) {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  z-index: 40;
+  transform: translateX(-50%);
+}
+
 .react-topbar-main {
   display: grid;
   grid-template-columns: 42px minmax(0, 1fr) 42px 42px;
@@ -277,22 +285,22 @@ main {
 .react-menu-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 20;
+  z-index: 35;
   display: grid;
   align-items: start;
   justify-items: center;
-  padding-top: 68px;
+  padding-top: calc(64px + var(--safe-top));
   background: rgba(18, 78, 59, 0.28);
 }
 
 .react-topbar.has-customer-row + .react-menu-backdrop {
-  padding-top: 110px;
+  padding-top: calc(102px + var(--safe-top));
 }
 
 .react-menu-panel {
   display: grid;
   width: min(520px, calc(100% - 20px));
-  max-height: calc(100vh - 86px);
+  max-height: calc(100dvh - 84px - var(--safe-top));
   overflow-y: auto;
   gap: 10px;
   padding: 14px;

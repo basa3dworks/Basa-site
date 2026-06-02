@@ -1,10 +1,10 @@
-const BASA_CACHE = "basa-pwa-20260602-safe-top";
+const BASA_CACHE = "basa-pwa-20260602-menu-safe";
 const BASA_STATIC = [
   "/",
   "/manifest.json",
   "/react-app/index.html",
-  "/react-app/styles.css?v=20260602-pwa-safe-top",
-  "/react-app/main.js?v=20260602-pwa-safe-top",
+  "/react-app/styles.css?v=20260602-pwa-menu-safe",
+  "/react-app/main.js?v=20260602-pwa-menu-safe",
   "/react-app/vendor/react.production.min.js",
   "/react-app/vendor/react-dom.production.min.js",
   "/icons/icon-192.png",
