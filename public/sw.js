@@ -1,15 +1,11 @@
-const BASA_CACHE = "basa-pwa-20260602-menu-safe";
+const BASA_CACHE = "basa-pwa-20260602-app-icon-v2";
 const BASA_STATIC = [
   "/",
-  "/manifest.json",
   "/react-app/index.html",
-  "/react-app/styles.css?v=20260602-pwa-menu-safe",
-  "/react-app/main.js?v=20260602-pwa-menu-safe",
+  "/react-app/styles.css?v=20260602-app-icon-v2",
+  "/react-app/main.js?v=20260602-app-icon-v2",
   "/react-app/vendor/react.production.min.js",
-  "/react-app/vendor/react-dom.production.min.js",
-  "/icons/icon-192.png",
-  "/icons/icon-512.png",
-  "/icons/apple-touch-icon.png"
+  "/react-app/vendor/react-dom.production.min.js"
 ];
 
 self.addEventListener("install", (event) => {
@@ -43,6 +39,19 @@ self.addEventListener("fetch", (event) => {
           return response;
         })
         .catch(() => caches.match(request).then((cached) => cached || caches.match("/")))
+    );
+    return;
+  }
+
+  if (url.pathname === "/manifest.json" || url.pathname.startsWith("/app-icon-") || url.pathname === "/apple-touch-icon.png") {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          const copy = response.clone();
+          caches.open(BASA_CACHE).then((cache) => cache.put(request, copy));
+          return response;
+        })
+        .catch(() => caches.match(request))
     );
     return;
   }

@@ -2310,6 +2310,68 @@ def react_legacy_redirect(request, react_path=""):
     return HttpResponseRedirect(target)
 
 
+def _public_icon_response(size=192):
+    db = read_db()
+    icon_url = str(db.get("settings", {}).get("appIconUrl") or "").strip()
+    if icon_url.startswith("/uploads/"):
+        upload = read_upload(icon_url)
+        if upload:
+            content_type = mimetypes.guess_type(icon_url)[0] or upload["content_type"] or "image/png"
+            return HttpResponse(upload["content"], content_type=content_type)
+        safe_parts = [part for part in Path(icon_url.lstrip("/")).parts if part not in {"", ".", ".."}]
+        file_path = (PUBLIC_DIR / Path(*safe_parts)).resolve()
+        public_root = PUBLIC_DIR.resolve()
+        if (public_root in file_path.parents or file_path == public_root) and file_path.exists() and file_path.is_file():
+            return FileResponse(file_path.open("rb"), content_type=mimetypes.guess_type(file_path.name)[0] or "image/png")
+
+    fallback_name = "icon-512.png" if int(size or 192) >= 512 else "icon-192.png"
+    fallback_path = PUBLIC_DIR / "icons" / fallback_name
+    return FileResponse(fallback_path.open("rb"), content_type="image/png")
+
+
+def public_app_icon_192(request):
+    return _public_icon_response(192)
+
+
+def public_app_icon_512(request):
+    return _public_icon_response(512)
+
+
+def public_apple_touch_icon(request):
+    return _public_icon_response(192)
+
+
+def public_manifest(request):
+    db = read_db()
+    settings_data = db.get("settings", {})
+    version = str(settings_data.get("appIconUpdatedAt") or "default")
+    manifest = {
+        "id": "/",
+        "name": "Basa 3D Works",
+        "short_name": "Basa 3D",
+        "description": "Produtos 3D, pedidos e atendimento da Basa 3D Works.",
+        "start_url": "/?source=pwa",
+        "scope": "/",
+        "display": "standalone",
+        "orientation": "portrait",
+        "background_color": "#f7faf7",
+        "theme_color": "#217456",
+        "categories": ["shopping", "business"],
+        "lang": "pt-BR",
+        "icons": [
+            {"src": f"/app-icon-192.png?v={version}", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+            {"src": f"/app-icon-512.png?v={version}", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+            {"src": f"/app-icon-512.png?v={version}", "sizes": "512x512", "type": "image/png", "purpose": "maskable"},
+        ],
+        "shortcuts": [
+            {"name": "Carrinho", "short_name": "Carrinho", "url": "/carrinho", "icons": [{"src": f"/app-icon-192.png?v={version}", "sizes": "192x192", "type": "image/png"}]},
+            {"name": "Meus pedidos", "short_name": "Pedidos", "url": "/pedidos", "icons": [{"src": f"/app-icon-192.png?v={version}", "sizes": "192x192", "type": "image/png"}]},
+            {"name": "Chat", "short_name": "Chat", "url": "/chat", "icons": [{"src": f"/app-icon-192.png?v={version}", "sizes": "192x192", "type": "image/png"}]},
+        ],
+    }
+    return JsonResponse(manifest)
+
+
 def public_asset(request, asset_path):
     safe_parts = [part for part in Path(asset_path).parts if part not in {"", ".", ".."}]
     file_path = (PUBLIC_DIR / Path(*safe_parts)).resolve()
@@ -3488,6 +3550,30 @@ def api_admin_settings(request):
         settings["sender"] = sender
     write_db(db)
     return JsonResponse({"settings": settings})
+
+
+@csrf_exempt
+def api_admin_app_icon(request):
+    error = _require_admin(request)
+    if error:
+        return error
+    if request.method != "POST":
+        return JsonResponse({"error": "Metodo nao permitido."}, status=405)
+    icon_file = request.FILES.get("icon") or request.FILES.get("image") or request.FILES.get("media")
+    if not icon_file:
+        return JsonResponse({"error": "Selecione uma imagem quadrada para o icone."}, status=400)
+    if _upload_kind(icon_file) != "image":
+        return JsonResponse({"error": "O icone do app precisa ser uma imagem."}, status=400)
+    try:
+        icon_url = _save_upload(icon_file, "pwa")
+    except ValueError as exc:
+        return JsonResponse({"error": str(exc)}, status=400)
+    db = read_db()
+    settings = db.setdefault("settings", {})
+    settings["appIconUrl"] = icon_url
+    settings["appIconUpdatedAt"] = _now()
+    write_db(db)
+    return JsonResponse({"settings": settings, "iconUrl": icon_url})
 
 
 @csrf_exempt

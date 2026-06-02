@@ -371,6 +371,22 @@
           <div class="panel-divider"></div>
           <div class="panel-head">
             <div>
+              <p class="eyebrow">App instalado</p>
+              <h2>Ícone do PWA</h2>
+            </div>
+          </div>
+          <form id="appIconForm" class="hero-slide-form" enctype="multipart/form-data">
+            <label>Ícone quadrado PNG/JPG
+              <input name="icon" type="file" accept="image/*" required>
+            </label>
+            <button class="primary-button" type="submit">Salvar ícone</button>
+          </form>
+          <p class="form-hint">Use uma imagem quadrada, idealmente 512x512 ou 1024x1024. O ícone de quem já instalou o app pode demorar para atualizar no iOS/Android.</p>
+          <p class="form-status" id="appIconStatus"></p>
+          <div class="hero-slide-list" id="appIconPreview"></div>
+          <div class="panel-divider"></div>
+          <div class="panel-head">
+            <div>
               <p class="eyebrow">Página inicial</p>
               <h2>Imagens da seção principal</h2>
             </div>

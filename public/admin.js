@@ -541,6 +541,21 @@ function fillDisplaySettings(settings) {
   form.elements.displayRating.checked = Boolean(settings.displayRating);
 }
 
+function renderAppIconPreview(settings = currentSettings) {
+  const preview = $("#appIconPreview");
+  if (!preview) return;
+  const iconUrl = settings?.appIconUrl || "/app-icon-192.png";
+  preview.innerHTML = `
+    <article class="hero-slide-card">
+      <img src="${escapeHtml(iconUrl)}?v=${encodeURIComponent(settings?.appIconUpdatedAt || "default")}" alt="Ícone atual do app">
+      <div>
+        <strong>Ícone atual do app</strong>
+        <span>${settings?.appIconUrl ? escapeHtml(settings.appIconUrl) : "Ícone padrão da Basa 3D Works"}</span>
+      </div>
+    </article>
+  `;
+}
+
 function fillPromotionRules(settings) {
   const form = $("#promotionRulesForm");
   if (!form) return;
@@ -3036,6 +3051,7 @@ async function loadDashboard() {
 
   renderThemeGrid(data.settings.theme || "atelier");
   fillDisplaySettings(data.settings);
+  renderAppIconPreview(data.settings);
   fillPromotionRules(data.settings);
   renderHeroSlideList();
   renderCouponList(data.coupons || []);
@@ -3257,6 +3273,27 @@ async function uploadHeroSlide(event) {
     $("#heroSlideStatus").textContent = "Mídia adicionada.";
   } catch (error) {
     $("#heroSlideStatus").textContent = error.message;
+  }
+}
+
+async function uploadAppIcon(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const status = $("#appIconStatus");
+  if (status) status.textContent = "Enviando ícone...";
+  try {
+    const response = await fetch("/api/admin/app-icon", {
+      method: "POST",
+      body: new FormData(form)
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "Não foi possível salvar o ícone.");
+    currentSettings = result.settings;
+    renderAppIconPreview(result.settings);
+    form.reset();
+    if (status) status.textContent = "Ícone do app salvo.";
+  } catch (error) {
+    if (status) status.textContent = uploadFailureMessage(error);
   }
 }
 
@@ -3553,6 +3590,7 @@ $("#metricsExportButton")?.addEventListener("click", () => {
   link.click();
   URL.revokeObjectURL(link.href);
 });
+$("#appIconForm")?.addEventListener("submit", uploadAppIcon);
 $("#heroSlideForm").addEventListener("submit", uploadHeroSlide);
 $("#socialProofForm")?.addEventListener("submit", async (event) => {
   event.preventDefault();

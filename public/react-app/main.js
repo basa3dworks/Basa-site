@@ -3067,7 +3067,7 @@
     if (!visible || platform === "desktop") return null;
     return h("section", { className: `react-install-prompt ${profileMode ? "profile" : ""} ${open ? "open" : ""}` },
       h("div", { className: "react-install-card" },
-        h("img", { src: "/icons/icon-192.png", alt: "Basa 3D Works" }),
+        h("img", { src: "/app-icon-192.png", alt: "Basa 3D Works" }),
         h("div", null,
           h("strong", null, profileMode ? "Instalar app da Basa" : "Instale a Basa no seu celular"),
           h("span", null, "Acesse a loja como um app, direto da tela inicial.")
