@@ -147,6 +147,98 @@ main {
   font-weight: 900;
 }
 
+.react-install-prompt {
+  display: grid;
+  width: min(520px, 100%);
+  margin: 0 auto;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #dfe8e2;
+  background: #fffdf7;
+}
+
+.react-install-card {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 34px;
+  gap: 10px;
+  align-items: center;
+}
+
+.react-install-card img {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  box-shadow: 0 8px 22px rgba(18, 78, 59, 0.14);
+}
+
+.react-install-card strong,
+.react-install-card span {
+  display: block;
+  line-height: 1.2;
+}
+
+.react-install-card strong {
+  font-size: 0.92rem;
+}
+
+.react-install-card span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.react-install-card > button {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  color: var(--muted);
+  background: #f2f6f3;
+}
+
+.react-install-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.react-install-actions button {
+  min-height: 42px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--brand);
+  background: #eef7f2;
+  font-weight: 900;
+}
+
+.react-install-actions button:first-child {
+  color: #fff;
+  background: var(--brand);
+}
+
+.react-install-steps {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid #dfe8e2;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.react-install-steps b {
+  color: var(--brand);
+}
+
+.react-install-steps ol {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
 .react-menu-backdrop {
   position: fixed;
   inset: 0;

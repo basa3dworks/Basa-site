@@ -6,6 +6,7 @@
   const CUSTOMER_SESSION_KEY = "basa_customer_session";
   const SUPPORT_CHAT_KEY = "basa_support_chat";
   const AFFILIATE_REF_KEY = "basa_affiliate_ref";
+  const PWA_DISMISS_KEY = "basa_pwa_install_dismissed_at";
   const STORY_DURATION_MS = 6500;
   let checkoutInFlight = false;
 
@@ -3008,6 +3009,94 @@
     );
   }
 
+  function isStandaloneMode() {
+    return window.matchMedia?.("(display-mode: standalone)")?.matches || window.navigator.standalone === true;
+  }
+
+  function mobileInstallPlatform() {
+    const ua = window.navigator.userAgent || "";
+    if (/iphone|ipad|ipod/i.test(ua)) return "ios";
+    if (/android/i.test(ua)) return "android";
+    return "desktop";
+  }
+
+  function InstallAppPrompt() {
+    const [deferredPrompt, setDeferredPrompt] = useState(null);
+    const [open, setOpen] = useState(false);
+    const [visible, setVisible] = useState(false);
+    const platform = mobileInstallPlatform();
+
+    useEffect(() => {
+      if (isStandaloneMode()) return;
+      const dismissedAt = Number(localStorage.getItem(PWA_DISMISS_KEY) || 0);
+      const dismissedRecently = dismissedAt && Date.now() - dismissedAt < 1000 * 60 * 60 * 24 * 14;
+      if (!dismissedRecently) setVisible(true);
+      const onBeforeInstallPrompt = (event) => {
+        event.preventDefault();
+        setDeferredPrompt(event);
+        if (!dismissedRecently) setVisible(true);
+      };
+      window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+      return () => window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+    }, []);
+
+    const dismiss = () => {
+      localStorage.setItem(PWA_DISMISS_KEY, String(Date.now()));
+      setVisible(false);
+      setOpen(false);
+    };
+
+    const installNow = async () => {
+      if (!deferredPrompt) {
+        setOpen(true);
+        return;
+      }
+      deferredPrompt.prompt();
+      await deferredPrompt.userChoice.catch(() => null);
+      setDeferredPrompt(null);
+      dismiss();
+    };
+
+    if (!visible || platform === "desktop") return null;
+    return h("section", { className: `react-install-prompt ${open ? "open" : ""}` },
+      h("div", { className: "react-install-card" },
+        h("img", { src: "/icons/icon-192.png", alt: "Basa 3D Works" }),
+        h("div", null,
+          h("strong", null, "Instale a Basa no seu celular"),
+          h("span", null, "Acesse a loja como um app, direto da tela inicial.")
+        ),
+        h("button", { type: "button", onClick: dismiss, "aria-label": "Fechar aviso" },
+          h("span", { className: "material-symbols-rounded" }, "close")
+        )
+      ),
+      open ? h("div", { className: "react-install-steps" },
+        platform === "ios"
+          ? h(React.Fragment, null,
+            h("b", null, "No iPhone"),
+            h("ol", null,
+              h("li", null, "Abra a Basa no Safari."),
+              h("li", null, "Toque no botão de compartilhar."),
+              h("li", null, "Escolha Adicionar à Tela de Início."),
+              h("li", null, "Confirme em Adicionar.")
+            )
+          )
+          : h(React.Fragment, null,
+            h("b", null, "No Android"),
+            h("ol", null,
+              h("li", null, "Toque em Instalar agora, se aparecer."),
+              h("li", null, "Ou abra o menu do Chrome."),
+              h("li", null, "Escolha Instalar app ou Adicionar à tela inicial."),
+              h("li", null, "Confirme a instalação.")
+            )
+          )
+      ) : null,
+      h("div", { className: "react-install-actions" },
+        h("button", { type: "button", onClick: installNow }, deferredPrompt ? "Instalar agora" : "Ver como instalar"),
+        h("button", { type: "button", onClick: dismiss }, "Agora não")
+      )
+    );
+  }
+
   function App() {
     const [products, setProducts] = useState([]);
     const [stories, setStories] = useState([]);
@@ -3020,6 +3109,12 @@
 
     useEffect(() => {
       captureAffiliateRef();
+    }, []);
+
+    useEffect(() => {
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      }
     }, []);
 
     useEffect(() => {
@@ -3104,6 +3199,7 @@
     if (isProductPage) {
       return h(React.Fragment, null,
         h(Topbar, { count, detail: true, chatUnread }),
+        h(InstallAppPrompt),
         h(ProductDetail, { products, loading, setCount })
       );
     }
@@ -3111,6 +3207,7 @@
     if (isCartPage) {
       return h(React.Fragment, null,
         h(Topbar, { count, detail: true, chatUnread }),
+        h(InstallAppPrompt),
         h(CartPage, { products, loading, setCount })
       );
     }
@@ -3118,6 +3215,7 @@
     if (isAccountPage) {
       return h(React.Fragment, null,
         h(Topbar, { count, detail: true, chatUnread }),
+        h(InstallAppPrompt),
         h(AccountPage)
       );
     }
@@ -3125,6 +3223,7 @@
     if (isProfilePage) {
       return h(React.Fragment, null,
         h(Topbar, { count, detail: true, chatUnread }),
+        h(InstallAppPrompt),
         h(ProfilePage)
       );
     }
@@ -3132,6 +3231,7 @@
     if (isOrdersPage) {
       return h(React.Fragment, null,
         h(Topbar, { count, detail: true, chatUnread }),
+        h(InstallAppPrompt),
         h(OrdersPage, { products })
       );
     }
@@ -3139,6 +3239,7 @@
     if (isRequestsPage) {
       return h(React.Fragment, null,
         h(Topbar, { count, detail: true, chatUnread }),
+        h(InstallAppPrompt),
         h(RequestsPage)
       );
     }
@@ -3146,6 +3247,7 @@
     if (isChatPage) {
       return h(React.Fragment, null,
         h(Topbar, { count, detail: true, chatUnread }),
+        h(InstallAppPrompt),
         h(ChatPage)
       );
     }
@@ -3153,6 +3255,7 @@
     if (isAffiliatePage) {
       return h(React.Fragment, null,
         h(Topbar, { count, detail: true, chatUnread }),
+        h(InstallAppPrompt),
         h(AffiliatePage)
       );
     }
@@ -3160,6 +3263,7 @@
     if (isPartnerPage) {
       return h(React.Fragment, null,
         h(Topbar, { count, detail: true, chatUnread }),
+        h(InstallAppPrompt),
         h(PartnerPage)
       );
     }
@@ -3167,12 +3271,14 @@
     if (isThankYouPage) {
       return h(React.Fragment, null,
         h(Topbar, { count, detail: true, chatUnread }),
+        h(InstallAppPrompt),
         h(ThankYouPage)
       );
     }
 
     return h(React.Fragment, null,
       h(Topbar, { count, detail: false, chatUnread }),
+      h(InstallAppPrompt),
       h(FeedTabs, { feed, setFeed, products }),
       h("main", null,
         h(Hero, { settings, loading }),
