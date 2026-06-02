@@ -157,6 +157,28 @@ main {
   background: #fffdf7;
 }
 
+.react-install-prompt.profile {
+  width: 100%;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid #dfe8e2;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.react-install-prompt.profile .react-install-card {
+  grid-template-columns: 42px minmax(0, 1fr);
+}
+
+.react-install-prompt.profile .react-install-actions {
+  grid-template-columns: 1fr 1fr;
+}
+
+.react-install-prompt.profile .react-install-actions button:last-child {
+  color: var(--brand);
+  background: #eef7f2;
+}
+
 .react-install-card {
   display: grid;
   grid-template-columns: 42px minmax(0, 1fr) 34px;

@@ -1585,6 +1585,7 @@
             h("a", { className: "react-primary-link", href: nextUrl }, nextUrl.includes("carrinho") ? "Voltar ao carrinho" : "Continuar"),
             h("button", { type: "button", className: "react-danger-button", onClick: logout }, "Sair")
           ),
+          h(InstallAppPrompt, { mode: "profile" }),
           status ? h("p", { className: "react-account-status" }, status) : null
         )
         : h("section", { className: "react-account-card" },
@@ -1776,6 +1777,7 @@
               h("small", null, session?.username ? `@${session.username}` : "")
             )
           ),
+          h(InstallAppPrompt, { mode: "profile" }),
           h("form", { className: "react-account-card react-account-form", onSubmit: saveProfile },
             h("strong", null, "Editar perfil público"),
             h("label", null,
@@ -3020,25 +3022,26 @@
     return "desktop";
   }
 
-  function InstallAppPrompt() {
+  function InstallAppPrompt({ mode = "banner" } = {}) {
+    const profileMode = mode === "profile";
     const [deferredPrompt, setDeferredPrompt] = useState(null);
     const [open, setOpen] = useState(false);
-    const [visible, setVisible] = useState(false);
+    const [visible, setVisible] = useState(profileMode);
     const platform = mobileInstallPlatform();
 
     useEffect(() => {
       if (isStandaloneMode()) return;
       const dismissedAt = Number(localStorage.getItem(PWA_DISMISS_KEY) || 0);
-      const dismissedRecently = dismissedAt && Date.now() - dismissedAt < 1000 * 60 * 60 * 24 * 14;
-      if (!dismissedRecently) setVisible(true);
+      const dismissedRecently = !profileMode && dismissedAt && Date.now() - dismissedAt < 1000 * 60 * 60 * 48;
+      if (profileMode || !dismissedRecently) setVisible(true);
       const onBeforeInstallPrompt = (event) => {
         event.preventDefault();
         setDeferredPrompt(event);
-        if (!dismissedRecently) setVisible(true);
+        if (profileMode || !dismissedRecently) setVisible(true);
       };
       window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
       return () => window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
-    }, []);
+    }, [profileMode]);
 
     const dismiss = () => {
       localStorage.setItem(PWA_DISMISS_KEY, String(Date.now()));
@@ -3054,18 +3057,22 @@
       deferredPrompt.prompt();
       await deferredPrompt.userChoice.catch(() => null);
       setDeferredPrompt(null);
-      dismiss();
+      if (profileMode) {
+        setOpen(false);
+      } else {
+        dismiss();
+      }
     };
 
     if (!visible || platform === "desktop") return null;
-    return h("section", { className: `react-install-prompt ${open ? "open" : ""}` },
+    return h("section", { className: `react-install-prompt ${profileMode ? "profile" : ""} ${open ? "open" : ""}` },
       h("div", { className: "react-install-card" },
         h("img", { src: "/icons/icon-192.png", alt: "Basa 3D Works" }),
         h("div", null,
-          h("strong", null, "Instale a Basa no seu celular"),
+          h("strong", null, profileMode ? "Instalar app da Basa" : "Instale a Basa no seu celular"),
           h("span", null, "Acesse a loja como um app, direto da tela inicial.")
         ),
-        h("button", { type: "button", onClick: dismiss, "aria-label": "Fechar aviso" },
+        profileMode ? null : h("button", { type: "button", onClick: dismiss, "aria-label": "Fechar aviso" },
           h("span", { className: "material-symbols-rounded" }, "close")
         )
       ),
@@ -3091,8 +3098,10 @@
           )
       ) : null,
       h("div", { className: "react-install-actions" },
-        h("button", { type: "button", onClick: installNow }, deferredPrompt ? "Instalar agora" : "Ver como instalar"),
-        h("button", { type: "button", onClick: dismiss }, "Agora não")
+        h("button", { type: "button", onClick: installNow }, deferredPrompt ? "Instalar app" : "Ver como instalar"),
+        profileMode
+          ? h("button", { type: "button", onClick: () => setOpen((current) => !current) }, open ? "Ocultar passos" : "Mostrar passos")
+          : h("button", { type: "button", onClick: dismiss }, "Agora não")
       )
     );
   }
@@ -3215,7 +3224,6 @@
     if (isAccountPage) {
       return h(React.Fragment, null,
         h(Topbar, { count, detail: true, chatUnread }),
-        h(InstallAppPrompt),
         h(AccountPage)
       );
     }
@@ -3223,7 +3231,6 @@
     if (isProfilePage) {
       return h(React.Fragment, null,
         h(Topbar, { count, detail: true, chatUnread }),
-        h(InstallAppPrompt),
         h(ProfilePage)
       );
     }
